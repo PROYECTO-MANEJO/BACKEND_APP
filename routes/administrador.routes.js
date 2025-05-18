@@ -1,9 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const adminController = require('../controllers/administrador.js');
+const AdministradorController = require('../controllers/administrador');
+const adminController = new AdministradorController();
+const AuthMiddleware = require('../middlewares/authorMiddlewares');
+const authMiddleware = new AuthMiddleware(process.env.JWT_SECRET);
+router.post('/registro', (req, res) => adminController.registrarAdministrador(req, res));
+router.post('/login', (req, res) => adminController.loginAdministrador(req, res));
 
-
-router.post('/registro', adminController.registrarAdministrador);
-router.post('/login', adminController.loginAdministrador);
+router.get('/panel', authMiddleware.auth(['admin']), (req, res) => {
+  res.json({ message: 'Acceso autorizado', user: req.user });
+});
 
 module.exports = router;
