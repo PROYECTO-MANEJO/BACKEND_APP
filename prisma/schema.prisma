@@ -14,19 +14,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Rol {
-  id       Int       @id @default(autoincrement())
-  nombre   String    @unique
-  usuarios Usuario[]
-}
-
-model Usuario {
+model Administrador {
   id        Int      @id @default(autoincrement())
   nombre    String
   correo    String   @unique
   password  String
-  rolId     Int
-  rol       Rol      @relation(fields: [rolId], references: [id])
-  carrera   String?
+  permisos  String?  // Opcional: para definir permisos específicos si lo deseas
   createdAt DateTime @default(now())
 }
