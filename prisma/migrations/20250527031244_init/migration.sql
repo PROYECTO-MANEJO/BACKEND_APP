@@ -1,0 +1,237 @@
+/*
+  Warnings:
+
+  - You are about to drop the `Post` table. If the table is not empty, all the data it contains will be lost.
+  - You are about to drop the `Profile` table. If the table is not empty, all the data it contains will be lost.
+  - You are about to drop the `User` table. If the table is not empty, all the data it contains will be lost.
+
+*/
+-- CreateEnum
+CREATE TYPE "RolCuenta" AS ENUM ('USUARIO', 'MASTER', 'ADMINISTRADOR');
+
+-- CreateEnum
+CREATE TYPE "AreaEvento" AS ENUM ('PRACTICA', 'INVESTIGACION', 'ACADEMICA', 'TECNICA', 'INDUSTRIAL', 'EMPRESARIAL', 'IA', 'REDES');
+
+-- CreateEnum
+CREATE TYPE "TipoAudienciaEvento" AS ENUM ('CARRERA_ESPECIFICA', 'TODAS_CARRERAS', 'PUBLICO_GENERAL');
+
+-- CreateEnum
+CREATE TYPE "MetodoPago" AS ENUM ('TRANFERENCIA', 'DEPOSITO', 'TARJETA_CREDITO');
+
+-- CreateEnum
+CREATE TYPE "EstadoPago" AS ENUM ('PENDIENTE', 'APROBADO', 'RECHAZADO');
+
+-- CreateEnum
+CREATE TYPE "EstadoParticipacion" AS ENUM ('APROBADA', 'REPROBADA');
+
+-- DropForeignKey
+ALTER TABLE "Post" DROP CONSTRAINT "Post_authorId_fkey";
+
+-- DropForeignKey
+ALTER TABLE "Profile" DROP CONSTRAINT "Profile_userId_fkey";
+
+-- DropTable
+DROP TABLE "Post";
+
+-- DropTable
+DROP TABLE "Profile";
+
+-- DropTable
+DROP TABLE "User";
+
+-- CreateTable
+CREATE TABLE "Carrera" (
+    "ID_CAR" UUID NOT NULL,
+    "NOM_CAR" VARCHAR(100) NOT NULL,
+    "DES_CAR" VARCHAR(250) NOT NULL,
+    "NOM_FAC_PER" VARCHAR(250) NOT NULL,
+
+    CONSTRAINT "Carrera_pkey" PRIMARY KEY ("ID_CAR")
+);
+
+-- CreateTable
+CREATE TABLE "Usuario" (
+    "ID_USU" UUID NOT NULL,
+    "CED_USU" VARCHAR(20) NOT NULL,
+    "NOM_USU1" VARCHAR(20) NOT NULL,
+    "NOM_USU2" VARCHAR(20) NOT NULL,
+    "APE_USU1" VARCHAR(20) NOT NULL,
+    "APE_USU2" VARCHAR(20) NOT NULL,
+    "FEC_NAC_USU" DATE NOT NULL,
+    "NUM_TEL_USU" VARCHAR(10),
+    "PAS_USU" VARCHAR(12),
+    "ID_CAR_PER" UUID,
+
+    CONSTRAINT "Usuario_pkey" PRIMARY KEY ("ID_USU")
+);
+
+-- CreateTable
+CREATE TABLE "Cuenta" (
+    "ID_CUE" UUID NOT NULL,
+    "COR_CUE" VARCHAR(150) NOT NULL,
+    "ROL_CUE" "RolCuenta" NOT NULL,
+    "ENL_CED_CUE" TEXT,
+    "ENL_MAT_CUE" TEXT,
+    "ENL_EXT_CUE" TEXT,
+    "ID_USU_PER" UUID NOT NULL,
+
+    CONSTRAINT "Cuenta_pkey" PRIMARY KEY ("ID_CUE")
+);
+
+-- CreateTable
+CREATE TABLE "Organizador" (
+    "CED_ORG" VARCHAR(10) NOT NULL,
+    "NOM_ORG1" VARCHAR(20) NOT NULL,
+    "NOM_ORG2" VARCHAR(20) NOT NULL,
+    "APE_ORG1" VARCHAR(20) NOT NULL,
+    "APE_ORG2" VARCHAR(20) NOT NULL,
+    "TIT_ACA_ORG" VARCHAR(100),
+
+    CONSTRAINT "Organizador_pkey" PRIMARY KEY ("CED_ORG")
+);
+
+-- CreateTable
+CREATE TABLE "CategoriaEvento" (
+    "ID_CAT" UUID NOT NULL,
+    "NOM_CAT" VARCHAR(50) NOT NULL,
+    "DES_CAT" VARCHAR(250) NOT NULL,
+    "PUN_APR_CAT" DECIMAL(4,1),
+    "ASI_CAT" SMALLINT NOT NULL,
+
+    CONSTRAINT "CategoriaEvento_pkey" PRIMARY KEY ("ID_CAT")
+);
+
+-- CreateTable
+CREATE TABLE "Evento" (
+    "ID_EVE" UUID NOT NULL,
+    "NOM_EVE" VARCHAR(250) NOT NULL,
+    "DES_EVE" VARCHAR(500) NOT NULL,
+    "ID_CAT_EVE" UUID NOT NULL,
+    "FEC_INI_EVE" DATE NOT NULL,
+    "FEC_FIN_EVE" DATE,
+    "HOR_INI_EVE" TIME NOT NULL,
+    "HOR_FIN_EVE" TIME,
+    "DUR_EVE" SMALLINT NOT NULL,
+    "ARE_EVE" "AreaEvento" NOT NULL,
+    "UBI_EVE" VARCHAR(150) NOT NULL,
+    "CED_ORG_EVE" VARCHAR(10) NOT NULL,
+    "CAPACIDAD_MAX_EVE" INTEGER NOT NULL,
+    "TIPO_AUDIENCIA_EVE" "TipoAudienciaEvento" NOT NULL DEFAULT 'PUBLICO_GENERAL',
+
+    CONSTRAINT "Evento_pkey" PRIMARY KEY ("ID_EVE")
+);
+
+-- CreateTable
+CREATE TABLE "EVENTOS_POR_CARRERA" (
+    "ID_EVE_PER" UUID NOT NULL,
+    "ID_CAR_PER" UUID NOT NULL,
+
+    CONSTRAINT "EVENTOS_POR_CARRERA_pkey" PRIMARY KEY ("ID_EVE_PER","ID_CAR_PER")
+);
+
+-- CreateTable
+CREATE TABLE "Asignacion" (
+    "ID_ASI" UUID NOT NULL,
+    "NOM_ASI" VARCHAR(100) NOT NULL,
+    "DES_ASI" VARCHAR(250) NOT NULL,
+    "ID_EVE_PER" UUID NOT NULL,
+
+    CONSTRAINT "Asignacion_pkey" PRIMARY KEY ("ID_ASI")
+);
+
+-- CreateTable
+CREATE TABLE "Requisito" (
+    "ID_REQ" UUID NOT NULL,
+    "NOM_REQ" VARCHAR(100) NOT NULL,
+    "DES_REQ" VARCHAR(250) NOT NULL,
+    "ID_ASI_PER" UUID NOT NULL,
+
+    CONSTRAINT "Requisito_pkey" PRIMARY KEY ("ID_REQ")
+);
+
+-- CreateTable
+CREATE TABLE "Inscripcion" (
+    "ID_INS" UUID NOT NULL,
+    "FEC_INS" DATE NOT NULL,
+    "VAL_INS" DECIMAL(6,2) NOT NULL,
+    "MET_PAG_INS" "MetodoPago" NOT NULL,
+    "ENL_ORD_PAG_INS" TEXT,
+    "ID_USU_INS" UUID NOT NULL,
+    "ID_EVE_INS" UUID NOT NULL,
+    "ESTADO_PAGO" "EstadoPago" NOT NULL DEFAULT 'PENDIENTE',
+    "ID_ADMIN_APROBADOR" UUID,
+    "FEC_APROBACION" DATE,
+
+    CONSTRAINT "Inscripcion_pkey" PRIMARY KEY ("ID_INS")
+);
+
+-- CreateTable
+CREATE TABLE "Participacion" (
+    "ID_PAR" UUID NOT NULL,
+    "NOT_PAR" DECIMAL(5,2) NOT NULL,
+    "EST_PAR" "EstadoParticipacion" NOT NULL,
+    "ASI_PAR" SMALLINT NOT NULL,
+    "ID_INS_PER" UUID NOT NULL,
+    "ENL_CER_PAR" TEXT,
+    "FEC_CER_PAR" DATE,
+
+    CONSTRAINT "Participacion_pkey" PRIMARY KEY ("ID_PAR")
+);
+
+-- CreateTable
+CREATE TABLE "PaginaPrincipal" (
+    "ID_PAG" UUID NOT NULL,
+    "DES_PAG" VARCHAR(1000),
+    "MIS_PAG" VARCHAR(1000),
+    "VIS_PAG" VARCHAR(1000),
+
+    CONSTRAINT "PaginaPrincipal_pkey" PRIMARY KEY ("ID_PAG")
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Usuario_CED_USU_key" ON "Usuario"("CED_USU");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Usuario_PAS_USU_key" ON "Usuario"("PAS_USU");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Inscripcion_ID_USU_INS_ID_EVE_INS_key" ON "Inscripcion"("ID_USU_INS", "ID_EVE_INS");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Participacion_ID_INS_PER_key" ON "Participacion"("ID_INS_PER");
+
+-- AddForeignKey
+ALTER TABLE "Usuario" ADD CONSTRAINT "Usuario_ID_CAR_PER_fkey" FOREIGN KEY ("ID_CAR_PER") REFERENCES "Carrera"("ID_CAR") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Cuenta" ADD CONSTRAINT "Cuenta_ID_USU_PER_fkey" FOREIGN KEY ("ID_USU_PER") REFERENCES "Usuario"("ID_USU") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Evento" ADD CONSTRAINT "Evento_ID_CAT_EVE_fkey" FOREIGN KEY ("ID_CAT_EVE") REFERENCES "CategoriaEvento"("ID_CAT") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Evento" ADD CONSTRAINT "Evento_CED_ORG_EVE_fkey" FOREIGN KEY ("CED_ORG_EVE") REFERENCES "Organizador"("CED_ORG") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "EVENTOS_POR_CARRERA" ADD CONSTRAINT "EVENTOS_POR_CARRERA_ID_EVE_PER_fkey" FOREIGN KEY ("ID_EVE_PER") REFERENCES "Evento"("ID_EVE") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "EVENTOS_POR_CARRERA" ADD CONSTRAINT "EVENTOS_POR_CARRERA_ID_CAR_PER_fkey" FOREIGN KEY ("ID_CAR_PER") REFERENCES "Carrera"("ID_CAR") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Asignacion" ADD CONSTRAINT "Asignacion_ID_EVE_PER_fkey" FOREIGN KEY ("ID_EVE_PER") REFERENCES "Evento"("ID_EVE") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Requisito" ADD CONSTRAINT "Requisito_ID_ASI_PER_fkey" FOREIGN KEY ("ID_ASI_PER") REFERENCES "Asignacion"("ID_ASI") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Inscripcion" ADD CONSTRAINT "Inscripcion_ID_USU_INS_fkey" FOREIGN KEY ("ID_USU_INS") REFERENCES "Usuario"("ID_USU") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Inscripcion" ADD CONSTRAINT "Inscripcion_ID_EVE_INS_fkey" FOREIGN KEY ("ID_EVE_INS") REFERENCES "Evento"("ID_EVE") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Inscripcion" ADD CONSTRAINT "Inscripcion_ID_ADMIN_APROBADOR_fkey" FOREIGN KEY ("ID_ADMIN_APROBADOR") REFERENCES "Usuario"("ID_USU") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Participacion" ADD CONSTRAINT "Participacion_ID_INS_PER_fkey" FOREIGN KEY ("ID_INS_PER") REFERENCES "Inscripcion"("ID_INS") ON DELETE RESTRICT ON UPDATE CASCADE;
