@@ -43,6 +43,9 @@ const startServer = async () => {
   }
 };
 
+app.get('/', (req, res) => {
+  res.send('Servidor conectado y funcionando correctamente');
+});
 // Iniciar servidor
 startServer();
 
