@@ -17,6 +17,7 @@ app.use(cors());
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/protected', require('./routes/protected'));
 app.use('/api/solicitudes-cambio', require('./routes/solicitudesCambio'));
+app.use('/api/recovery', require('./routes/passwordRecoveryRoutes'));
 
 // Función para iniciar el servidor
 const startServer = async () => {

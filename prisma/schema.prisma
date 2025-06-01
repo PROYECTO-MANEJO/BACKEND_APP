@@ -37,6 +37,10 @@ model Usuario {
   pas_usu String? @map("PAS_USU") @db.VarChar(60) // Cambiado a 60 caracteres para poder almacenar hashes de bcrypt
   id_car_per String? @map("ID_CAR_PER") @db.Uuid // UUID de la carrera a la que pertenece el usuario
 
+  // Nuevos campos para recuperación de contraseña
+  resetToken String? @map("RESET_TOKEN") @db.VarChar(255) // Token de recuperación
+  resetTokenExpiry DateTime? @map("RESET_TOKEN_EXPIRY") @db.Timestamp(3) 
+
   carrera Carrera? @relation(fields: [id_car_per], references: [id_car])
   cuentas Cuenta[]
   inscripciones Inscripcion[]
