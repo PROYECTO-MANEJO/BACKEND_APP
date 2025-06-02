@@ -18,6 +18,11 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/protected', require('./routes/protected'));
 app.use('/api/solicitudes-cambio', require('./routes/solicitudesCambio'));
 app.use('/api/recovery', require('./routes/passwordRecoveryRoutes'));
+app.use('/api/organizadores', require('./routes/organizadores'));
+app.use('/api/categorias', require('./routes/categorias'));
+app.use('/api/eventos', require('./routes/eventos'));
+app.use('/api/cursos', require('./routes/cursos'));
+
 
 // Función para iniciar el servidor
 const startServer = async () => {
