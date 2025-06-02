@@ -78,6 +78,7 @@ model Organizador {
   tit_aca_org String? @map("TIT_ACA_ORG") @db.VarChar(100)
 
   eventos Evento[]
+  cursos  Curso[] 
 }
 
 model CategoriaEvento {
@@ -88,6 +89,7 @@ model CategoriaEvento {
   asi_cat Int @map("ASI_CAT") @db.SmallInt // Cantidad de asignaciones/tareas esperadas
 
   eventos Evento[]
+  cursos  Curso[] 
 }
 
 model Evento {
@@ -251,6 +253,20 @@ model SolicitudCambio {
   adminResponsable Usuario? @relation("SolicitudesAdmin", fields: [id_admin_resp_sol], references: [id_usu])
   
   @@map("SOLICITUDES_CAMBIO")
+}
+
+model Curso {
+  id_cur        String   @id @default(uuid()) @map("ID_CUR") @db.Uuid
+  nom_cur       String   @map("NOM_CUR") @db.VarChar(200)
+  des_cur       String   @map("DES_CUR") @db.VarChar(500)
+  dur_cur       Int      @map("DUR_CUR") @db.SmallInt
+  fec_ini_cur   DateTime @map("FEC_INI_CUR") @db.Date
+  fec_fin_cur   DateTime @map("FEC_FIN_CUR") @db.Date
+  id_cat_cur    String   @map("ID_CAT_CUR") @db.Uuid
+  ced_org_cur   String   @map("CED_ORG_CUR") @db.VarChar(10)
+
+  categoria     CategoriaEvento @relation(fields: [id_cat_cur], references: [id_cat])
+  organizador   Organizador      @relation(fields: [ced_org_cur], references: [ced_org])
 }
 
 // Enum para el tipo de cambio
