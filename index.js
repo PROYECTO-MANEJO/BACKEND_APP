@@ -22,7 +22,9 @@ app.use('/api/organizadores', require('./routes/organizadores'));
 app.use('/api/categorias', require('./routes/categorias'));
 app.use('/api/eventos', require('./routes/eventos'));
 app.use('/api/cursos', require('./routes/cursos'));
-
+app.use('/api/inscripciones', require('./routes/inscripciones'));
+app.use('/api/carreras', require('./routes/carreras'));
+app.use('/api/eventosPorCarrera', require('./routes/eventosPorCarrera'));  // Ruta corregida para asociar eventos a carreras
 
 // Función para iniciar el servidor
 const startServer = async () => {
