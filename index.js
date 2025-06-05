@@ -4,6 +4,10 @@ const cors = require('cors');
 // Cargar variables de entorno
 require('dotenv').config();
 
+console.log('🔍 Variables de entorno cargadas:');
+console.log('SECRET_JWT_SEED existe:', !!process.env.SECRET_JWT_SEED);
+console.log('PORT:', process.env.PORT);
+
 const app = express();
 
 // Importar configuración de la base de datos PostgreSQL
@@ -22,9 +26,14 @@ app.use('/api/organizadores', require('./routes/organizadores'));
 app.use('/api/categorias', require('./routes/categorias'));
 app.use('/api/eventos', require('./routes/eventos'));
 app.use('/api/cursos', require('./routes/cursos'));
+<<<<<<< HEAD
 app.use('/api/inscripciones', require('./routes/inscripciones'));
 app.use('/api/carreras', require('./routes/carreras'));
 app.use('/api/eventosPorCarrera', require('./routes/eventosPorCarrera'));  // Ruta corregida para asociar eventos a carreras
+=======
+app.use('/api/users', require('./routes/users')); // Nueva ruta
+app.use('/api/carreras', require('./routes/carreras')); // Nueva ruta
+>>>>>>> 239b676fd07aaf9eac8f1593c73fb69c1e7d5bdf
 
 // Función para iniciar el servidor
 const startServer = async () => {
@@ -53,6 +62,7 @@ const startServer = async () => {
 app.get('/', (req, res) => {
   res.send('Servidor conectado y funcionando correctamente');
 });
+
 // Iniciar servidor
 startServer();
 

@@ -64,6 +64,7 @@ model Cuenta {
 
 // Enum para los roles de cuenta
 enum RolCuenta {
+  ESTUDIANTE
   USUARIO
   MASTER
   ADMINISTRADOR
