@@ -2,50 +2,52 @@ const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// Middleware para validar el token de cualquier usuario (admin o normal)
-const validateJWT = async (req, res, next) => {
-    // Obtener el token del header
-    const token = req.header('x-token');
+/**
+ * Middleware para validar el JWT
+ */
+const validateJWT = (req, res, next) => {
+  console.log('🔍 Middleware validateJWT ejecutándose...');
+  
+  // Leer el token del header
+  const token = req.header('x-token') || req.header('Authorization')?.replace('Bearer ', '');
+  
+  console.log('📋 Headers recibidos:', {
+    'x-token': req.header('x-token'),
+    'Authorization': req.header('Authorization'),
+    'token extraído': token ? `${token.substring(0, 20)}...` : 'undefined'
+  });
 
-    // Verificar si el token existe
-    if (!token) {
-        return res.status(401).json({
-            success: false,
-            message: 'No hay token en la petición'
-        });
-    }
+  if (!token) {
+    console.log('❌ No se encontró token en la petición');
+    return res.status(401).json({
+      success: false,
+      message: 'No hay token en la petición'
+    });
+  }
 
-    try {
-        // Verificar el token
-        const { id } = jwt.verify(token, process.env.SECRET_KEY);
-        
-        // Buscar el usuario en la base de datos
-        const usuario = await prisma.usuario.findUnique({
-            where: { id_usu: id },
-            include: {
-                cuentas: true
-            }
-        });
-
-        // Verificar si el usuario existe
-        if (!usuario) {
-            return res.status(401).json({
-                success: false,
-                message: 'Token no válido - usuario no existe'
-            });
-        }
-
-        // Guardar el usuario en la request
-        req.usuario = usuario;
-        
-        next();
-    } catch (error) {
-        console.log(error);
-        res.status(401).json({
-            success: false,
-            message: 'Token no válido'
-        });
-    }
+  try {
+    // Verificar el token
+    console.log('🔐 Verificando token...');
+    console.log('🔑 SECRET_JWT_SEED existe:', !!process.env.SECRET_KEY);
+    
+    const payload = jwt.verify(token, process.env.SECRET_KEY);
+    console.log('✅ Token verificado exitosamente. Payload:', payload);
+    
+    // Agregar el uid al request
+    console.log("el ID ES"+payload.id)
+    req.uid = payload.id;
+    console.log('👤 UID agregado al request:', req.uid);
+    console.log('📊 Tipo de UID:', typeof req.uid);
+    
+    next();
+  } catch (error) {
+    console.error('❌ Error al verificar JWT:', error.message);
+    return res.status(401).json({
+      success: false,
+      message: 'Token no válido',
+      error: error.message
+    });
+  }
 };
 
 // Middleware para validar que el usuario sea administrador
