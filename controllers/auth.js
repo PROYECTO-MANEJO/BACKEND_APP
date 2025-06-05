@@ -50,30 +50,32 @@ const register = async (req, res) => {
 
         let rolAsignado = '';
         if (email && email.endsWith('@uta.edu.ec')) {
-            rolAsignado = 'MASTER'; // estudiante
+            rolAsignado = 'ESTUDIANTE'; // estudiante
         } else {
             rolAsignado = 'USUARIO'; // externo
         }
 
-        // Validar y convertir fecha de nacimiento
-let fechaNacimiento;
-try {
-    fechaNacimiento = new Date(fec_nac_usu);
-    if (isNaN(fechaNacimiento.getTime())) {
-        return res.status(400).json({
-            success: false,
-            message: 'La fecha de nacimiento es inválida. Usa formato YYYY-MM-DD'
-        });
-    }
-} catch {
-    return res.status(400).json({
-        success: false,
-        message: 'Fecha de nacimiento inválida'
-    });
-}
-
-
-        
+        // Validar y convertir fecha de nacimiento (OPCIONAL)
+        let fechaNacimiento = null;
+        if (fec_nac_usu) {
+            try {
+                fechaNacimiento = new Date(fec_nac_usu);
+                if (isNaN(fechaNacimiento.getTime())) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'La fecha de nacimiento es inválida. Usa formato YYYY-MM-DD'
+                    });
+                }
+            } catch {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Fecha de nacimiento inválida'
+                });
+            }
+        } else {
+            // Si no se proporciona fecha, usar una fecha por defecto
+            fechaNacimiento = new Date('2000-01-01');
+        }
 
         // Crear el usuario y la cuenta en una transacción
         const result = await prisma.$transaction(async (prisma) => {
@@ -86,7 +88,7 @@ try {
                     ape_usu1: apellido,
                     ape_usu2: apellido2 || '',
                     pas_usu: hashedPassword,
-                    fec_nac_usu: fechaNacimiento // Fecha de nacimiento temporal
+                    fec_nac_usu: fechaNacimiento
                 }
             });
 
@@ -94,7 +96,7 @@ try {
             const newAccount = await prisma.cuenta.create({
                 data: {
                     cor_cue: email,
-                    rol_cue: rolAsignado, // Por defecto, rol usuario normal
+                    rol_cue: rolAsignado,
                     id_usu_per: newUser.id_usu
                 }
             });
@@ -361,4 +363,4 @@ module.exports = {
     renewToken,
     register,
     adminCreateUser
-}; 
+};
