@@ -39,9 +39,16 @@ model Usuario {
   pas_usu String? @map("PAS_USU") @db.VarChar(60)
   id_car_per String? @map("ID_CAR_PER") @db.Uuid
 
-  // 🆕 CAMPOS PARA REQUISITOS DE INSCRIPCIÓN
-  enl_ced_pdf String? @map("ENL_CED_PDF") @db.Text // PDF de cédula
-  enl_mat_pdf String? @map("ENL_MAT_PDF") @db.Text // PDF de matrícula (solo estudiantes)
+  // ✅ CAMBIO: Almacenar archivos como BYTEA
+  enl_ced_pdf Bytes? @map("ENL_CED_PDF") // Archivo PDF como bytes
+  enl_mat_pdf Bytes? @map("ENL_MAT_PDF") // Archivo PDF como bytes
+  
+  // ✅ AGREGAR: Metadatos de los archivos
+  cedula_filename String? @map("CEDULA_FILENAME") @db.VarChar(255)
+  matricula_filename String? @map("MATRICULA_FILENAME") @db.VarChar(255)
+  cedula_size Int? @map("CEDULA_SIZE") // Tamaño en bytes
+  matricula_size Int? @map("MATRICULA_SIZE") // Tamaño en bytes
+  
   documentos_verificados Boolean @map("DOCUMENTOS_VERIFICADOS") @default(false)
   fec_verificacion_docs DateTime? @map("FEC_VERIFICACION_DOCS") @db.Timestamp
 
@@ -52,14 +59,11 @@ model Usuario {
   carrera Carrera? @relation(fields: [id_car_per], references: [id_car])
   cuentas Cuenta[]
   
-  // RELACIONES EVENTOS
+  // RELACIONES EXISTENTES...
   inscripciones Inscripcion[]
   pagosAprobados Inscripcion[] @relation("AdminAprobador")
-
-  // RELACIONES CURSOS
-  inscripcionesCurso InscripcionCurso[]
+  inscripcionesCurso InscripcionCurso[] @relation("InscripcionesCursoUsuario")
   pagosAprobadosCurso InscripcionCurso[] @relation("AdminAprobadorCurso")
-  
   solicitudesCreadas SolicitudCambio[] @relation("SolicitudesUsuario")
   solicitudesResponsables SolicitudCambio[] @relation("SolicitudesAdmin")
   
