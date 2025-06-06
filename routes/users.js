@@ -1,17 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const { check } = require('express-validator');
-const { validateFields } = require('../middlewares/validateFields');
 const { validateJWT } = require('../middlewares/validateJWT');
+const { validateFields } = require('../middlewares/validateFields');
 const { upload, handleMulterError } = require('../middlewares/uploadMiddleware');
 const {
   getUserProfile,
   updateUserProfile,
   getAllUsers,
   uploadDocuments,
-  getDocumentStatus,
-  downloadDocument,
-  verifyDocuments
+  getDocumentStatus
 } = require('../controllers/users');
 
 // Obtener perfil del usuario actual
@@ -46,11 +44,5 @@ router.post('/upload-documents',
 
 // Obtener estado de documentos
 router.get('/document-status', validateJWT, getDocumentStatus);
-
-// Descargar documento (solo admins)
-router.get('/download/:userId/:tipo', validateJWT, downloadDocument);
-
-// Verificar documentos (solo admins)
-router.put('/verify-documents/:userId', validateJWT, verifyDocuments);
 
 module.exports = router;

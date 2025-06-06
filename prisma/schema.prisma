@@ -39,16 +39,13 @@ model Usuario {
   pas_usu String? @map("PAS_USU") @db.VarChar(60)
   id_car_per String? @map("ID_CAR_PER") @db.Uuid
 
-  // ✅ CAMBIO: Almacenar archivos como BYTEA
-  enl_ced_pdf Bytes? @map("ENL_CED_PDF") // Archivo PDF como bytes
-  enl_mat_pdf Bytes? @map("ENL_MAT_PDF") // Archivo PDF como bytes
-  
-  // ✅ AGREGAR: Metadatos de los archivos
+  // ✅ CAMPOS PARA ARCHIVOS PDF (almacenados como BYTEA)
+  enl_ced_pdf Bytes? @map("ENL_CED_PDF")
+  enl_mat_pdf Bytes? @map("ENL_MAT_PDF")
   cedula_filename String? @map("CEDULA_FILENAME") @db.VarChar(255)
   matricula_filename String? @map("MATRICULA_FILENAME") @db.VarChar(255)
-  cedula_size Int? @map("CEDULA_SIZE") // Tamaño en bytes
-  matricula_size Int? @map("MATRICULA_SIZE") // Tamaño en bytes
-  
+  cedula_size Int? @map("CEDULA_SIZE")
+  matricula_size Int? @map("MATRICULA_SIZE")
   documentos_verificados Boolean @map("DOCUMENTOS_VERIFICADOS") @default(false)
   fec_verificacion_docs DateTime? @map("FEC_VERIFICACION_DOCS") @db.Timestamp
 
@@ -56,14 +53,19 @@ model Usuario {
   resetToken String? @map("RESET_TOKEN") @db.VarChar(255)
   resetTokenExpiry DateTime? @map("RESET_TOKEN_EXPIRY") @db.Timestamp(3) 
 
+  // ✅ RELACIONES EXISTENTES
   carrera Carrera? @relation(fields: [id_car_per], references: [id_car])
   cuentas Cuenta[]
   
-  // RELACIONES EXISTENTES...
+  // ✅ RELACIONES DE EVENTOS
   inscripciones Inscripcion[]
   pagosAprobados Inscripcion[] @relation("AdminAprobador")
+
+  // ✅ RELACIONES DE CURSOS (FALTABAN ESTAS)
   inscripcionesCurso InscripcionCurso[] @relation("InscripcionesCursoUsuario")
   pagosAprobadosCurso InscripcionCurso[] @relation("AdminAprobadorCurso")
+  
+  // ✅ RELACIONES DE SOLICITUDES
   solicitudesCreadas SolicitudCambio[] @relation("SolicitudesUsuario")
   solicitudesResponsables SolicitudCambio[] @relation("SolicitudesAdmin")
   
@@ -262,8 +264,8 @@ model InscripcionCurso {
   id_admin_aprobador_cur String? @map("ID_ADMIN_APROBADOR_CUR") @db.Uuid
   fec_aprobacion_cur DateTime? @map("FEC_APROBACION_CUR") @db.Date
 
-  // Relaciones
-  usuario Usuario @relation(fields: [id_usu_ins_cur], references: [id_usu])
+  // ✅ RELACIONES CORREGIDAS
+  usuario Usuario @relation("InscripcionesCursoUsuario", fields: [id_usu_ins_cur], references: [id_usu])
   curso Curso @relation(fields: [id_cur_ins], references: [id_cur])
   adminAprobador Usuario? @relation("AdminAprobadorCurso", fields: [id_admin_aprobador_cur], references: [id_usu])
 

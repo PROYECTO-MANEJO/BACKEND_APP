@@ -173,6 +173,8 @@ const uploadDocuments = async (req, res) => {
   try {
     const userId = req.uid;
     
+    console.log('📁 Archivos recibidos:', req.files);
+    
     // Obtener información del usuario
     const user = await prisma.usuario.findUnique({
       where: { id_usu: userId },
@@ -195,8 +197,11 @@ const uploadDocuments = async (req, res) => {
     const isEstudiante = user.cuentas[0]?.rol_cue === 'ESTUDIANTE';
     
     // Validar archivos recibidos
-    const cedulaFile = req.files?.cedula_pdf;
-    const matriculaFile = req.files?.matricula_pdf;
+    const cedulaFile = req.files?.cedula_pdf?.[0];
+    const matriculaFile = req.files?.matricula_pdf?.[0];
+
+    console.log('🗂️ Archivo cédula:', cedulaFile?.originalname, 'Tamaño:', cedulaFile?.size);
+    console.log('🗂️ Archivo matrícula:', matriculaFile?.originalname, 'Tamaño:', matriculaFile?.size);
 
     if (!cedulaFile) {
       return res.status(400).json({
@@ -205,7 +210,7 @@ const uploadDocuments = async (req, res) => {
       });
     }
 
-    // Si es estudiante pero no envió matrícula
+    // Validaciones de rol
     if (isEstudiante && !matriculaFile) {
       return res.status(400).json({
         success: false,
@@ -213,7 +218,6 @@ const uploadDocuments = async (req, res) => {
       });
     }
 
-    // Si NO es estudiante pero envió matrícula
     if (!isEstudiante && matriculaFile) {
       return res.status(400).json({
         success: false,
@@ -221,38 +225,39 @@ const uploadDocuments = async (req, res) => {
       });
     }
 
-    // Eliminar archivos anteriores si existen
-    if (user.enl_ced_pdf) {
-      const oldCedulaPath = path.join(__dirname, '..', user.enl_ced_pdf);
-      if (fs.existsSync(oldCedulaPath)) {
-        fs.unlinkSync(oldCedulaPath);
-      }
-    }
-
-    if (user.enl_mat_pdf) {
-      const oldMatriculaPath = path.join(__dirname, '..', user.enl_mat_pdf);
-      if (fs.existsSync(oldMatriculaPath)) {
-        fs.unlinkSync(oldMatriculaPath);
-      }
-    }
-
-    // Preparar datos para actualización
+    // ✅ PREPARAR DATOS PARA BD (archivos como Buffer)
     const updateData = {
-      enl_ced_pdf: cedulaFile.path,
-      documentos_verificados: false, // Resetear verificación
+      enl_ced_pdf: cedulaFile.buffer, // Buffer del archivo
+      cedula_filename: cedulaFile.originalname,
+      cedula_size: cedulaFile.size,
+      documentos_verificados: false,
       fec_verificacion_docs: null
     };
 
     // Solo agregar matrícula si es estudiante
     if (isEstudiante && matriculaFile) {
-      updateData.enl_mat_pdf = matriculaFile.path;
+      updateData.enl_mat_pdf = matriculaFile.buffer; // Buffer del archivo
+      updateData.matricula_filename = matriculaFile.originalname;
+      updateData.matricula_size = matriculaFile.size;
     }
 
-    // Actualizar en base de datos
+    console.log('💾 Guardando archivos en BD...', {
+      cedula_size: updateData.cedula_size,
+      matricula_size: updateData.matricula_size
+    });
+
+    // ✅ ACTUALIZAR EN BASE DE DATOS
     const updatedUser = await prisma.usuario.update({
       where: { id_usu: userId },
       data: updateData,
-      include: {
+      select: {
+        id_usu: true,
+        cedula_filename: true,
+        matricula_filename: true,
+        cedula_size: true,
+        matricula_size: true,
+        documentos_verificados: true,
+        fec_verificacion_docs: true,
         cuentas: {
           select: {
             cor_cue: true,
@@ -262,74 +267,35 @@ const uploadDocuments = async (req, res) => {
       }
     });
 
+    console.log('✅ Archivos guardados en BD exitosamente');
+
     res.json({
       success: true,
-      message: 'Documentos subidos exitosamente. Pendientes de verificación.',
+      message: 'Documentos almacenados exitosamente en la base de datos. Pendientes de verificación.',
       data: {
-        enl_ced_pdf: updatedUser.enl_ced_pdf,
-        enl_mat_pdf: updatedUser.enl_mat_pdf,
+        cedula_guardada: !!updatedUser.cedula_filename,
+        matricula_guardada: !!updatedUser.matricula_filename,
+        archivos_info: {
+          cedula: {
+            nombre: updatedUser.cedula_filename,
+            tamaño: `${(updatedUser.cedula_size / 1024).toFixed(2)} KB`
+          },
+          matricula: updatedUser.matricula_filename ? {
+            nombre: updatedUser.matricula_filename,
+            tamaño: `${(updatedUser.matricula_size / 1024).toFixed(2)} KB`
+          } : null
+        },
         documentos_verificados: updatedUser.documentos_verificados,
         es_estudiante: isEstudiante
       }
     });
 
   } catch (error) {
-    console.error('Error en uploadDocuments:', error);
+    console.error('❌ Error en uploadDocuments:', error);
     res.status(500).json({
       success: false,
-      message: 'Error interno del servidor'
-    });
-  }
-};
-
-// ✅ NUEVA FUNCIÓN: Obtener estado de documentos
-const getDocumentStatus = async (req, res) => {
-  try {
-    const userId = req.uid;
-
-    const user = await prisma.usuario.findUnique({
-      where: { id_usu: userId },
-      select: {
-        enl_ced_pdf: true,
-        enl_mat_pdf: true,
-        documentos_verificados: true,
-        fec_verificacion_docs: true,
-        cuentas: {
-          select: {
-            rol_cue: true
-          }
-        }
-      }
-    });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'Usuario no encontrado'
-      });
-    }
-
-    const isEstudiante = user.cuentas[0]?.rol_cue === 'ESTUDIANTE';
-
-    res.json({
-      success: true,
-      data: {
-        cedula_subida: !!user.enl_ced_pdf,
-        matricula_subida: !!user.enl_mat_pdf,
-        matricula_requerida: isEstudiante,
-        documentos_verificados: user.documentos_verificados,
-        fecha_verificacion: user.fec_verificacion_docs,
-        archivos_completos: isEstudiante 
-          ? (!!user.enl_ced_pdf && !!user.enl_mat_pdf)
-          : !!user.enl_ced_pdf
-      }
-    });
-
-  } catch (error) {
-    console.error('Error en getDocumentStatus:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor'
+      message: 'Error interno del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
@@ -364,8 +330,10 @@ const downloadDocument = async (req, res) => {
     const targetUser = await prisma.usuario.findUnique({
       where: { id_usu: userId },
       select: {
-        enl_ced_pdf: true,
-        enl_mat_pdf: true,
+        enl_ced_pdf: true,        // Archivo como Buffer
+        enl_mat_pdf: true,        // Archivo como Buffer
+        cedula_filename: true,
+        matricula_filename: true,
         ced_usu: true
       }
     });
@@ -377,45 +345,103 @@ const downloadDocument = async (req, res) => {
       });
     }
 
-    let filePath;
+    let fileBuffer;
     let fileName;
+    let originalName;
 
+    // ✅ OBTENER ARCHIVO DESDE BD
     if (tipo === 'cedula' && targetUser.enl_ced_pdf) {
-      filePath = path.join(__dirname, '..', targetUser.enl_ced_pdf);
-      fileName = `cedula_${targetUser.ced_usu}.pdf`;
+      fileBuffer = targetUser.enl_ced_pdf;
+      originalName = targetUser.cedula_filename || 'cedula.pdf';
+      fileName = `cedula_${targetUser.ced_usu}_${originalName}`;
     } else if (tipo === 'matricula' && targetUser.enl_mat_pdf) {
-      filePath = path.join(__dirname, '..', targetUser.enl_mat_pdf);
-      fileName = `matricula_${targetUser.ced_usu}.pdf`;
+      fileBuffer = targetUser.enl_mat_pdf;
+      originalName = targetUser.matricula_filename || 'matricula.pdf';
+      fileName = `matricula_${targetUser.ced_usu}_${originalName}`;
     } else {
       return res.status(404).json({
         success: false,
-        message: 'Documento no encontrado'
+        message: 'Documento no encontrado en la base de datos'
       });
     }
 
-    // Verificar que el archivo existe
-    if (!fs.existsSync(filePath)) {
+    console.log('📥 Descargando desde BD:', fileName, 'Tamaño:', fileBuffer.length);
+
+    // ✅ ENVIAR ARCHIVO DESDE BUFFER
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Length', fileBuffer.length);
+    
+    res.send(fileBuffer);
+    
+    console.log('✅ Archivo descargado exitosamente desde BD');
+
+  } catch (error) {
+    console.error('❌ Error en downloadDocument:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
+// ✅ ACTUALIZADA: Obtener estado de documentos
+const getDocumentStatus = async (req, res) => {
+  try {
+    const userId = req.uid;
+
+    const user = await prisma.usuario.findUnique({
+      where: { id_usu: userId },
+      select: {
+        cedula_filename: true,
+        matricula_filename: true,
+        cedula_size: true,
+        matricula_size: true,
+        documentos_verificados: true,
+        fec_verificacion_docs: true,
+        cuentas: {
+          select: {
+            rol_cue: true
+          }
+        }
+      }
+    });
+
+    if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'Archivo no encontrado en el servidor'
+        message: 'Usuario no encontrado'
       });
     }
 
-    // Enviar archivo
-    res.download(filePath, fileName, (err) => {
-      if (err) {
-        console.error('Error enviando archivo:', err);
-        if (!res.headersSent) {
-          res.status(500).json({
-            success: false,
-            message: 'Error al descargar el archivo'
-          });
+    const isEstudiante = user.cuentas[0]?.rol_cue === 'ESTUDIANTE';
+
+    res.json({
+      success: true,
+      data: {
+        cedula_subida: !!user.cedula_filename,
+        matricula_subida: !!user.matricula_filename,
+        matricula_requerida: isEstudiante,
+        documentos_verificados: user.documentos_verificados,
+        fecha_verificacion: user.fec_verificacion_docs,
+        archivos_completos: isEstudiante 
+          ? (!!user.cedula_filename && !!user.matricula_filename)
+          : !!user.cedula_filename,
+        archivos_info: {
+          cedula: user.cedula_filename ? {
+            nombre: user.cedula_filename,
+            tamaño: `${(user.cedula_size / 1024).toFixed(2)} KB`
+          } : null,
+          matricula: user.matricula_filename ? {
+            nombre: user.matricula_filename,
+            tamaño: `${(user.matricula_size / 1024).toFixed(2)} KB`
+          } : null
         }
       }
     });
 
   } catch (error) {
-    console.error('Error en downloadDocument:', error);
+    console.error('❌ Error en getDocumentStatus:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor'
