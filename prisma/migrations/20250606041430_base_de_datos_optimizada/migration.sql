@@ -1,0 +1,232 @@
+/*
+  Warnings:
+
+  - You are about to drop the `ASIGNACIONES_CURSO` table. If the table is not empty, all the data it contains will be lost.
+  - You are about to drop the `Asignacion` table. If the table is not empty, all the data it contains will be lost.
+  - You are about to drop the `CategoriaEvento` table. If the table is not empty, all the data it contains will be lost.
+  - You are about to drop the `Cuenta` table. If the table is not empty, all the data it contains will be lost.
+  - You are about to drop the `Evento` table. If the table is not empty, all the data it contains will be lost.
+  - You are about to drop the `Inscripcion` table. If the table is not empty, all the data it contains will be lost.
+  - You are about to drop the `Organizador` table. If the table is not empty, all the data it contains will be lost.
+  - You are about to drop the `PaginaPrincipal` table. If the table is not empty, all the data it contains will be lost.
+  - You are about to drop the `Participacion` table. If the table is not empty, all the data it contains will be lost.
+  - You are about to drop the `REQUISITOS_CURSO` table. If the table is not empty, all the data it contains will be lost.
+  - You are about to drop the `Requisito` table. If the table is not empty, all the data it contains will be lost.
+
+*/
+-- DropForeignKey
+ALTER TABLE "ASIGNACIONES_CURSO" DROP CONSTRAINT "ASIGNACIONES_CURSO_ID_CUR_PER_fkey";
+
+-- DropForeignKey
+ALTER TABLE "Asignacion" DROP CONSTRAINT "Asignacion_ID_EVE_PER_fkey";
+
+-- DropForeignKey
+ALTER TABLE "CURSOS" DROP CONSTRAINT "CURSOS_CED_ORG_CUR_fkey";
+
+-- DropForeignKey
+ALTER TABLE "CURSOS" DROP CONSTRAINT "CURSOS_ID_CAT_CUR_fkey";
+
+-- DropForeignKey
+ALTER TABLE "Cuenta" DROP CONSTRAINT "Cuenta_ID_USU_PER_fkey";
+
+-- DropForeignKey
+ALTER TABLE "EVENTOS_POR_CARRERA" DROP CONSTRAINT "EVENTOS_POR_CARRERA_ID_EVE_PER_fkey";
+
+-- DropForeignKey
+ALTER TABLE "Evento" DROP CONSTRAINT "Evento_CED_ORG_EVE_fkey";
+
+-- DropForeignKey
+ALTER TABLE "Evento" DROP CONSTRAINT "Evento_ID_CAT_EVE_fkey";
+
+-- DropForeignKey
+ALTER TABLE "Inscripcion" DROP CONSTRAINT "Inscripcion_ID_ADMIN_APROBADOR_fkey";
+
+-- DropForeignKey
+ALTER TABLE "Inscripcion" DROP CONSTRAINT "Inscripcion_ID_EVE_INS_fkey";
+
+-- DropForeignKey
+ALTER TABLE "Inscripcion" DROP CONSTRAINT "Inscripcion_ID_USU_INS_fkey";
+
+-- DropForeignKey
+ALTER TABLE "Participacion" DROP CONSTRAINT "Participacion_ID_INS_PER_fkey";
+
+-- DropForeignKey
+ALTER TABLE "REQUISITOS_CURSO" DROP CONSTRAINT "REQUISITOS_CURSO_ID_ASI_CUR_PER_fkey";
+
+-- DropForeignKey
+ALTER TABLE "Requisito" DROP CONSTRAINT "Requisito_ID_ASI_PER_fkey";
+
+-- AlterTable
+ALTER TABLE "CURSOS" ADD COLUMN     "REQUIERE_VERIFICACION_DOCS" BOOLEAN NOT NULL DEFAULT true;
+
+-- AlterTable
+ALTER TABLE "PARTICIPACIONES_CURSO" ALTER COLUMN "APROBADO" SET DEFAULT false;
+
+-- AlterTable
+ALTER TABLE "USUARIOS" ADD COLUMN     "DOCUMENTOS_VERIFICADOS" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "ENL_CED_PDF" TEXT,
+ADD COLUMN     "ENL_MAT_PDF" TEXT,
+ADD COLUMN     "FEC_VERIFICACION_DOCS" TIMESTAMP;
+
+-- DropTable
+DROP TABLE "ASIGNACIONES_CURSO";
+
+-- DropTable
+DROP TABLE "Asignacion";
+
+-- DropTable
+DROP TABLE "CategoriaEvento";
+
+-- DropTable
+DROP TABLE "Cuenta";
+
+-- DropTable
+DROP TABLE "Evento";
+
+-- DropTable
+DROP TABLE "Inscripcion";
+
+-- DropTable
+DROP TABLE "Organizador";
+
+-- DropTable
+DROP TABLE "PaginaPrincipal";
+
+-- DropTable
+DROP TABLE "Participacion";
+
+-- DropTable
+DROP TABLE "REQUISITOS_CURSO";
+
+-- DropTable
+DROP TABLE "Requisito";
+
+-- DropEnum
+DROP TYPE "EstadoParticipacion";
+
+-- CreateTable
+CREATE TABLE "CUENTAS" (
+    "ID_CUE" UUID NOT NULL,
+    "COR_CUE" VARCHAR(150) NOT NULL,
+    "ROL_CUE" "RolCuenta" NOT NULL,
+    "ID_USU_PER" UUID NOT NULL,
+
+    CONSTRAINT "CUENTAS_pkey" PRIMARY KEY ("ID_CUE")
+);
+
+-- CreateTable
+CREATE TABLE "ORGANIZADORES" (
+    "CED_ORG" VARCHAR(10) NOT NULL,
+    "NOM_ORG1" VARCHAR(20) NOT NULL,
+    "NOM_ORG2" VARCHAR(20) NOT NULL,
+    "APE_ORG1" VARCHAR(20) NOT NULL,
+    "APE_ORG2" VARCHAR(20) NOT NULL,
+    "TIT_ACA_ORG" VARCHAR(100),
+
+    CONSTRAINT "ORGANIZADORES_pkey" PRIMARY KEY ("CED_ORG")
+);
+
+-- CreateTable
+CREATE TABLE "CATEGORIAS_EVENTO" (
+    "ID_CAT" UUID NOT NULL,
+    "NOM_CAT" VARCHAR(50) NOT NULL,
+    "DES_CAT" VARCHAR(250) NOT NULL,
+    "PUN_APR_CAT" DECIMAL(4,1),
+
+    CONSTRAINT "CATEGORIAS_EVENTO_pkey" PRIMARY KEY ("ID_CAT")
+);
+
+-- CreateTable
+CREATE TABLE "EVENTOS" (
+    "ID_EVE" UUID NOT NULL,
+    "NOM_EVE" VARCHAR(250) NOT NULL,
+    "DES_EVE" VARCHAR(500) NOT NULL,
+    "ID_CAT_EVE" UUID NOT NULL,
+    "FEC_INI_EVE" DATE NOT NULL,
+    "FEC_FIN_EVE" DATE,
+    "HOR_INI_EVE" TIME NOT NULL,
+    "HOR_FIN_EVE" TIME,
+    "DUR_EVE" SMALLINT NOT NULL,
+    "ARE_EVE" "AreaEvento" NOT NULL,
+    "UBI_EVE" VARCHAR(150) NOT NULL,
+    "CED_ORG_EVE" VARCHAR(10) NOT NULL,
+    "CAPACIDAD_MAX_EVE" INTEGER NOT NULL,
+    "TIPO_AUDIENCIA_EVE" "TipoAudienciaEvento" NOT NULL DEFAULT 'PUBLICO_GENERAL',
+
+    CONSTRAINT "EVENTOS_pkey" PRIMARY KEY ("ID_EVE")
+);
+
+-- CreateTable
+CREATE TABLE "INSCRIPCIONES" (
+    "ID_INS" UUID NOT NULL,
+    "FEC_INS" DATE NOT NULL,
+    "VAL_INS" DECIMAL(6,2) NOT NULL,
+    "MET_PAG_INS" "MetodoPago" NOT NULL,
+    "ENL_ORD_PAG_INS" TEXT,
+    "ID_USU_INS" UUID NOT NULL,
+    "ID_EVE_INS" UUID NOT NULL,
+    "ESTADO_PAGO" "EstadoPago" NOT NULL DEFAULT 'PENDIENTE',
+    "ID_ADMIN_APROBADOR" UUID,
+    "FEC_APROBACION" DATE,
+
+    CONSTRAINT "INSCRIPCIONES_pkey" PRIMARY KEY ("ID_INS")
+);
+
+-- CreateTable
+CREATE TABLE "PARTICIPACIONES" (
+    "ID_PAR" UUID NOT NULL,
+    "ASI_PAR" SMALLINT NOT NULL,
+    "APROBADO" BOOLEAN NOT NULL DEFAULT false,
+    "ENL_CER_PAR" TEXT,
+    "FEC_CER_PAR" DATE,
+    "FEC_EVALUACION" TIMESTAMP,
+    "ID_INS_PER" UUID NOT NULL,
+
+    CONSTRAINT "PARTICIPACIONES_pkey" PRIMARY KEY ("ID_PAR")
+);
+
+-- CreateTable
+CREATE TABLE "PAGINA_PRINCIPAL" (
+    "ID_PAG" UUID NOT NULL,
+    "DES_PAG" VARCHAR(1000),
+    "MIS_PAG" VARCHAR(1000),
+    "VIS_PAG" VARCHAR(1000),
+
+    CONSTRAINT "PAGINA_PRINCIPAL_pkey" PRIMARY KEY ("ID_PAG")
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "INSCRIPCIONES_ID_USU_INS_ID_EVE_INS_key" ON "INSCRIPCIONES"("ID_USU_INS", "ID_EVE_INS");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PARTICIPACIONES_ID_INS_PER_key" ON "PARTICIPACIONES"("ID_INS_PER");
+
+-- AddForeignKey
+ALTER TABLE "CUENTAS" ADD CONSTRAINT "CUENTAS_ID_USU_PER_fkey" FOREIGN KEY ("ID_USU_PER") REFERENCES "USUARIOS"("ID_USU") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "EVENTOS" ADD CONSTRAINT "EVENTOS_ID_CAT_EVE_fkey" FOREIGN KEY ("ID_CAT_EVE") REFERENCES "CATEGORIAS_EVENTO"("ID_CAT") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "EVENTOS" ADD CONSTRAINT "EVENTOS_CED_ORG_EVE_fkey" FOREIGN KEY ("CED_ORG_EVE") REFERENCES "ORGANIZADORES"("CED_ORG") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "EVENTOS_POR_CARRERA" ADD CONSTRAINT "EVENTOS_POR_CARRERA_ID_EVE_PER_fkey" FOREIGN KEY ("ID_EVE_PER") REFERENCES "EVENTOS"("ID_EVE") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "INSCRIPCIONES" ADD CONSTRAINT "INSCRIPCIONES_ID_USU_INS_fkey" FOREIGN KEY ("ID_USU_INS") REFERENCES "USUARIOS"("ID_USU") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "INSCRIPCIONES" ADD CONSTRAINT "INSCRIPCIONES_ID_EVE_INS_fkey" FOREIGN KEY ("ID_EVE_INS") REFERENCES "EVENTOS"("ID_EVE") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "INSCRIPCIONES" ADD CONSTRAINT "INSCRIPCIONES_ID_ADMIN_APROBADOR_fkey" FOREIGN KEY ("ID_ADMIN_APROBADOR") REFERENCES "USUARIOS"("ID_USU") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PARTICIPACIONES" ADD CONSTRAINT "PARTICIPACIONES_ID_INS_PER_fkey" FOREIGN KEY ("ID_INS_PER") REFERENCES "INSCRIPCIONES"("ID_INS") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CURSOS" ADD CONSTRAINT "CURSOS_ID_CAT_CUR_fkey" FOREIGN KEY ("ID_CAT_CUR") REFERENCES "CATEGORIAS_EVENTO"("ID_CAT") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CURSOS" ADD CONSTRAINT "CURSOS_CED_ORG_CUR_fkey" FOREIGN KEY ("CED_ORG_CUR") REFERENCES "ORGANIZADORES"("CED_ORG") ON DELETE RESTRICT ON UPDATE CASCADE;

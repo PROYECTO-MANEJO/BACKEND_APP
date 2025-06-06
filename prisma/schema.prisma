@@ -1,12 +1,8 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-  //output   = "../generated/prisma"
 }
 
 datasource db {
@@ -14,6 +10,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// =====================================================
+// MÓDULO: GESTIÓN DE USUARIOS Y CARRERAS
+// =====================================================
 
 model Carrera {
   id_car String @id @default(uuid()) @map("ID_CAR") @db.Uuid
@@ -22,7 +21,10 @@ model Carrera {
   nom_fac_per String @map("NOM_FAC_PER") @db.VarChar(250)
 
   usuarios Usuario[]
-  eventosPorCarrera EventoPorCarrera[] // Relación para eventos específicos de una carrera
+  eventosPorCarrera EventoPorCarrera[]
+  cursosPorCarrera CursoPorCarrera[]
+  
+  @@map("CARRERAS")
 }
 
 model Usuario {
@@ -34,35 +36,53 @@ model Usuario {
   ape_usu2 String @map("APE_USU2") @db.VarChar(20)
   fec_nac_usu DateTime @map("FEC_NAC_USU") @db.Date
   num_tel_usu String? @map("NUM_TEL_USU") @db.VarChar(10)
-  pas_usu String? @map("PAS_USU") @db.VarChar(60) // Cambiado a 60 caracteres para poder almacenar hashes de bcrypt
-  id_car_per String? @map("ID_CAR_PER") @db.Uuid // UUID de la carrera a la que pertenece el usuario
+  pas_usu String? @map("PAS_USU") @db.VarChar(60)
+  id_car_per String? @map("ID_CAR_PER") @db.Uuid
 
-  // Nuevos campos para recuperación de contraseña
-  resetToken String? @map("RESET_TOKEN") @db.VarChar(255) // Token de recuperación
+  // ✅ CAMPOS PARA ARCHIVOS PDF (almacenados como BYTEA)
+  enl_ced_pdf Bytes? @map("ENL_CED_PDF")
+  enl_mat_pdf Bytes? @map("ENL_MAT_PDF")
+  cedula_filename String? @map("CEDULA_FILENAME") @db.VarChar(255)
+  matricula_filename String? @map("MATRICULA_FILENAME") @db.VarChar(255)
+  cedula_size Int? @map("CEDULA_SIZE")
+  matricula_size Int? @map("MATRICULA_SIZE")
+  documentos_verificados Boolean @map("DOCUMENTOS_VERIFICADOS") @default(false)
+  fec_verificacion_docs DateTime? @map("FEC_VERIFICACION_DOCS") @db.Timestamp
+
+  // Campos para recuperación de contraseña
+  resetToken String? @map("RESET_TOKEN") @db.VarChar(255)
   resetTokenExpiry DateTime? @map("RESET_TOKEN_EXPIRY") @db.Timestamp(3) 
 
+  // ✅ RELACIONES EXISTENTES
   carrera Carrera? @relation(fields: [id_car_per], references: [id_car])
   cuentas Cuenta[]
+  
+  // ✅ RELACIONES DE EVENTOS
   inscripciones Inscripcion[]
-  // Campo para el administrador que aprueba pagos, si aplica
   pagosAprobados Inscripcion[] @relation("AdminAprobador")
-  // Relaciones para solicitudes de cambio
+
+  // ✅ RELACIONES DE CURSOS (FALTABAN ESTAS)
+  inscripcionesCurso InscripcionCurso[] @relation("InscripcionesCursoUsuario")
+  pagosAprobadosCurso InscripcionCurso[] @relation("AdminAprobadorCurso")
+  
+  // ✅ RELACIONES DE SOLICITUDES
   solicitudesCreadas SolicitudCambio[] @relation("SolicitudesUsuario")
   solicitudesResponsables SolicitudCambio[] @relation("SolicitudesAdmin")
+  
+  @@map("USUARIOS")
 }
 
 model Cuenta {
   id_cue String @id @default(uuid()) @map("ID_CUE") @db.Uuid
   cor_cue String @map("COR_CUE") @db.VarChar(150)
-  rol_cue RolCuenta @map("ROL_CUE") // Usamos un Enum para los roles
-  enl_ced_cue String? @map("ENL_CED_CUE") @db.Text
-  enl_mat_cue String? @map("ENL_MAT_CUE") @db.Text
-  id_usu_per String @map("ID_USU_PER") @db.Uuid // Relación 1:1 con Usuario
+  rol_cue RolCuenta @map("ROL_CUE")
+  id_usu_per String @map("ID_USU_PER") @db.Uuid
 
   usuario Usuario @relation(fields: [id_usu_per], references: [id_usu])
+  
+  @@map("CUENTAS")
 }
 
-// Enum para los roles de cuenta
 enum RolCuenta {
   ESTUDIANTE
   USUARIO
@@ -71,7 +91,7 @@ enum RolCuenta {
 }
 
 model Organizador {
-  ced_org String @id @map("CED_ORG") @db.VarChar(10) // Cédula del organizador como PK
+  ced_org String @id @map("CED_ORG") @db.VarChar(10)
   nom_org1 String @map("NOM_ORG1") @db.VarChar(20)
   nom_org2 String @map("NOM_ORG2") @db.VarChar(20)
   ape_org1 String @map("APE_ORG1") @db.VarChar(20)
@@ -80,46 +100,213 @@ model Organizador {
 
   eventos Evento[]
   cursos  Curso[] 
+  
+  @@map("ORGANIZADORES")
 }
+
+// =====================================================
+// MÓDULO: CATEGORÍAS COMPARTIDAS
+// =====================================================
 
 model CategoriaEvento {
   id_cat String @id @default(uuid()) @map("ID_CAT") @db.Uuid
-  nom_cat String @map("NOM_CAT") @db.VarChar(50) // Aumentado a 50
+  nom_cat String @map("NOM_CAT") @db.VarChar(50)
   des_cat String @map("DES_CAT") @db.VarChar(250)
-  pun_apr_cat Decimal? @map("PUN_APR_CAT") @db.Decimal(4,1) // Puntos de aprobación
-  asi_cat Int @map("ASI_CAT") @db.SmallInt // Cantidad de asignaciones/tareas esperadas
-
+  pun_apr_cat Decimal? @map("PUN_APR_CAT") @db.Decimal(4,1)
+  
   eventos Evento[]
   cursos  Curso[] 
+  
+  @@map("CATEGORIAS_EVENTO")
 }
+
+// =====================================================
+// MÓDULO: EVENTOS (SIMPLIFICADO)
+// =====================================================
 
 model Evento {
   id_eve String @id @default(uuid()) @map("ID_EVE") @db.Uuid
   nom_eve String @map("NOM_EVE") @db.VarChar(250)
-  des_eve String @map("DES_EVE") @db.VarChar(500) // Descripción más larga
+  des_eve String @map("DES_EVE") @db.VarChar(500)
   id_cat_eve String @map("ID_CAT_EVE") @db.Uuid
   fec_ini_eve DateTime @map("FEC_INI_EVE") @db.Date
   fec_fin_eve DateTime? @map("FEC_FIN_EVE") @db.Date
   hor_ini_eve DateTime @map("HOR_INI_EVE") @db.Time
   hor_fin_eve DateTime? @map("HOR_FIN_EVE") @db.Time
   dur_eve Int @map("DUR_EVE") @db.SmallInt // Duración en horas
-  are_eve AreaEvento @map("ARE_EVE") // Usamos un Enum para el área
+  are_eve AreaEvento @map("ARE_EVE")
   ubi_eve String @map("UBI_EVE") @db.VarChar(150)
   ced_org_eve String @map("CED_ORG_EVE") @db.VarChar(10)
 
-  // Nuevas columnas según requisitos
-  capacidad_max_eve Int @map("CAPACIDAD_MAX_EVE") @db.Integer // Confirmado: Siempre hay un límite
-  tipo_audiencia_eve TipoAudienciaEvento @map("TIPO_AUDIENCIA_EVE") @default(PUBLICO_GENERAL) // Usamos un Enum
-
+  // Control de capacidad y audiencia
+  capacidad_max_eve Int @map("CAPACIDAD_MAX_EVE") @db.Integer
+  tipo_audiencia_eve TipoAudienciaEvento @map("TIPO_AUDIENCIA_EVE") @default(PUBLICO_GENERAL)
+  
+  // 🎯 EVENTOS: Sin asignaciones ni requisitos complejos
   categoria CategoriaEvento @relation(fields: [id_cat_eve], references: [id_cat])
   organizador Organizador @relation(fields: [ced_org_eve], references: [ced_org])
 
-  asignaciones Asignacion[]
   inscripciones Inscripcion[]
-  eventosPorCarrera EventoPorCarrera[] // Relación para eventos específicos de una carrera
+  eventosPorCarrera EventoPorCarrera[]
+  
+  @@map("EVENTOS")
 }
 
-// Enum para el área de evento
+model EventoPorCarrera {
+  id_eve_per String @map("ID_EVE_PER") @db.Uuid
+  id_car_per String @map("ID_CAR_PER") @db.Uuid
+
+  evento Evento @relation(fields: [id_eve_per], references: [id_eve])
+  carrera Carrera @relation(fields: [id_car_per], references: [id_car])
+
+  @@id([id_eve_per, id_car_per])
+  @@map("EVENTOS_POR_CARRERA")
+}
+
+model Inscripcion {
+  id_ins String @id @default(uuid()) @map("ID_INS") @db.Uuid
+  fec_ins DateTime @map("FEC_INS") @db.Date
+  val_ins Decimal @map("VAL_INS") @db.Decimal(6,2)
+  met_pag_ins MetodoPago @map("MET_PAG_INS")
+  enl_ord_pag_ins String? @map("ENL_ORD_PAG_INS") @db.Text
+
+  id_usu_ins String @map("ID_USU_INS") @db.Uuid
+  id_eve_ins String @map("ID_EVE_INS") @db.Uuid
+
+  estado_pago EstadoPago @map("ESTADO_PAGO") @default(PENDIENTE)
+  id_admin_aprobador String? @map("ID_ADMIN_APROBADOR") @db.Uuid
+  fec_aprobacion DateTime? @map("FEC_APROBACION") @db.Date
+
+  usuario Usuario @relation(fields: [id_usu_ins], references: [id_usu])
+  evento Evento @relation(fields: [id_eve_ins], references: [id_eve])
+  adminAprobador Usuario? @relation("AdminAprobador", fields: [id_admin_aprobador], references: [id_usu])
+
+  participaciones Participacion[]
+
+  @@unique([id_usu_ins, id_eve_ins])
+  @@map("INSCRIPCIONES")
+}
+
+// 🎯 PARTICIPACIÓN EVENTOS: Solo asistencia
+model Participacion {
+  id_par String @id @default(uuid()) @map("ID_PAR") @db.Uuid
+  
+  // Solo para eventos: porcentaje de asistencia
+  asi_par Int @map("ASI_PAR") @db.SmallInt // 0-100%
+  aprobado Boolean @map("APROBADO") @default(false) // Calculado: asi_par >= 80
+  
+  // Certificado de participación (si aprobado)
+  enl_cer_par String? @map("ENL_CER_PAR") @db.Text
+  fec_cer_par DateTime? @map("FEC_CER_PAR") @db.Date
+  fec_evaluacion DateTime? @map("FEC_EVALUACION") @db.Timestamp
+  
+  id_ins_per String @map("ID_INS_PER") @db.Uuid
+  inscripcion Inscripcion @relation(fields: [id_ins_per], references: [id_ins])
+
+  @@unique([id_ins_per])
+  @@map("PARTICIPACIONES")
+}
+
+// =====================================================
+// MÓDULO: CURSOS (COMPLETO)
+// =====================================================
+
+model Curso {
+  id_cur        String   @id @default(uuid()) @map("ID_CUR") @db.Uuid
+  nom_cur       String   @map("NOM_CUR") @db.VarChar(200)
+  des_cur       String   @map("DES_CUR") @db.VarChar(500)
+  dur_cur       Int      @map("DUR_CUR") @db.SmallInt // Duración en horas
+  fec_ini_cur   DateTime @map("FEC_INI_CUR") @db.Date
+  fec_fin_cur   DateTime @map("FEC_FIN_CUR") @db.Date
+  id_cat_cur    String   @map("ID_CAT_CUR") @db.Uuid
+  ced_org_cur   String   @map("CED_ORG_CUR") @db.VarChar(10)
+  
+  // Control de capacidad y audiencia
+  capacidad_max_cur Int @map("CAPACIDAD_MAX_CUR") @db.Integer
+  tipo_audiencia_cur TipoAudienciaEvento @map("TIPO_AUDIENCIA_CUR") @default(PUBLICO_GENERAL)
+
+  // 🎯 CURSOS: Requieren verificación de documentos
+  requiere_verificacion_docs Boolean @map("REQUIERE_VERIFICACION_DOCS") @default(true)
+
+  // Relaciones
+  categoria     CategoriaEvento @relation(fields: [id_cat_cur], references: [id_cat])
+  organizador   Organizador      @relation(fields: [ced_org_cur], references: [ced_org])
+  
+  inscripcionesCurso InscripcionCurso[]
+  cursosPorCarrera CursoPorCarrera[]
+  
+  @@map("CURSOS")
+}
+
+model CursoPorCarrera {
+  id_cur_per String @map("ID_CUR_PER") @db.Uuid
+  id_car_per String @map("ID_CAR_PER") @db.Uuid
+
+  curso Curso @relation(fields: [id_cur_per], references: [id_cur])
+  carrera Carrera @relation(fields: [id_car_per], references: [id_car])
+
+  @@id([id_cur_per, id_car_per])
+  @@map("CURSOS_POR_CARRERA")
+}
+
+model InscripcionCurso {
+  id_ins_cur String @id @default(uuid()) @map("ID_INS_CUR") @db.Uuid
+  fec_ins_cur DateTime @map("FEC_INS_CUR") @db.Date
+  val_ins_cur Decimal @map("VAL_INS_CUR") @db.Decimal(6,2)
+  met_pag_ins_cur MetodoPago @map("MET_PAG_INS_CUR")
+  enl_ord_pag_ins_cur String? @map("ENL_ORD_PAG_INS_CUR") @db.Text
+
+  id_usu_ins_cur String @map("ID_USU_INS_CUR") @db.Uuid
+  id_cur_ins String @map("ID_CUR_INS") @db.Uuid
+
+  // Campos para aprobación de pagos
+  estado_pago_cur EstadoPago @map("ESTADO_PAGO_CUR") @default(PENDIENTE)
+  id_admin_aprobador_cur String? @map("ID_ADMIN_APROBADOR_CUR") @db.Uuid
+  fec_aprobacion_cur DateTime? @map("FEC_APROBACION_CUR") @db.Date
+
+  // ✅ RELACIONES CORREGIDAS
+  usuario Usuario @relation("InscripcionesCursoUsuario", fields: [id_usu_ins_cur], references: [id_usu])
+  curso Curso @relation(fields: [id_cur_ins], references: [id_cur])
+  adminAprobador Usuario? @relation("AdminAprobadorCurso", fields: [id_admin_aprobador_cur], references: [id_usu])
+
+  participacionesCurso ParticipacionCurso[]
+
+  @@unique([id_usu_ins_cur, id_cur_ins])
+  @@map("INSCRIPCIONES_CURSO")
+}
+
+// 🎯 PARTICIPACIÓN CURSOS: Evaluación completa
+model ParticipacionCurso {
+  id_par_cur String @id @default(uuid()) @map("ID_PAR_CUR") @db.Uuid
+  
+  // Evaluación completa
+  nota_final Decimal @map("NOTA_FINAL") @db.Decimal(5,2)        // 0-100
+  asistencia_porcentaje Decimal @map("ASISTENCIA_PORCENTAJE") @db.Decimal(5,2) // 0-100%
+  
+  // Resultado calculado automáticamente
+  aprobado Boolean @map("APROBADO") @default(false) // nota_final >= 70 && asistencia >= 75
+  
+  // Metadatos de evaluación
+  fecha_evaluacion DateTime? @map("FECHA_EVALUACION") @db.Timestamp
+  responsable String? @map("RESPONSABLE") @db.VarChar(100) // Nombre del instructor
+  observaciones String? @map("OBSERVACIONES") @db.Text
+  
+  // Certificación (solo si aprobado = true)
+  enl_cer_par_cur String? @map("ENL_CER_PAR_CUR") @db.Text
+  fec_cer_par_cur DateTime? @map("FEC_CER_PAR_CUR") @db.Date
+  
+  // Relación
+  id_ins_cur_per String @map("ID_INS_CUR_PER") @db.Uuid
+  inscripcionCurso InscripcionCurso @relation(fields: [id_ins_cur_per], references: [id_ins_cur])
+
+  @@unique([id_ins_cur_per]) // Una participación por inscripción
+  @@map("PARTICIPACIONES_CURSO")
+}
+
+// =====================================================
+// ENUMS Y CONFIGURACIÓN
+// =====================================================
+
 enum AreaEvento {
   PRACTICA
   INVESTIGACION
@@ -131,156 +318,59 @@ enum AreaEvento {
   REDES
 }
 
-// Enum para el tipo de audiencia del evento
 enum TipoAudienciaEvento {
   CARRERA_ESPECIFICA
   TODAS_CARRERAS
   PUBLICO_GENERAL
 }
 
-// Tabla intermedia para eventos que aplican a MÚLTIPLES carreras específicas
-model EventoPorCarrera {
-  id_eve_per String @map("ID_EVE_PER") @db.Uuid
-  id_car_per String @map("ID_CAR_PER") @db.Uuid
-
-  evento Evento @relation(fields: [id_eve_per], references: [id_eve])
-  carrera Carrera @relation(fields: [id_car_per], references: [id_car])
-
-  @@id([id_eve_per, id_car_per]) // Clave primaria compuesta
-  @@map("EVENTOS_POR_CARRERA") // Nombre de la tabla en la BD
-}
-
-model Asignacion {
-  id_asi String @id @default(uuid()) @map("ID_ASI") @db.Uuid
-  nom_asi String @map("NOM_ASI") @db.VarChar(100)
-  des_asi String @map("DES_ASI") @db.VarChar(250)
-  id_eve_per String @map("ID_EVE_PER") @db.Uuid
-
-  evento Evento @relation(fields: [id_eve_per], references: [id_eve])
-  requisitos Requisito[]
-}
-
-model Requisito {
-  id_req String @id @default(uuid()) @map("ID_REQ") @db.Uuid
-  nom_req String @map("NOM_REQ") @db.VarChar(100)
-  des_req String @map("DES_REQ") @db.VarChar(250)
-  id_asi_per String @map("ID_ASI_PER") @db.Uuid // Requisitos para una asignación específica
-
-  asignacion Asignacion @relation(fields: [id_asi_per], references: [id_asi])
-}
-
-model Inscripcion {
-  id_ins String @id @default(uuid()) @map("ID_INS") @db.Uuid
-  fec_ins DateTime @map("FEC_INS") @db.Date
-  val_ins Decimal @map("VAL_INS") @db.Decimal(6,2)
-  met_pag_ins MetodoPago @map("MET_PAG_INS") // Usamos un Enum
-  enl_ord_pag_ins String? @map("ENL_ORD_PAG_INS") @db.Text // Enlace al comprobante de pago/orden de pago
-
-  id_usu_ins String @map("ID_USU_INS") @db.Uuid
-  id_eve_ins String @map("ID_EVE_INS") @db.Uuid
-
-  // Columnas para el proceso de aprobación de pagos
-  estado_pago EstadoPago @map("ESTADO_PAGO") @default(PENDIENTE)
-  id_admin_aprobador String? @map("ID_ADMIN_APROBADOR") @db.Uuid // Quién (admin) aprobó/rechazó el pago
-  fec_aprobacion DateTime? @map("FEC_APROBACION") @db.Date // Cuándo se aprobó/rechazó el pago
-
-  usuario Usuario @relation(fields: [id_usu_ins], references: [id_usu])
-  evento Evento @relation(fields: [id_eve_ins], references: [id_eve])
-  adminAprobador Usuario? @relation("AdminAprobador", fields: [id_admin_aprobador], references: [id_usu])
-
-  participaciones Participacion[]
-
-  @@unique([id_usu_ins, id_eve_ins]) // Un usuario solo puede inscribirse una vez por evento
-}
-
-// Enum para los métodos de pago
 enum MetodoPago {
   TRANFERENCIA
   DEPOSITO
-  TARJETA_CREDITO // Añadido como opción
+  TARJETA_CREDITO
 }
 
-// Enum para el estado del pago
 enum EstadoPago {
   PENDIENTE
   APROBADO
   RECHAZADO
 }
 
-model Participacion {
-  id_par String @id @default(uuid()) @map("ID_PAR") @db.Uuid
-  not_par Decimal @map("NOT_PAR") @db.Decimal(5,2) // Nota o porcentaje de asistencia final
-  est_par EstadoParticipacion @map("EST_PAR") // Usamos un Enum
-  asi_par Int @map("ASI_PAR") @db.SmallInt // Cantidad de asignaciones completadas (si aplica)
-  id_ins_per String @map("ID_INS_PER") @db.Uuid
-  enl_cer_par String? @map("ENL_CER_PAR") @db.Text // Enlace al certificado generado
-  fec_cer_par DateTime? @map("FEC_CER_PAR") @db.Date // Fecha de emisión del certificado
-
-  inscripcion Inscripcion @relation(fields: [id_ins_per], references: [id_ins])
-
-  @@unique([id_ins_per]) // Una participación por inscripción
-}
-
-// Enum para el estado de participación
-enum EstadoParticipacion {
-  APROBADA
-  REPROBADA
-}
-
-model PaginaPrincipal {
-  id_pag String @id @default(uuid()) @map("ID_PAG") @db.Uuid
-  des_pag String? @map("DES_PAG") @db.VarChar(1000)
-  mis_pag String? @map("MIS_PAG") @db.VarChar(1000)
-  vis_pag String? @map("VIS_PAG") @db.VarChar(1000)
-}
+// =====================================================
+// MÓDULO: SOLICITUDES DE CAMBIO
+// =====================================================
 
 model SolicitudCambio {
   id_sol String @id @default(uuid()) @map("ID_SOL") @db.Uuid
-  titulo_sol String @map("TITULO_SOL") @db.VarChar(200) // Título de la solicitud
-  descripcion_sol String @map("DESCRIPCION_SOL") @db.Text // Descripción detallada del cambio solicitado
-  justificacion_sol String @map("JUSTIFICACION_SOL") @db.Text // Justificación del cambio
-  tipo_cambio_sol TipoCambio @map("TIPO_CAMBIO_SOL") // Tipo de cambio solicitado
-  prioridad_sol PrioridadSolicitud @map("PRIORIDAD_SOL") @default(MEDIA) // Prioridad de la solicitud
-  estado_sol EstadoSolicitud @map("ESTADO_SOL") @default(PENDIENTE) // Estado actual de la solicitud
-  fec_creacion_sol DateTime @map("FEC_CREACION_SOL") @default(now()) @db.Timestamp // Fecha de creación
-  fec_respuesta_sol DateTime? @map("FEC_RESPUESTA_SOL") @db.Timestamp // Fecha de respuesta del admin
-  comentarios_admin_sol String? @map("COMENTARIOS_ADMIN_SOL") @db.Text // Comentarios del administrador para el usuario
-  comentarios_internos_sol String? @map("COMENTARIOS_INTERNOS_SOL") @db.Text // Comentarios internos para el equipo de desarrollo
-  id_usuario_sol String @map("ID_USUARIO_SOL") @db.Uuid // Usuario que hizo la solicitud
-  id_admin_resp_sol String? @map("ID_ADMIN_RESP_SOL") @db.Uuid // Administrador que respondió
+  titulo_sol String @map("TITULO_SOL") @db.VarChar(200)
+  descripcion_sol String @map("DESCRIPCION_SOL") @db.Text
+  justificacion_sol String @map("JUSTIFICACION_SOL") @db.Text
+  tipo_cambio_sol TipoCambio @map("TIPO_CAMBIO_SOL")
+  prioridad_sol PrioridadSolicitud @map("PRIORIDAD_SOL") @default(MEDIA)
+  estado_sol EstadoSolicitud @map("ESTADO_SOL") @default(PENDIENTE)
+  fec_creacion_sol DateTime @map("FEC_CREACION_SOL") @default(now()) @db.Timestamp
+  fec_respuesta_sol DateTime? @map("FEC_RESPUESTA_SOL") @db.Timestamp
+  comentarios_admin_sol String? @map("COMENTARIOS_ADMIN_SOL") @db.Text
+  comentarios_internos_sol String? @map("COMENTARIOS_INTERNOS_SOL") @db.Text
+  id_usuario_sol String @map("ID_USUARIO_SOL") @db.Uuid
+  id_admin_resp_sol String? @map("ID_ADMIN_RESP_SOL") @db.Uuid
   
-  // Relaciones
   usuario Usuario @relation("SolicitudesUsuario", fields: [id_usuario_sol], references: [id_usu])
   adminResponsable Usuario? @relation("SolicitudesAdmin", fields: [id_admin_resp_sol], references: [id_usu])
   
   @@map("SOLICITUDES_CAMBIO")
 }
 
-model Curso {
-  id_cur        String   @id @default(uuid()) @map("ID_CUR") @db.Uuid
-  nom_cur       String   @map("NOM_CUR") @db.VarChar(200)
-  des_cur       String   @map("DES_CUR") @db.VarChar(500)
-  dur_cur       Int      @map("DUR_CUR") @db.SmallInt
-  fec_ini_cur   DateTime @map("FEC_INI_CUR") @db.Date
-  fec_fin_cur   DateTime @map("FEC_FIN_CUR") @db.Date
-  id_cat_cur    String   @map("ID_CAT_CUR") @db.Uuid
-  ced_org_cur   String   @map("CED_ORG_CUR") @db.VarChar(10)
-
-  categoria     CategoriaEvento @relation(fields: [id_cat_cur], references: [id_cat])
-  organizador   Organizador      @relation(fields: [ced_org_cur], references: [ced_org])
-}
-
-// Enum para el tipo de cambio
 enum TipoCambio {
-  NUEVA_FUNCIONALIDAD
+  FUNCIONALIDAD_NUEVA
   MEJORA_EXISTENTE
   CORRECCION_ERROR
   CAMBIO_INTERFAZ
   OPTIMIZACION
+  ACTUALIZACION_DATOS
   OTRO
 }
 
-// Enum para la prioridad de la solicitud
 enum PrioridadSolicitud {
   BAJA
   MEDIA
@@ -288,7 +378,6 @@ enum PrioridadSolicitud {
   CRITICA
 }
 
-// Enum para el estado de la solicitud
 enum EstadoSolicitud {
   PENDIENTE
   EN_REVISION
@@ -296,4 +385,18 @@ enum EstadoSolicitud {
   RECHAZADA
   EN_DESARROLLO
   COMPLETADA
+  CERRADA
+}
+
+// =====================================================
+// MÓDULO: CONFIGURACIÓN DEL SISTEMA
+// =====================================================
+
+model PaginaPrincipal {
+  id_pag String @id @default(uuid()) @map("ID_PAG") @db.Uuid
+  des_pag String? @map("DES_PAG") @db.VarChar(1000)
+  mis_pag String? @map("MIS_PAG") @db.VarChar(1000)
+  vis_pag String? @map("VIS_PAG") @db.VarChar(1000)
+  
+  @@map("PAGINA_PRINCIPAL")
 }

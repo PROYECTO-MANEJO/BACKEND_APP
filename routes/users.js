@@ -1,12 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const { check } = require('express-validator');
-const { validateFields } = require('../middlewares/validateFields');
 const { validateJWT } = require('../middlewares/validateJWT');
-const { 
-  getUserProfile, 
-  updateUserProfile, 
-  getAllUsers 
+const { validateFields } = require('../middlewares/validateFields');
+const { upload, handleMulterError } = require('../middlewares/uploadMiddleware');
+const {
+  getUserProfile,
+  updateUserProfile,
+  getAllUsers,
+  uploadDocuments,
+  getDocumentStatus,
+  deleteDocuments
 } = require('../controllers/users');
 
 // Obtener perfil del usuario actual
@@ -27,5 +31,22 @@ router.put('/profile', [
 
 // Obtener todos los usuarios (solo para administradores)
 router.get('/',  getAllUsers);
+
+// Subir documentos de verificación
+router.post('/upload-documents', 
+  validateJWT,
+  upload.fields([
+    { name: 'cedula_pdf', maxCount: 1 },
+    { name: 'matricula_pdf', maxCount: 1 }
+  ]),
+  handleMulterError,
+  uploadDocuments
+);
+
+// Obtener estado de documentos
+router.get('/document-status', validateJWT, getDocumentStatus);
+
+// ✅ NUEVA RUTA PARA ELIMINAR DOCUMENTOS
+router.delete('/delete-documents/:tipo', validateJWT, deleteDocuments);
 
 module.exports = router;
