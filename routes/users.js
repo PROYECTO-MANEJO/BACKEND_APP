@@ -9,7 +9,8 @@ const {
   updateUserProfile,
   getAllUsers,
   uploadDocuments,
-  getDocumentStatus
+  getDocumentStatus,
+  deleteDocuments
 } = require('../controllers/users');
 
 // Obtener perfil del usuario actual
@@ -44,5 +45,8 @@ router.post('/upload-documents',
 
 // Obtener estado de documentos
 router.get('/document-status', validateJWT, getDocumentStatus);
+
+// ✅ NUEVA RUTA PARA ELIMINAR DOCUMENTOS
+router.delete('/delete-documents/:tipo', validateJWT, deleteDocuments);
 
 module.exports = router;

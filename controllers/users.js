@@ -173,7 +173,10 @@ const uploadDocuments = async (req, res) => {
   try {
     const userId = req.uid;
     
-    console.log('📁 Archivos recibidos:', req.files);
+    console.log('📁 Archivos recibidos:', {
+      cedula: req.files?.cedula_pdf?.[0]?.originalname,
+      matricula: req.files?.matricula_pdf?.[0]?.originalname
+    });
     
     // Obtener información del usuario
     const user = await prisma.usuario.findUnique({
@@ -194,24 +197,39 @@ const uploadDocuments = async (req, res) => {
       });
     }
 
+    if (user.documentos_verificados) {
+      return res.status(400).json({
+        success: false,
+        message: 'No puedes subir nuevos documentos. Los actuales ya han sido verificados.'
+      });
+    }
+
     const isEstudiante = user.cuentas[0]?.rol_cue === 'ESTUDIANTE';
     
     // Validar archivos recibidos
     const cedulaFile = req.files?.cedula_pdf?.[0];
     const matriculaFile = req.files?.matricula_pdf?.[0];
 
-    console.log('🗂️ Archivo cédula:', cedulaFile?.originalname, 'Tamaño:', cedulaFile?.size);
-    console.log('🗂️ Archivo matrícula:', matriculaFile?.originalname, 'Tamaño:', matriculaFile?.size);
+    // ✅ NUEVA VALIDACIÓN: Al menos un archivo debe estar presente
+    if (!cedulaFile && !matriculaFile) {
+      return res.status(400).json({
+        success: false,
+        message: 'Debes subir al menos un archivo'
+      });
+    }
 
-    if (!cedulaFile) {
+    // ✅ VALIDACIÓN MEJORADA: Solo validar si es necesario completar documentos faltantes
+    const necesitaCedula = !user.cedula_filename;
+    const necesitaMatricula = isEstudiante && !user.matricula_filename;
+
+    if (necesitaCedula && !cedulaFile) {
       return res.status(400).json({
         success: false,
         message: 'El archivo de cédula es obligatorio'
       });
     }
 
-    // Validaciones de rol
-    if (isEstudiante && !matriculaFile) {
+    if (necesitaMatricula && !matriculaFile) {
       return res.status(400).json({
         success: false,
         message: 'Para estudiantes es obligatorio el archivo de matrícula'
@@ -225,28 +243,31 @@ const uploadDocuments = async (req, res) => {
       });
     }
 
-    // ✅ PREPARAR DATOS PARA BD (archivos como Buffer)
-    const updateData = {
-      enl_ced_pdf: cedulaFile.buffer, // Buffer del archivo
-      cedula_filename: cedulaFile.originalname,
-      cedula_size: cedulaFile.size,
-      documentos_verificados: false,
-      fec_verificacion_docs: null
-    };
+    // ✅ PREPARAR DATOS DINÁMICAMENTE
+    const updateData = {};
 
-    // Solo agregar matrícula si es estudiante
-    if (isEstudiante && matriculaFile) {
-      updateData.enl_mat_pdf = matriculaFile.buffer; // Buffer del archivo
+    // Solo actualizar cédula si se envió
+    if (cedulaFile) {
+      updateData.enl_ced_pdf = cedulaFile.buffer;
+      updateData.cedula_filename = cedulaFile.originalname;
+      updateData.cedula_size = cedulaFile.size;
+    }
+
+    // Solo actualizar matrícula si se envió y es estudiante
+    if (matriculaFile && isEstudiante) {
+      updateData.enl_mat_pdf = matriculaFile.buffer;
       updateData.matricula_filename = matriculaFile.originalname;
       updateData.matricula_size = matriculaFile.size;
     }
 
-    console.log('💾 Guardando archivos en BD...', {
-      cedula_size: updateData.cedula_size,
-      matricula_size: updateData.matricula_size
-    });
+    // Actualizar fecha solo si es la primera vez o si se están actualizando todos
+    if (!user.fec_verificacion_docs || (cedulaFile && (!isEstudiante || matriculaFile))) {
+      updateData.fec_verificacion_docs = new Date();
+    }
 
-    // ✅ ACTUALIZAR EN BASE DE DATOS
+    // Asegurar que documentos_verificados esté en false al subir nuevos
+    updateData.documentos_verificados = false;
+
     const updatedUser = await prisma.usuario.update({
       where: { id_usu: userId },
       data: updateData,
@@ -257,13 +278,7 @@ const uploadDocuments = async (req, res) => {
         cedula_size: true,
         matricula_size: true,
         documentos_verificados: true,
-        fec_verificacion_docs: true,
-        cuentas: {
-          select: {
-            cor_cue: true,
-            rol_cue: true
-          }
-        }
+        fec_verificacion_docs: true
       }
     });
 
@@ -271,22 +286,24 @@ const uploadDocuments = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Documentos almacenados exitosamente en la base de datos. Pendientes de verificación.',
+      message: 'Documentos almacenados exitosamente en la base de datos',
       data: {
         cedula_guardada: !!updatedUser.cedula_filename,
         matricula_guardada: !!updatedUser.matricula_filename,
+        cedula_actualizada: !!cedulaFile,
+        matricula_actualizada: !!matriculaFile,
+        fecha_subida: updatedUser.fec_verificacion_docs,
         archivos_info: {
-          cedula: {
+          cedula: updatedUser.cedula_filename ? {
             nombre: updatedUser.cedula_filename,
             tamaño: `${(updatedUser.cedula_size / 1024).toFixed(2)} KB`
-          },
+          } : null,
           matricula: updatedUser.matricula_filename ? {
             nombre: updatedUser.matricula_filename,
             tamaño: `${(updatedUser.matricula_size / 1024).toFixed(2)} KB`
           } : null
         },
-        documentos_verificados: updatedUser.documentos_verificados,
-        es_estudiante: isEstudiante
+        documentos_verificados: updatedUser.documentos_verificados
       }
     });
 
@@ -385,7 +402,109 @@ const downloadDocument = async (req, res) => {
   }
 };
 
-// ✅ ACTUALIZADA: Obtener estado de documentos
+// ✅ NUEVA FUNCIÓN: Eliminar documentos
+const deleteDocuments = async (req, res) => {
+  try {
+    const userId = req.uid;
+    const { tipo } = req.params; // 'cedula', 'matricula' o 'ambos'
+
+    console.log('🗑️ Eliminando documentos:', { userId, tipo });
+
+    // Verificar usuario
+    const user = await prisma.usuario.findUnique({
+      where: { id_usu: userId },
+      select: {
+        id_usu: true,
+        cedula_filename: true,
+        matricula_filename: true,
+        fec_verificacion_docs: true,
+        documentos_verificados: true,
+        cuentas: {
+          select: { rol_cue: true }
+        }
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    // ✅ ÚNICA VERIFICACIÓN: Si ya están verificados, no se pueden eliminar
+    if (user.documentos_verificados) {
+      return res.status(400).json({
+        success: false,
+        message: 'No puedes eliminar documentos que ya han sido verificados por el administrador'
+      });
+    }
+
+    const isEstudiante = user.cuentas[0]?.rol_cue === 'ESTUDIANTE';
+
+    // Preparar datos de actualización
+    let updateData = {};
+
+    if (tipo === 'cedula' || tipo === 'ambos') {
+      if (!user.cedula_filename) {
+        return res.status(400).json({
+          success: false,
+          message: 'No hay documento de cédula para eliminar'
+        });
+      }
+      updateData.enl_ced_pdf = null;
+      updateData.cedula_filename = null;
+      updateData.cedula_size = null;
+    }
+
+    if ((tipo === 'matricula' || tipo === 'ambos') && isEstudiante) {
+      if (!user.matricula_filename) {
+        return res.status(400).json({
+          success: false,
+          message: 'No hay documento de matrícula para eliminar'
+        });
+      }
+      updateData.enl_mat_pdf = null;
+      updateData.matricula_filename = null;
+      updateData.matricula_size = null;
+    }
+
+    // Si eliminamos todos los documentos, resetear fecha
+    if (tipo === 'ambos' || 
+        (tipo === 'cedula' && !isEstudiante) || 
+        (tipo === 'cedula' && !user.matricula_filename) ||
+        (tipo === 'matricula' && !user.cedula_filename)) {
+      updateData.fec_verificacion_docs = null;
+    }
+
+    // Actualizar en BD
+    await prisma.usuario.update({
+      where: { id_usu: userId },
+      data: updateData
+    });
+
+    console.log('✅ Documentos eliminados exitosamente');
+
+    res.json({
+      success: true,
+      message: 'Documentos eliminados exitosamente',
+      data: {
+        cedula_eliminada: tipo === 'cedula' || tipo === 'ambos',
+        matricula_eliminada: (tipo === 'matricula' || tipo === 'ambos') && isEstudiante,
+        puede_volver_a_subir: true
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error eliminando documentos:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
+// ✅ ACTUALIZAR la función getDocumentStatus (simplificada)
 const getDocumentStatus = async (req, res) => {
   try {
     const userId = req.uid;
@@ -416,6 +535,18 @@ const getDocumentStatus = async (req, res) => {
 
     const isEstudiante = user.cuentas[0]?.rol_cue === 'ESTUDIANTE';
 
+    // ✅ SIMPLIFICADO: Solo verificar si NO están verificados para poder eliminar
+    const puede_eliminar = !user.documentos_verificados && 
+                          (!!user.cedula_filename || !!user.matricula_filename);
+
+    console.log('📊 Estado calculado:', {
+      userId,
+      documentos_verificados: user.documentos_verificados,
+      puede_eliminar,
+      cedula_subida: !!user.cedula_filename,
+      matricula_subida: !!user.matricula_filename
+    });
+
     res.json({
       success: true,
       data: {
@@ -424,17 +555,23 @@ const getDocumentStatus = async (req, res) => {
         matricula_requerida: isEstudiante,
         documentos_verificados: user.documentos_verificados,
         fecha_verificacion: user.fec_verificacion_docs,
+        fecha_subida: user.fec_verificacion_docs,
         archivos_completos: isEstudiante 
           ? (!!user.cedula_filename && !!user.matricula_filename)
           : !!user.cedula_filename,
+        
+        // ✅ CAMPO SIMPLIFICADO
+        puede_eliminar: puede_eliminar,
+        puede_subir_nuevos: !user.cedula_filename || (isEstudiante && !user.matricula_filename),
+        
         archivos_info: {
           cedula: user.cedula_filename ? {
             nombre: user.cedula_filename,
-            tamaño: `${(user.cedula_size / 1024).toFixed(2)} KB`
+            tamaño: user.cedula_size ? `${(user.cedula_size / 1024).toFixed(2)} KB` : 'N/A'
           } : null,
           matricula: user.matricula_filename ? {
             nombre: user.matricula_filename,
-            tamaño: `${(user.matricula_size / 1024).toFixed(2)} KB`
+            tamaño: user.matricula_size ? `${(user.matricula_size / 1024).toFixed(2)} KB` : 'N/A'
           } : null
         }
       }
@@ -442,67 +579,6 @@ const getDocumentStatus = async (req, res) => {
 
   } catch (error) {
     console.error('❌ Error en getDocumentStatus:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor'
-    });
-  }
-};
-
-// ✅ NUEVA FUNCIÓN: Verificar documentos (solo admins)
-const verifyDocuments = async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const { verificado, observaciones } = req.body;
-
-    // Verificar que el usuario solicitante es admin
-    const currentUser = await prisma.usuario.findUnique({
-      where: { id_usu: req.uid },
-      include: {
-        cuentas: {
-          select: {
-            rol_cue: true
-          }
-        }
-      }
-    });
-
-    const isAdmin = ['ADMINISTRADOR', 'MASTER'].includes(currentUser.cuentas[0]?.rol_cue);
-    
-    if (!isAdmin) {
-      return res.status(403).json({
-        success: false,
-        message: 'No autorizado para verificar documentos'
-      });
-    }
-
-    // Actualizar estado de verificación
-    const updatedUser = await prisma.usuario.update({
-      where: { id_usu: userId },
-      data: {
-        documentos_verificados: verificado,
-        fec_verificacion_docs: verificado ? new Date() : null
-      },
-      include: {
-        cuentas: {
-          select: {
-            cor_cue: true
-          }
-        }
-      }
-    });
-
-    res.json({
-      success: true,
-      message: `Documentos ${verificado ? 'verificados' : 'rechazados'} exitosamente`,
-      data: {
-        documentos_verificados: updatedUser.documentos_verificados,
-        fec_verificacion_docs: updatedUser.fec_verificacion_docs
-      }
-    });
-
-  } catch (error) {
-    console.error('Error en verifyDocuments:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor'
@@ -590,8 +666,7 @@ module.exports = {
   getUserProfile,
   updateUserProfile,
   getAllUsers,
-  uploadDocuments,      // ✅ NUEVO
-  getDocumentStatus,    // ✅ NUEVO
-  downloadDocument,     // ✅ NUEVO
-  verifyDocuments       // ✅ NUEVO
+  uploadDocuments,
+  getDocumentStatus,
+  deleteDocuments  // ✅ NUEVO
 };
