@@ -289,7 +289,7 @@ const login = async (req, res) => {
 
         // Generar el token JWT según el rol
         let token;
-        if (cuenta.rol_cue === 'ADMINISTRADOR') {
+        if (cuenta.rol_cue === 'ADMINISTRADOR' || cuenta.rol_cue === 'MASTER') {
             token = await generateAdminJWT(cuenta.usuario.id_usu);
         } else {
             token = await generateJWT(cuenta.usuario.id_usu);
@@ -331,7 +331,7 @@ const renewToken = async (req, res) => {
 
         // Generar un nuevo token según el rol
         let token;
-        if (cuenta && cuenta.rol_cue === 'ADMINISTRADOR') {
+        if (cuenta && (cuenta.rol_cue === 'ADMINISTRADOR' || cuenta.rol_cue === 'MASTER')) {
             token = await generateAdminJWT(usuario.id_usu);
         } else {
             token = await generateJWT(usuario.id_usu);

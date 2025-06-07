@@ -68,8 +68,8 @@ const validateAdmin = async (req, res, next) => {
             }
         });
 
-        // Verificar si tiene cuenta y si su rol es ADMINISTRADOR
-        if (!cuenta || cuenta.rol_cue !== 'ADMINISTRADOR') {
+        // Verificar si tiene cuenta y si su rol es ADMINISTRADOR o MASTER
+        if (!cuenta || (cuenta.rol_cue !== 'ADMINISTRADOR' && cuenta.rol_cue !== 'MASTER')) {
             return res.status(403).json({
                 success: false,
                 message: 'El usuario no tiene permisos de administrador'
