@@ -662,11 +662,75 @@ const getUserProfile = async (req, res) => {
   }
 };
 
+// Obtener solo usuarios administradores
+const getAdminUsers = async (req, res) => {
+  try {
+    const adminUsers = await prisma.usuario.findMany({
+      include: {
+        cuentas: {
+          select: {
+            cor_cue: true,
+            rol_cue: true
+          },
+          where: {
+            rol_cue: 'ADMINISTRADOR'
+          }
+        },
+        carrera: {
+          select: {
+            id_car: true,
+            nom_car: true
+          }
+        }
+      },
+      where: {
+        cuentas: {
+          some: {
+            rol_cue: 'ADMINISTRADOR'
+          }
+        }
+      }
+    });
+
+    const formattedUsers = adminUsers.map(user => ({
+      id_usu: user.id_usu,
+      ced_usu: user.ced_usu,
+      nom_usu1: user.nom_usu1,
+      nom_usu2: user.nom_usu2,
+      ape_usu1: user.ape_usu1,
+      ape_usu2: user.ape_usu2,
+      fec_nac_usu: user.fec_nac_usu,
+      num_tel_usu: user.num_tel_usu,
+      ema_usu: user.cuentas[0]?.cor_cue,
+      tel_usu: user.num_tel_usu,
+      rol_cue: user.cuentas[0]?.rol_cue,
+      carrera: user.carrera ? {
+        id_car: user.carrera.id_car,
+        nom_car: user.carrera.nom_car
+      } : null
+    }));
+
+    res.json({
+      success: true,
+      message: 'Administradores obtenidos exitosamente',
+      usuarios: formattedUsers
+    });
+
+  } catch (error) {
+    console.error('Error en getAdminUsers:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
 module.exports = {
   getUserProfile,
   updateUserProfile,
   getAllUsers,
+  getAdminUsers,  // ✅ NUEVO
   uploadDocuments,
   getDocumentStatus,
-  deleteDocuments  // ✅ NUEVO
+  deleteDocuments
 };

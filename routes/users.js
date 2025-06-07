@@ -8,6 +8,7 @@ const {
   getUserProfile,
   updateUserProfile,
   getAllUsers,
+  getAdminUsers,
   uploadDocuments,
   getDocumentStatus,
   deleteDocuments
@@ -31,6 +32,9 @@ router.put('/profile', [
 
 // Obtener todos los usuarios (solo para administradores)
 router.get('/',  getAllUsers);
+
+// Obtener solo usuarios administradores
+router.get('/admins', getAdminUsers);
 
 // Subir documentos de verificación
 router.post('/upload-documents', 
