@@ -112,7 +112,6 @@ model CategoriaEvento {
   id_cat String @id @default(uuid()) @map("ID_CAT") @db.Uuid
   nom_cat String @map("NOM_CAT") @db.VarChar(50)
   des_cat String @map("DES_CAT") @db.VarChar(250)
-  pun_apr_cat Decimal? @map("PUN_APR_CAT") @db.Decimal(4,1)
   
   eventos Evento[]
   cursos  Curso[] 
