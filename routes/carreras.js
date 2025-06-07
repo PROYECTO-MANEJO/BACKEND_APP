@@ -1,13 +1,5 @@
 const express = require('express');
 const router = express.Router();
-<<<<<<< HEAD
-const { crearCarrera } = require('../controllers/carreraController');
-
-// Ruta para crear una nueva carrera
-router.post('/crear', crearCarrera);
-
-module.exports = router;
-=======
 const { check } = require('express-validator');
 const { validateFields } = require('../middlewares/validateFields');
 const { validateJWT } = require('../middlewares/validateJWT');
@@ -43,4 +35,4 @@ router.put('/:id', [
 router.delete('/:id', validateJWT, deleteCarrera);
 
 module.exports = router;
->>>>>>> 239b676fd07aaf9eac8f1593c73fb69c1e7d5bdf
+
