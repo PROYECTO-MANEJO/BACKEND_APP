@@ -35,3 +35,4 @@ router.put('/:id', [
 router.delete('/:id', validateJWT, deleteCarrera);
 
 module.exports = router;
+

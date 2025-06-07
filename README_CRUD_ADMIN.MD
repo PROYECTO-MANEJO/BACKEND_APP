@@ -73,8 +73,7 @@ Se incluyen las siguientes entidades:
    {
      "nom_cat": "Redes",
      "des_cat": "Aprendizaje sobre protocolos",
-     "pun_apr_cat": 8.5,
-     "asi_cat": 3
+     "pun_apr_cat": 8.5
    }
    ```
 
