@@ -1,8 +1,8 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// ======================= EVENTOS ============================
 
+// Inscribir usuario a un evento (validación completa)
 async function inscribirUsuarioEvento(req, res) {
   const { idUsuario, idEvento, metodoPago, enlacePago } = req.body;
 
@@ -10,12 +10,13 @@ async function inscribirUsuarioEvento(req, res) {
     return res.status(400).json({ message: 'Faltan campos obligatorios' });
   }
 
-  const metodosPermitidos = ['TARJETA_CREDITO', 'TRANFERENCIA', 'EFECTIVO'];
+  const metodosPermitidos = ['TARJETA DE CREDITO', 'TRANFERENCIA', 'DEPOSITO'];
   if (!metodosPermitidos.includes(metodoPago)) {
     return res.status(400).json({ message: 'Método de pago no válido' });
   }
 
   try {
+    // Obtener la cuenta y su usuario asociado
     const cuenta = await prisma.cuenta.findFirst({
       where: { id_usu_per: idUsuario },
       include: { usuario: true }
@@ -26,31 +27,60 @@ async function inscribirUsuarioEvento(req, res) {
     const rol = cuenta.rol_cue;
     const carreraId = cuenta.usuario?.id_car_per;
 
+    // Obtener el evento con su tipo de audiencia
     const evento = await prisma.evento.findUnique({
       where: { id_eve: idEvento },
-      include: { categoria: true }
+      select: {
+        tipo_audiencia_eve: true
+      }
     });
 
     if (!evento) return res.status(404).json({ message: 'Evento no encontrado' });
 
+    // Lógica de validación por tipo de usuario
     if (rol === 'USUARIO' && evento.tipo_audiencia_eve !== 'PUBLICO_GENERAL') {
       return res.status(403).json({ message: 'Solo puedes inscribirte en eventos públicos' });
     }
 
-    /*if (rol === 'ESTUDIANTE') {
-      const eventoPorCarrera = await prisma.eventoPorCarrera.findFirst({
-        where: { id_car_per: carreraId, id_eve_per: idEvento }
-      });
-      if (!eventoPorCarrera && evento.categoria?.nom_cat !== 'PUBLICO_GENERAL') {
-        return res.status(403).json({ message: 'Este evento no está disponible para tu carrera' });
+    if (rol === 'ESTUDIANTE') {
+      if (!carreraId) {
+        return res.status(400).json({ message: 'No tienes una carrera asignada. Contacta al administrador.' });
       }
-    }*/
 
-    const yaInscrito = await prisma.inscripcion.findFirst({
-      where: { id_usu_ins: idUsuario, id_eve_ins: idEvento }
+      // Verificar si el evento está permitido para su carrera
+      const permitido = await prisma.eventoPorCarrera.findFirst({
+        where: {
+          id_car_per: carreraId,
+          id_eve_per: idEvento
+        }
+      });
+
+      if (
+        !permitido &&
+        evento.tipo_audiencia_eve !== 'PUBLICO_GENERAL' &&
+        evento.tipo_audiencia_eve !== 'TODAS_CARRERAS'
+      ) {
+        return res.status(403).json({
+          message: 'Este evento no está habilitado para tu carrera'
+        });
+      }
+    }
+
+    // Verificar si ya está inscrito
+    const yaInscrito = await prisma.inscripcion.findUnique({
+      where: {
+        id_usu_ins_id_eve_ins: {
+          id_usu_ins: idUsuario,
+          id_eve_ins: idEvento
+        }
+      }
     });
-    if (yaInscrito) return res.status(400).json({ message: 'Ya estás inscrito en este evento' });
 
+    if (yaInscrito) {
+      return res.status(400).json({ message: 'Ya estás inscrito en este evento' });
+    }
+
+    // Crear inscripción
     await prisma.inscripcion.create({
       data: {
         id_usu_ins: idUsuario,
@@ -63,238 +93,107 @@ async function inscribirUsuarioEvento(req, res) {
       }
     });
 
-    return res.status(200).json({ message: 'Inscripción realizada con éxito' });
+    return res.status(201).json({ message: 'Inscripción realizada con éxito' });
   } catch (error) {
-    console.error('Error al inscribir usuario:', error);
-    return res.status(500).json({ message: 'Error en el servidor', error: error.message });
+    console.error('❌ Error al inscribirse:', error);
+    res.status(500).json({ message: 'Error interno del servidor', error: error.message });
   }
 }
 
-async function obtenerInscripcionesEvento(req, res) {
+const obtenerMisInscripcionesEvento = async (req, res) => {
+  const userId = req.uid;
+
   try {
-    const inscripciones = await prisma.inscripcion.findMany({ include: { evento: true, usuario: true } });
-    res.status(200).json(inscripciones);
-  } catch (error) {
-    res.status(500).json({ message: 'Error al obtener inscripciones de eventos', error: error.message });
-  }
-}
+    const inscripciones = await prisma.inscripcion.findMany({
+      where: {
+        id_usu_ins: userId
+      },
+      include: {
+        evento: {
+          select: {
+            id_eve: true,
+            nom_eve: true,
+            des_eve: true,
+            fec_ini_eve: true,
+            fec_fin_eve: true,
+            hor_ini_eve: true,
+            hor_fin_eve: true,
+            ubi_eve: true,
+            tipo_audiencia_eve: true,
+            categoria: {
+              select: { nom_cat: true }
+            }
+          }
+        }
+      },
+      orderBy: {
+        fec_ins: 'desc'
+      }
+    });
 
-async function eliminarInscripcionEvento(req, res) {
+    res.status(200).json({
+      success: true,
+      data: inscripciones
+    });
+  } catch (error) {
+    console.error('❌ Error al obtener inscripciones del usuario:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener tus inscripciones'
+    });
+  }
+};
+
+//Validacion o aprovacion de la inscripcion
+const aprobarInscripcionEvento = async (req, res) => {
+  const adminId = req.uid;
   const { id } = req.params;
-  try {
-    await prisma.inscripcion.delete({ where: { id_ins: id } });
-    res.status(200).json({ message: 'Inscripción de evento eliminada' });
-  } catch (error) {
-    res.status(500).json({ message: 'Error al eliminar inscripción', error: error.message });
+  const { estado } = req.body;
+
+  const estadosValidos = ['APROBADO', 'RECHAZADO'];
+  if (!estadosValidos.includes(estado)) {
+    return res.status(400).json({ message: 'Estado no válido. Usa APROBADO o RECHAZADO' });
   }
-}
-
-async function actualizarInscripcionEvento(req, res) {
-  const { id } = req.params;
-  const { metodoPago, enlacePago, estadoPago } = req.body;
 
   try {
-    await prisma.inscripcion.update({
+    // Verificar si el usuario es admin
+    const cuenta = await prisma.cuenta.findFirst({
+      where: { id_usu_per: adminId }
+    });
+
+    if (!cuenta || (cuenta.rol_cue !== 'ADMINISTRADOR' && cuenta.rol_cue !== 'MASTER')) {
+      return res.status(403).json({ message: 'No autorizado. Solo administradores pueden aprobar inscripciones' });
+    }
+
+    // Verificar que la inscripción existe
+    const inscripcion = await prisma.inscripcion.findUnique({ where: { id_ins: id } });
+    if (!inscripcion) {
+      return res.status(404).json({ message: 'Inscripción no encontrada' });
+    }
+
+    // Actualizar la inscripción
+    const actualizada = await prisma.inscripcion.update({
       where: { id_ins: id },
       data: {
-        met_pag_ins: metodoPago,
-        enl_ord_pag_ins: enlacePago,
-        estado_pago: estadoPago
-      }
-    });
-    res.status(200).json({ message: 'Inscripción de evento actualizada' });
-  } catch (error) {
-    res.status(500).json({ message: 'Error al actualizar inscripción', error: error.message });
-  }
-}
-
-// ======================= CURSOS ============================
-
-async function inscribirUsuarioCurso(req, res) {
-  const { idUsuario, idCurso, metodoPago, enlacePago } = req.body;
-
-  if (!idUsuario || !idCurso || !metodoPago) {
-    return res.status(400).json({ message: 'Faltan campos obligatorios' });
-  }
-
-  const metodosPermitidos = ['TARJETA_CREDITO', 'TRANFERENCIA', 'EFECTIVO'];
-  if (!metodosPermitidos.includes(metodoPago)) {
-    return res.status(400).json({ message: 'Método de pago no válido' });
-  }
-
-  try {
-    const cuenta = await prisma.cuenta.findFirst({ where: { id_usu_per: idUsuario }, include: { usuario: true } });
-    if (!cuenta) return res.status(404).json({ message: 'Cuenta no encontrada para este usuario' });
-
-    if (cuenta.rol_cue !== 'ESTUDIANTE') return res.status(403).json({ message: 'Solo los estudiantes pueden inscribirse en cursos' });
-
-    const curso = await prisma.curso.findUnique({ where: { id_cur: idCurso }, include: { cursosPorCarrera: true } });
-    if (!curso) return res.status(404).json({ message: 'Curso no encontrado' });
-
-    if (curso.requiere_verificacion_docs && !cuenta.usuario.documentos_verificados) {
-      return res.status(403).json({ message: 'Debes tener los documentos verificados para inscribirte en este curso' });
-    }
-
-    const carreraId = cuenta.usuario?.id_car_per;
-    const cursoPorCarrera = await prisma.cursoPorCarrera.findFirst({ where: { id_car_per: carreraId, id_cur_per: idCurso } });
-    if (!cursoPorCarrera) return res.status(403).json({ message: 'Este curso no está habilitado para tu carrera' });
-
-    const yaInscrito = await prisma.inscripcionCurso.findFirst({ where: { id_usu_ins_cur: idUsuario, id_cur_ins: idCurso } });
-    if (yaInscrito) return res.status(400).json({ message: 'Ya estás inscrito en este curso' });
-
-    await prisma.inscripcionCurso.create({
-      data: {
-        id_usu_ins_cur: idUsuario,
-        id_cur_ins: idCurso,
-        fec_ins_cur: new Date(),
-        val_ins_cur: 0,
-        met_pag_ins_cur: metodoPago,
-        enl_ord_pag_ins_cur: enlacePago || '',
-        estado_pago_cur: 'PENDIENTE'
+        estado_pago: estado,
+        id_admin_aprobador: adminId,
+        fec_aprobacion: new Date()
       }
     });
 
-    return res.status(200).json({ message: 'Estudiante inscrito al curso exitosamente' });
-  } catch (error) {
-    console.error('Error al inscribir en curso:', error);
-    return res.status(500).json({ message: 'Error en el servidor', error: error.message });
-  }
-}
-
-async function obtenerInscripcionesCurso(req, res) {
-  try {
-    const inscripciones = await prisma.inscripcionCurso.findMany({ include: { curso: true, usuario: true } });
-    res.status(200).json(inscripciones);
-  } catch (error) {
-    res.status(500).json({ message: 'Error al obtener inscripciones de cursos', error: error.message });
-  }
-}
-
-async function eliminarInscripcionCurso(req, res) {
-  const { id } = req.params;
-  try {
-    await prisma.inscripcionCurso.delete({ where: { id_ins_cur: id } });
-    res.status(200).json({ message: 'Inscripción de curso eliminada' });
-  } catch (error) {
-    res.status(500).json({ message: 'Error al eliminar inscripción', error: error.message });
-  }
-}
-
-async function actualizarInscripcionCurso(req, res) {
-  const { id } = req.params;
-  const { metodoPago, enlacePago, estadoPago } = req.body;
-
-  try {
-    await prisma.inscripcionCurso.update({
-      where: { id_ins_cur: id },
-      data: {
-        met_pag_ins_cur: metodoPago,
-        enl_ord_pag_ins_cur: enlacePago,
-        estado_pago_cur: estadoPago
-      }
-    });
-    res.status(200).json({ message: 'Inscripción de curso actualizada' });
-  } catch (error) {
-    res.status(500).json({ message: 'Error al actualizar inscripción', error: error.message });
-  }
-}
-
-// ======================= CARRERAS ============================
-
-async function inscribirEstudianteCarrera(req, res) {
-  const { idUsuario, idCarrera } = req.body;
-
-  if (!idUsuario || !idCarrera) {
-    return res.status(400).json({ message: 'Faltan campos obligatorios' });
-  }
-
-  try {
-    const cuenta = await prisma.cuenta.findFirst({ where: { id_usu_per: idUsuario }, include: { usuario: true } });
-    if (!cuenta || cuenta.rol_cue !== 'ESTUDIANTE') {
-      return res.status(403).json({ message: 'Solo los estudiantes pueden registrarse en carreras' });
-    }
-
-    if (cuenta.usuario.id_car_per) {
-      return res.status(400).json({ message: 'El estudiante ya tiene una carrera asignada' });
-    }
-
-    const carrera = await prisma.carrera.findUnique({ where: { id_car: idCarrera } });
-    if (!carrera) return res.status(404).json({ message: 'Carrera no encontrada' });
-
-    await prisma.usuario.update({
-      where: { id_usu: idUsuario },
-      data: { id_car_per: idCarrera }
+    res.status(200).json({
+      message: `Inscripción ${estado.toLowerCase()} correctamente`,
+      data: actualizada
     });
 
-    return res.status(200).json({ message: 'Carrera asignada exitosamente al estudiante' });
   } catch (error) {
-    console.error('Error al asignar carrera:', error);
-    return res.status(500).json({ message: 'Error en el servidor', error: error.message });
+    console.error('❌ Error al aprobar inscripción:', error);
+    res.status(500).json({ message: 'Error interno del servidor', error: error.message });
   }
-}
-
-async function obtenerInscripcionCarrera(req, res) {
-  try {
-    const estudiantes = await prisma.usuario.findMany({
-      where: { id_car_per: { not: null } },
-      include: { carrera: true }
-    });
-    res.status(200).json(estudiantes);
-  } catch (error) {
-    res.status(500).json({ message: 'Error al obtener inscripciones de carrera', error: error.message });
-  }
-}
-
-async function actualizarInscripcionCarrera(req, res) {
-  const { id } = req.params;
-  const { nuevaCarrera } = req.body;
-
-  try {
-    const estudiante = await prisma.usuario.findUnique({ where: { id_usu: id } });
-    if (!estudiante) return res.status(404).json({ message: 'Estudiante no encontrado' });
-
-    await prisma.usuario.update({
-      where: { id_usu: id },
-      data: { id_car_per: nuevaCarrera }
-    });
-
-    return res.status(200).json({ message: 'Carrera actualizada exitosamente' });
-  } catch (error) {
-    console.error('Error al actualizar inscripción de carrera:', error);
-    return res.status(500).json({ message: 'Error en el servidor', error: error.message });
-  }
-}
-
-async function eliminarInscripcionCarrera(req, res) {
-  const { id } = req.params;
-
-  try {
-    const estudiante = await prisma.usuario.findUnique({ where: { id_usu: id } });
-    if (!estudiante) return res.status(404).json({ message: 'Estudiante no encontrado' });
-
-    await prisma.usuario.update({
-      where: { id_usu: id },
-      data: { id_car_per: null }
-    });
-
-    return res.status(200).json({ message: 'Inscripción de carrera eliminada' });
-  } catch (error) {
-    console.error('Error al eliminar inscripción de carrera:', error);
-    return res.status(500).json({ message: 'Error en el servidor', error: error.message });
-  }
-}
+};
 
 module.exports = {
   inscribirUsuarioEvento,
-  obtenerInscripcionesEvento,
-  eliminarInscripcionEvento,
-  actualizarInscripcionEvento,
-  inscribirUsuarioCurso,
-  obtenerInscripcionesCurso,
-  eliminarInscripcionCurso,
-  actualizarInscripcionCurso,
-  inscribirEstudianteCarrera,
-  obtenerInscripcionCarrera,
-  actualizarInscripcionCarrera,
-  eliminarInscripcionCarrera
+  obtenerMisInscripcionesEvento,
+  aprobarInscripcionEvento
 };
