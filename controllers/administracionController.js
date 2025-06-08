@@ -409,7 +409,7 @@ const obtenerDetallesCursoAdmin = async (req, res) => {
         }
       },
       orderBy: [
-        { estado_pago: 'asc' }, // Pendientes primero
+        { estado_pago_cur: 'asc' }, // Pendientes primero
         { fec_ins_cur: 'desc' }
       ]
     });
@@ -418,10 +418,10 @@ const obtenerDetallesCursoAdmin = async (req, res) => {
     const inscripcionesFormateadas = inscripciones.map(inscripcion => ({
       id_inscripcion: inscripcion.id_ins_cur,
       fecha_inscripcion: inscripcion.fec_ins_cur,
-      estado_pago: inscripcion.estado_pago,
+      estado_pago: inscripcion.estado_pago_cur,
       valor: inscripcion.val_ins_cur,
       metodo_pago: inscripcion.met_pag_ins_cur,
-      fecha_aprobacion: inscripcion.fec_aprobacion,
+      fecha_aprobacion: inscripcion.fec_aprobacion_cur,
       tiene_comprobante: !!inscripcion.comprobante_pago_pdf,
       comprobante_info: inscripcion.comprobante_pago_pdf ? {
         filename: inscripcion.comprobante_filename,
@@ -446,9 +446,9 @@ const obtenerDetallesCursoAdmin = async (req, res) => {
     // Estadísticas de inscripciones
     const estadisticas = {
       total: inscripciones.length,
-      aprobadas: inscripciones.filter(i => i.estado_pago === 'APROBADO').length,
-      pendientes: inscripciones.filter(i => i.estado_pago === 'PENDIENTE').length,
-      rechazadas: inscripciones.filter(i => i.estado_pago === 'RECHAZADO').length,
+      aprobadas: inscripciones.filter(i => i.estado_pago_cur === 'APROBADO').length,
+      pendientes: inscripciones.filter(i => i.estado_pago_cur === 'PENDIENTE').length,
+      rechazadas: inscripciones.filter(i => i.estado_pago_cur === 'RECHAZADO').length,
       disponibles: curso.capacidad_max_cur - inscripciones.length,
       con_comprobante: inscripciones.filter(i => i.comprobante_pago_pdf).length
     };
@@ -750,10 +750,10 @@ const aprobarInscripcionCurso = async (req, res) => {
     }
 
     // Verificar que esté pendiente
-    if (inscripcion.estado_pago !== 'PENDIENTE') {
+    if (inscripcion.estado_pago_cur !== 'PENDIENTE') {
       return res.status(400).json({
         success: false,
-        message: `La inscripción ya está ${inscripcion.estado_pago.toLowerCase()}`
+        message: `La inscripción ya está ${inscripcion.estado_pago_cur.toLowerCase()}`
       });
     }
 
@@ -761,7 +761,7 @@ const aprobarInscripcionCurso = async (req, res) => {
     const inscripcionesAprobadas = await prisma.inscripcionCurso.count({
       where: {
         id_cur_ins: inscripcion.id_cur_ins,
-        estado_pago: 'APROBADO'
+        estado_pago_cur: 'APROBADO'
       }
     });
 
@@ -776,9 +776,9 @@ const aprobarInscripcionCurso = async (req, res) => {
     const inscripcionAprobada = await prisma.inscripcionCurso.update({
       where: { id_ins_cur: idInscripcion },
       data: {
-        estado_pago: 'APROBADO',
-        id_admin_aprobador: adminId,
-        fec_aprobacion: new Date()
+        estado_pago_cur: 'APROBADO',
+        id_admin_aprobador_cur: adminId,
+        fec_aprobacion_cur: new Date()
       }
     });
 
@@ -862,10 +862,10 @@ const rechazarInscripcionCurso = async (req, res) => {
     }
 
     // Verificar que esté pendiente
-    if (inscripcion.estado_pago !== 'PENDIENTE') {
+    if (inscripcion.estado_pago_cur !== 'PENDIENTE') {
       return res.status(400).json({
         success: false,
-        message: `La inscripción ya está ${inscripcion.estado_pago.toLowerCase()}`
+        message: `La inscripción ya está ${inscripcion.estado_pago_cur.toLowerCase()}`
       });
     }
 
@@ -873,9 +873,9 @@ const rechazarInscripcionCurso = async (req, res) => {
     const inscripcionRechazada = await prisma.inscripcionCurso.update({
       where: { id_ins_cur: idInscripcion },
       data: {
-        estado_pago: 'RECHAZADO',
-        id_admin_aprobador: adminId,
-        fec_aprobacion: new Date(),
+        estado_pago_cur: 'RECHAZADO',
+        id_admin_aprobador_cur: adminId,
+        fec_aprobacion_cur: new Date(),
         // Podríamos agregar un campo para el motivo si fuera necesario
         enl_ord_pag_ins_cur: motivo ? `RECHAZADO: ${motivo}` : 'RECHAZADO'
       }
