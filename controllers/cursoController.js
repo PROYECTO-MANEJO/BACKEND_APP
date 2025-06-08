@@ -536,10 +536,258 @@ const eliminarCurso = async (req, res) => {
   }
 };
 
+// Obtener cursos disponibles para inscribirse (excluyendo los que ya tiene inscripción)
+const obtenerCursosDisponibles = async (req, res) => {
+  const userId = req.uid;
+
+  try {
+    // Obtener información del usuario para filtros
+    const usuario = await prisma.usuario.findUnique({
+      where: { id_usu: userId },
+      include: {
+        cuentas: {
+          select: {
+            rol_cue: true
+          }
+        },
+        carrera: {
+          select: {
+            id_car: true,
+            nom_car: true
+          }
+        }
+      }
+    });
+
+    if (!usuario) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    const rol = usuario.cuentas[0]?.rol_cue;
+    const carreraId = usuario.id_car_per;
+
+    // Obtener IDs de cursos donde el usuario ya está inscrito
+    const inscripciones = await prisma.inscripcionCurso.findMany({
+      where: { id_usu_ins_cur: userId },
+      select: { id_cur_ins: true }
+    });
+
+    const cursosInscritosIds = inscripciones.map(ins => ins.id_cur_ins);
+
+    // Construir filtros de cursos disponibles según rol y carrera
+    let cursosFilter = {
+      id_cur: {
+        notIn: cursosInscritosIds
+      }
+    };
+
+    // Filtrar según tipo de usuario
+    if (rol === 'USUARIO') {
+      // Usuarios solo pueden ver cursos públicos
+      cursosFilter.tipo_audiencia_cur = 'PUBLICO_GENERAL';
+    } else if (rol === 'ESTUDIANTE' && carreraId) {
+      // Estudiantes pueden ver cursos públicos, de todas las carreras, o específicos de su carrera
+      cursosFilter.OR = [
+        { tipo_audiencia_cur: 'PUBLICO_GENERAL' },
+        { tipo_audiencia_cur: 'TODAS_CARRERAS' },
+        {
+          tipo_audiencia_cur: 'CARRERA_ESPECIFICA',
+          cursosPorCarrera: {
+            some: {
+              id_car_per: carreraId
+            }
+          }
+        }
+      ];
+      delete cursosFilter.tipo_audiencia_cur;
+    }
+
+    // Obtener cursos con toda la información necesaria
+    const cursos = await prisma.curso.findMany({
+      where: cursosFilter,
+      include: {
+        categoria: {
+          select: {
+            id_cat: true,
+            nom_cat: true,
+            des_cat: true
+          }
+        },
+        organizador: {
+          select: {
+            ced_org: true,
+            nom_org1: true,
+            nom_org2: true,
+            ape_org1: true,
+            ape_org2: true,
+            tit_aca_org: true
+          }
+        },
+        cursosPorCarrera: {
+          include: {
+            carrera: {
+              select: {
+                id_car: true,
+                nom_car: true
+              }
+            }
+          }
+        },
+        _count: {
+          select: {
+            inscripcionesCurso: true
+          }
+        }
+      },
+      orderBy: {
+        fec_ini_cur: 'desc'
+      }
+    });
+
+    // Procesar datos para el frontend
+    const cursosFormateados = cursos.map(curso => {
+      // Calcular nombre completo del organizador
+      const organizador = curso.organizador;
+      const nombreCompleto = organizador
+        ? `${organizador.tit_aca_org || ''} ${organizador.nom_org1} ${organizador.nom_org2 || ''} ${organizador.ape_org1} ${organizador.ape_org2 || ''}`.trim()
+        : 'Sin organizador';
+
+      return {
+        ...curso,
+        categoria_nombre: curso.categoria?.nom_cat || 'Sin categoría',
+        organizador_nombre: nombreCompleto,
+        carreras: curso.cursosPorCarrera.map(cc => ({
+          id: cc.carrera.id_car,
+          nombre: cc.carrera.nom_car
+        })),
+        total_inscripciones: curso._count.inscripcionesCurso,
+        estado: obtenerEstadoCurso(curso.fec_ini_cur, curso.fec_fin_cur)
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      cursos: cursosFormateados,
+      total: cursosFormateados.length,
+      filtros: {
+        rol: rol,
+        carrera: usuario.carrera?.nom_car || 'Sin carrera'
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error al obtener cursos disponibles:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener cursos disponibles'
+    });
+  }
+};
+
+// Obtener mis cursos (donde estoy inscrito)
+const obtenerMisCursos = async (req, res) => {
+  const userId = req.uid;
+
+  try {
+    const inscripciones = await prisma.inscripcionCurso.findMany({
+      where: { id_usu_ins_cur: userId },
+      include: {
+        curso: {
+          include: {
+            categoria: {
+              select: {
+                id_cat: true,
+                nom_cat: true,
+                des_cat: true
+              }
+            },
+            organizador: {
+              select: {
+                ced_org: true,
+                nom_org1: true,
+                nom_org2: true,
+                ape_org1: true,
+                ape_org2: true,
+                tit_aca_org: true
+              }
+            },
+            cursosPorCarrera: {
+              include: {
+                carrera: {
+                  select: {
+                    id_car: true,
+                    nom_car: true
+                  }
+                }
+              }
+            },
+            _count: {
+              select: {
+                inscripcionesCurso: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        fec_ins_cur: 'desc'
+      }
+    });
+
+    // Procesar datos para incluir información de inscripción
+    const cursosFormateados = inscripciones.map(inscripcion => {
+      const curso = inscripcion.curso;
+      
+      // Calcular nombre completo del organizador
+      const organizador = curso.organizador;
+      const nombreCompleto = organizador
+        ? `${organizador.tit_aca_org || ''} ${organizador.nom_org1} ${organizador.nom_org2 || ''} ${organizador.ape_org1} ${organizador.ape_org2 || ''}`.trim()
+        : 'Sin organizador';
+
+      return {
+        ...curso,
+        categoria_nombre: curso.categoria?.nom_cat || 'Sin categoría',
+        organizador_nombre: nombreCompleto,
+        carreras: curso.cursosPorCarrera.map(cc => ({
+          id: cc.carrera.id_car,
+          nombre: cc.carrera.nom_car
+        })),
+        total_inscripciones: curso._count.inscripcionesCurso,
+        estado: obtenerEstadoCurso(curso.fec_ini_cur, curso.fec_fin_cur),
+        // Información de la inscripción
+        estado_inscripcion: inscripcion.estado_pago_cur,
+        fecha_inscripcion: inscripcion.fec_ins_cur,
+        metodo_pago: inscripcion.met_pag_ins_cur,
+        valor_pagado: inscripcion.val_ins_cur,
+        enlace_pago: inscripcion.enl_ord_pag_ins_cur,
+        fecha_aprobacion: inscripcion.fec_aprobacion_cur
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      cursos: cursosFormateados,
+      total: cursosFormateados.length
+    });
+
+  } catch (error) {
+    console.error('❌ Error al obtener mis cursos:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener tus cursos'
+    });
+  }
+};
+
 module.exports = {
   crearCurso,
   obtenerCursos,
   obtenerCursoPorId,
   actualizarCurso,
-  eliminarCurso
+  eliminarCurso,
+  obtenerCursosDisponibles,
+  obtenerMisCursos
 };
