@@ -6,13 +6,8 @@ const prisma = new PrismaClient();
 async function inscribirUsuarioEvento(req, res) {
   const { idUsuario, idEvento, metodoPago, enlacePago } = req.body;
 
-  if (!idUsuario || !idEvento || !metodoPago) {
-    return res.status(400).json({ message: 'Faltan campos obligatorios' });
-  }
-
-  const metodosPermitidos = ['TARJETA DE CREDITO', 'TRANFERENCIA', 'DEPOSITO'];
-  if (!metodosPermitidos.includes(metodoPago)) {
-    return res.status(400).json({ message: 'Método de pago no válido' });
+  if (!idUsuario || !idEvento) {
+    return res.status(400).json({ message: 'Faltan campos obligatorios: idUsuario, idEvento' });
   }
 
   try {
@@ -27,15 +22,28 @@ async function inscribirUsuarioEvento(req, res) {
     const rol = cuenta.rol_cue;
     const carreraId = cuenta.usuario?.id_car_per;
 
-    // Obtener el evento con su tipo de audiencia
+    // Obtener el evento con información completa
     const evento = await prisma.evento.findUnique({
       where: { id_eve: idEvento },
       select: {
-        tipo_audiencia_eve: true
+        tipo_audiencia_eve: true,
+        es_gratuito: true,
+        precio: true,
+        capacidad_max_eve: true,
+        _count: {
+          select: {
+            inscripciones: true
+          }
+        }
       }
     });
 
     if (!evento) return res.status(404).json({ message: 'Evento no encontrado' });
+
+    // Verificar capacidad disponible
+    if (evento._count.inscripciones >= evento.capacidad_max_eve) {
+      return res.status(400).json({ message: 'El evento ha alcanzado su capacidad máxima' });
+    }
 
     // Lógica de validación por tipo de usuario
     if (rol === 'USUARIO' && evento.tipo_audiencia_eve !== 'PUBLICO_GENERAL') {
@@ -80,20 +88,72 @@ async function inscribirUsuarioEvento(req, res) {
       return res.status(400).json({ message: 'Ya estás inscrito en este evento' });
     }
 
-    // Crear inscripción
-    await prisma.inscripcion.create({
-      data: {
-        id_usu_ins: idUsuario,
-        id_eve_ins: idEvento,
-        fec_ins: new Date(),
-        val_ins: 0,
-        met_pag_ins: metodoPago,
-        enl_ord_pag_ins: enlacePago || '',
-        estado_pago: 'PENDIENTE'
+    // 🎯 VALIDAR CAMPOS DE PAGO SEGÚN TIPO DE EVENTO
+    let datosInscripcion = {
+      id_usu_ins: idUsuario,
+      id_eve_ins: idEvento,
+      fec_ins: new Date()
+    };
+
+    if (evento.es_gratuito) {
+      // EVENTO GRATUITO: No requiere datos de pago
+      if (metodoPago || enlacePago) {
+        return res.status(400).json({ 
+          message: 'Este evento es gratuito, no debe incluir información de pago' 
+        });
       }
+      
+      datosInscripcion.val_ins = null;
+      datosInscripcion.met_pag_ins = null;
+      datosInscripcion.enl_ord_pag_ins = null;
+      datosInscripcion.estado_pago = 'APROBADO'; // Automáticamente aprobado
+      datosInscripcion.fec_aprobacion = new Date();
+      
+    } else {
+      // EVENTO PAGADO: Requiere datos de pago
+      if (!metodoPago) {
+        return res.status(400).json({ 
+          message: 'Para eventos pagados, el método de pago es obligatorio' 
+        });
+      }
+
+      const metodosPermitidos = ['TARJETA_CREDITO', 'TRANFERENCIA', 'DEPOSITO'];
+      if (!metodosPermitidos.includes(metodoPago)) {
+        return res.status(400).json({ 
+          message: `Método de pago no válido. Valores permitidos: ${metodosPermitidos.join(', ')}` 
+        });
+      }
+
+      if (!enlacePago) {
+        return res.status(400).json({ 
+          message: 'Para eventos pagados, el comprobante de pago es obligatorio' 
+        });
+      }
+      
+      datosInscripcion.val_ins = evento.precio;
+      datosInscripcion.met_pag_ins = metodoPago;
+      datosInscripcion.enl_ord_pag_ins = enlacePago;
+      datosInscripcion.estado_pago = 'PENDIENTE'; // Requiere aprobación manual
+    }
+
+    // Crear inscripción
+    const nuevaInscripcion = await prisma.inscripcion.create({
+      data: datosInscripcion
     });
 
-    return res.status(201).json({ message: 'Inscripción realizada con éxito' });
+    const mensaje = evento.es_gratuito 
+      ? 'Inscripción gratuita realizada con éxito' 
+      : 'Inscripción enviada. Pendiente de aprobación de pago';
+
+    return res.status(201).json({ 
+      message: mensaje,
+      inscripcion: {
+        id: nuevaInscripcion.id_ins,
+        estado: nuevaInscripcion.estado_pago,
+        esGratuito: evento.es_gratuito,
+        precio: evento.precio
+      }
+    });
   } catch (error) {
     console.error('❌ Error al inscribirse:', error);
     res.status(500).json({ message: 'Error interno del servidor', error: error.message });

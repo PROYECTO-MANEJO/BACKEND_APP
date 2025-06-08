@@ -141,6 +141,10 @@ model Evento {
   capacidad_max_eve Int @map("CAPACIDAD_MAX_EVE") @db.Integer
   tipo_audiencia_eve TipoAudienciaEvento @map("TIPO_AUDIENCIA_EVE") @default(PUBLICO_GENERAL)
   
+  // 🎯 CONFIGURACIÓN DE PRECIO
+  es_gratuito Boolean @map("ES_GRATUITO") @default(true)
+  precio Decimal? @map("PRECIO") @db.Decimal(6,2) // Solo si no es gratuito
+  
   // 🎯 EVENTOS: Sin asignaciones ni requisitos complejos
   categoria CategoriaEvento @relation(fields: [id_cat_eve], references: [id_cat])
   organizador Organizador @relation(fields: [ced_org_eve], references: [ced_org])
@@ -165,13 +169,14 @@ model EventoPorCarrera {
 model Inscripcion {
   id_ins String @id @default(uuid()) @map("ID_INS") @db.Uuid
   fec_ins DateTime @map("FEC_INS") @db.Date
-  val_ins Decimal @map("VAL_INS") @db.Decimal(6,2)
-  met_pag_ins MetodoPago @map("MET_PAG_INS")
+  val_ins Decimal? @map("VAL_INS") @db.Decimal(6,2) // Opcional para eventos gratuitos
+  met_pag_ins MetodoPago? @map("MET_PAG_INS") // Opcional para eventos gratuitos
   enl_ord_pag_ins String? @map("ENL_ORD_PAG_INS") @db.Text
 
   id_usu_ins String @map("ID_USU_INS") @db.Uuid
   id_eve_ins String @map("ID_EVE_INS") @db.Uuid
 
+  // Para eventos gratuitos, el estado será APROBADO automáticamente
   estado_pago EstadoPago @map("ESTADO_PAGO") @default(PENDIENTE)
   id_admin_aprobador String? @map("ID_ADMIN_APROBADOR") @db.Uuid
   fec_aprobacion DateTime? @map("FEC_APROBACION") @db.Date
@@ -227,6 +232,10 @@ model Curso {
   // 🎯 CURSOS: Requieren verificación de documentos
   requiere_verificacion_docs Boolean @map("REQUIERE_VERIFICACION_DOCS") @default(true)
 
+  // 🎯 CONFIGURACIÓN DE PRECIO
+  es_gratuito Boolean @map("ES_GRATUITO") @default(true)
+  precio Decimal? @map("PRECIO") @db.Decimal(6,2) // Solo si no es gratuito
+
   // Relaciones
   categoria     CategoriaEvento @relation(fields: [id_cat_cur], references: [id_cat])
   organizador   Organizador      @relation(fields: [ced_org_cur], references: [ced_org])
@@ -251,14 +260,14 @@ model CursoPorCarrera {
 model InscripcionCurso {
   id_ins_cur String @id @default(uuid()) @map("ID_INS_CUR") @db.Uuid
   fec_ins_cur DateTime @map("FEC_INS_CUR") @db.Date
-  val_ins_cur Decimal @map("VAL_INS_CUR") @db.Decimal(6,2)
-  met_pag_ins_cur MetodoPago @map("MET_PAG_INS_CUR")
+  val_ins_cur Decimal? @map("VAL_INS_CUR") @db.Decimal(6,2) // Opcional para cursos gratuitos
+  met_pag_ins_cur MetodoPago? @map("MET_PAG_INS_CUR") // Opcional para cursos gratuitos
   enl_ord_pag_ins_cur String? @map("ENL_ORD_PAG_INS_CUR") @db.Text
 
   id_usu_ins_cur String @map("ID_USU_INS_CUR") @db.Uuid
   id_cur_ins String @map("ID_CUR_INS") @db.Uuid
 
-  // Campos para aprobación de pagos
+  // Para cursos gratuitos, el estado será APROBADO automáticamente
   estado_pago_cur EstadoPago @map("ESTADO_PAGO_CUR") @default(PENDIENTE)
   id_admin_aprobador_cur String? @map("ID_ADMIN_APROBADOR_CUR") @db.Uuid
   fec_aprobacion_cur DateTime? @map("FEC_APROBACION_CUR") @db.Date

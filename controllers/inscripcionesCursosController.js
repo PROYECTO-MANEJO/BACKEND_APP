@@ -5,13 +5,8 @@ const prisma = new PrismaClient();
 async function inscribirUsuarioCurso(req, res) {
   const { idUsuario, idCurso, metodoPago, enlacePago } = req.body;
 
-  if (!idUsuario || !idCurso || !metodoPago) {
-    return res.status(400).json({ message: 'Faltan campos obligatorios' });
-  }
-
-  const metodosPermitidos = ['TARJETA_CREDITO', 'TRANFERENCIA', 'DEPOSITO'];
-  if (!metodosPermitidos.includes(metodoPago)) {
-    return res.status(400).json({ message: 'Método de pago no válido' });
+  if (!idUsuario || !idCurso) {
+    return res.status(400).json({ message: 'Faltan campos obligatorios: idUsuario, idCurso' });
   }
 
   try {
@@ -27,16 +22,29 @@ async function inscribirUsuarioCurso(req, res) {
     const usuario = cuenta.usuario;
     const carreraId = usuario?.id_car_per;
 
-    // Obtener el curso con su tipo de audiencia y si requiere verificación
+    // Obtener el curso con información completa
     const curso = await prisma.curso.findUnique({
       where: { id_cur: idCurso },
       select: {
         tipo_audiencia_cur: true,
-        requiere_verificacion_docs: true
+        requiere_verificacion_docs: true,
+        es_gratuito: true,
+        precio: true,
+        capacidad_max_cur: true,
+        _count: {
+          select: {
+            inscripcionesCurso: true
+          }
+        }
       }
     });
 
     if (!curso) return res.status(404).json({ message: 'Curso no encontrado' });
+
+    // Verificar capacidad disponible
+    if (curso._count.inscripcionesCurso >= curso.capacidad_max_cur) {
+      return res.status(400).json({ message: 'El curso ha alcanzado su capacidad máxima' });
+    }
 
     // Validación por tipo de usuario
     if (rol === 'USUARIO') {
@@ -86,20 +94,72 @@ async function inscribirUsuarioCurso(req, res) {
       return res.status(400).json({ message: 'Ya estás inscrito en este curso' });
     }
 
-    // Crear inscripción
-    await prisma.inscripcionCurso.create({
-      data: {
-        id_usu_ins_cur: idUsuario,
-        id_cur_ins: idCurso,
-        fec_ins_cur: new Date(),
-        val_ins_cur: 0,
-        met_pag_ins_cur: metodoPago,
-        enl_ord_pag_ins_cur: enlacePago || '',
-        estado_pago_cur: 'PENDIENTE'
+    // 🎯 VALIDAR CAMPOS DE PAGO SEGÚN TIPO DE CURSO
+    let datosInscripcion = {
+      id_usu_ins_cur: idUsuario,
+      id_cur_ins: idCurso,
+      fec_ins_cur: new Date()
+    };
+
+    if (curso.es_gratuito) {
+      // CURSO GRATUITO: No requiere datos de pago
+      if (metodoPago || enlacePago) {
+        return res.status(400).json({ 
+          message: 'Este curso es gratuito, no debe incluir información de pago' 
+        });
       }
+      
+      datosInscripcion.val_ins_cur = null;
+      datosInscripcion.met_pag_ins_cur = null;
+      datosInscripcion.enl_ord_pag_ins_cur = null;
+      datosInscripcion.estado_pago_cur = 'APROBADO'; // Automáticamente aprobado
+      datosInscripcion.fec_aprobacion_cur = new Date();
+      
+    } else {
+      // CURSO PAGADO: Requiere datos de pago
+      if (!metodoPago) {
+        return res.status(400).json({ 
+          message: 'Para cursos pagados, el método de pago es obligatorio' 
+        });
+      }
+
+      const metodosPermitidos = ['TARJETA_CREDITO', 'TRANFERENCIA', 'DEPOSITO'];
+      if (!metodosPermitidos.includes(metodoPago)) {
+        return res.status(400).json({ 
+          message: `Método de pago no válido. Valores permitidos: ${metodosPermitidos.join(', ')}` 
+        });
+      }
+
+      if (!enlacePago) {
+        return res.status(400).json({ 
+          message: 'Para cursos pagados, el comprobante de pago es obligatorio' 
+        });
+      }
+      
+      datosInscripcion.val_ins_cur = curso.precio;
+      datosInscripcion.met_pag_ins_cur = metodoPago;
+      datosInscripcion.enl_ord_pag_ins_cur = enlacePago;
+      datosInscripcion.estado_pago_cur = 'PENDIENTE'; // Requiere aprobación manual
+    }
+
+    // Crear inscripción
+    const nuevaInscripcion = await prisma.inscripcionCurso.create({
+      data: datosInscripcion
     });
 
-    return res.status(201).json({ message: 'Inscripción realizada con éxito' });
+    const mensaje = curso.es_gratuito 
+      ? 'Inscripción gratuita realizada con éxito' 
+      : 'Inscripción enviada. Pendiente de aprobación de pago';
+
+    return res.status(201).json({ 
+      message: mensaje,
+      inscripcion: {
+        id: nuevaInscripcion.id_ins_cur,
+        estado: nuevaInscripcion.estado_pago_cur,
+        esGratuito: curso.es_gratuito,
+        precio: curso.precio
+      }
+    });
   } catch (error) {
     console.error('❌ Error al inscribirse en curso:', error);
     res.status(500).json({ message: 'Error interno del servidor', error: error.message });

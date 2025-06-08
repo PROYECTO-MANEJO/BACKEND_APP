@@ -59,6 +59,8 @@ const crearEvento = async (req, res) => {
       ced_org_eve,
       capacidad_max_eve,
       tipo_audiencia_eve,
+      es_gratuito,
+      precio,
       carreras
     } = req.body;
 
@@ -149,6 +151,36 @@ const crearEvento = async (req, res) => {
       });
     }
 
+    // ✅ VALIDAR CONFIGURACIÓN DE PRECIO
+    const esGratuito = es_gratuito !== undefined ? es_gratuito : true; // Default: gratuito
+    let precioEvento = null;
+    
+    if (!esGratuito) {
+      // Si no es gratuito, debe tener precio
+      if (precio === undefined || precio === null) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Para eventos pagados, el precio es obligatorio' 
+        });
+      }
+      
+      precioEvento = parseFloat(precio);
+      if (isNaN(precioEvento) || precioEvento <= 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'El precio debe ser un número positivo' 
+        });
+      }
+    } else {
+      // Si es gratuito, no debe tener precio
+      if (precio !== undefined && precio !== null) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Los eventos gratuitos no pueden tener precio' 
+        });
+      }
+    }
+
     // ✅ VERIFICAR QUE EXISTAN REGISTROS RELACIONADOS
     const [categoria, organizador] = await Promise.all([
       prisma.categoriaEvento.findUnique({ where: { id_cat: id_cat_eve } }),
@@ -186,7 +218,9 @@ const crearEvento = async (req, res) => {
           ubi_eve: ubi_eve.trim(),
           ced_org_eve,
           capacidad_max_eve: capacidad,
-          tipo_audiencia_eve: tipo_audiencia_eve || 'PUBLICO_GENERAL'
+          tipo_audiencia_eve: tipo_audiencia_eve || 'PUBLICO_GENERAL',
+          es_gratuito: esGratuito,
+          precio: precioEvento
         }
       });
 
@@ -298,6 +332,51 @@ const actualizarEvento = async (req, res) => {
         });
       }
       datosActualizacion.capacidad_max_eve = capacidad;
+    }
+
+    // 🎯 VALIDAR CONFIGURACIÓN DE PRECIO
+    if (data.es_gratuito !== undefined) {
+      const esGratuito = Boolean(data.es_gratuito);
+      datosActualizacion.es_gratuito = esGratuito;
+      
+      if (!esGratuito) {
+        // Si se cambia a pagado, debe tener precio
+        if (data.precio === undefined || data.precio === null) {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'Para eventos pagados, el precio es obligatorio' 
+          });
+        }
+        
+        const precio = parseFloat(data.precio);
+        if (isNaN(precio) || precio <= 0) {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'El precio debe ser un número positivo' 
+          });
+        }
+        datosActualizacion.precio = precio;
+      } else {
+        // Si se cambia a gratuito, quitar el precio
+        datosActualizacion.precio = null;
+      }
+    } else if (data.precio !== undefined) {
+      // Solo se actualiza el precio si el evento ya es pagado
+      if (evento.es_gratuito) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'No se puede establecer precio en un evento gratuito. Primero cambie es_gratuito a false' 
+        });
+      }
+      
+      const precio = parseFloat(data.precio);
+      if (isNaN(precio) || precio <= 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'El precio debe ser un número positivo' 
+        });
+      }
+      datosActualizacion.precio = precio;
     }
 
     // Validar y convertir fechas
@@ -484,7 +563,11 @@ const obtenerEventos = async (req, res) => {
       })),
       total_inscripciones: evento._count.inscripciones,
       hora_inicio: formatearHora(evento.hor_ini_eve),
-      hora_fin: formatearHora(evento.hor_fin_eve)
+      hora_fin: formatearHora(evento.hor_fin_eve),
+      // 🎯 INFORMACIÓN DE PRECIO
+      es_gratuito: evento.es_gratuito,
+      precio: evento.precio,
+      plazas_disponibles: evento.capacidad_max_eve - evento._count.inscripciones
     }));
 
     res.json({ 

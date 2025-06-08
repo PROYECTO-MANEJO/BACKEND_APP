@@ -15,6 +15,8 @@ const crearCurso = async (req, res) => {
       capacidad_max_cur,
       tipo_audiencia_cur,
       requiere_verificacion_docs,
+      es_gratuito,
+      precio,
       carreras // Array opcional de IDs de carreras
     } = req.body;
 
@@ -81,6 +83,36 @@ const crearCurso = async (req, res) => {
       }
     }
 
+    // ✅ VALIDAR CONFIGURACIÓN DE PRECIO
+    const esGratuito = es_gratuito !== undefined ? es_gratuito : true; // Default: gratuito
+    let precioCurso = null;
+    
+    if (!esGratuito) {
+      // Si no es gratuito, debe tener precio
+      if (precio === undefined || precio === null) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Para cursos pagados, el precio es obligatorio' 
+        });
+      }
+      
+      precioCurso = parseFloat(precio);
+      if (isNaN(precioCurso) || precioCurso <= 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'El precio debe ser un número positivo' 
+        });
+      }
+    } else {
+      // Si es gratuito, no debe tener precio
+      if (precio !== undefined && precio !== null) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Los cursos gratuitos no pueden tener precio' 
+        });
+      }
+    }
+
     // ✅ VERIFICAR QUE EXISTAN REGISTROS RELACIONADOS
     const [categoria, organizador] = await Promise.all([
       prisma.categoriaEvento.findUnique({ where: { id_cat: id_cat_cur } }),
@@ -115,7 +147,9 @@ const crearCurso = async (req, res) => {
           ced_org_cur,
           capacidad_max_cur: capacidad,
           tipo_audiencia_cur: tipo_audiencia_cur || 'PUBLICO_GENERAL',
-          requiere_verificacion_docs: requiere_verificacion_docs !== undefined ? requiere_verificacion_docs : true
+          requiere_verificacion_docs: requiere_verificacion_docs !== undefined ? requiere_verificacion_docs : true,
+          es_gratuito: esGratuito,
+          precio: precioCurso
         }
       });
 
@@ -236,7 +270,11 @@ const obtenerCursos = async (req, res) => {
       // Calcular duración en semanas (aproximada)
       duracion_semanas: Math.ceil(curso.dur_cur / 40), // Asumiendo 40 horas por semana
       // Estado del curso basado en fechas
-      estado: obtenerEstadoCurso(curso.fec_ini_cur, curso.fec_fin_cur)
+      estado: obtenerEstadoCurso(curso.fec_ini_cur, curso.fec_fin_cur),
+      // 🎯 INFORMACIÓN DE PRECIO
+      es_gratuito: curso.es_gratuito,
+      precio: curso.precio,
+      plazas_disponibles: curso.capacidad_max_cur - curso._count.inscripcionesCurso
     }));
 
     res.json({ 
@@ -380,6 +418,51 @@ const actualizarCurso = async (req, res) => {
     // Campos booleanos
     if (data.requiere_verificacion_docs !== undefined) {
       datosActualizacion.requiere_verificacion_docs = Boolean(data.requiere_verificacion_docs);
+    }
+
+    // 🎯 VALIDAR CONFIGURACIÓN DE PRECIO
+    if (data.es_gratuito !== undefined) {
+      const esGratuito = Boolean(data.es_gratuito);
+      datosActualizacion.es_gratuito = esGratuito;
+      
+      if (!esGratuito) {
+        // Si se cambia a pagado, debe tener precio
+        if (data.precio === undefined || data.precio === null) {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'Para cursos pagados, el precio es obligatorio' 
+          });
+        }
+        
+        const precio = parseFloat(data.precio);
+        if (isNaN(precio) || precio <= 0) {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'El precio debe ser un número positivo' 
+          });
+        }
+        datosActualizacion.precio = precio;
+      } else {
+        // Si se cambia a gratuito, quitar el precio
+        datosActualizacion.precio = null;
+      }
+    } else if (data.precio !== undefined) {
+      // Solo se actualiza el precio si el curso ya es pagado
+      if (curso.es_gratuito) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'No se puede establecer precio en un curso gratuito. Primero cambie es_gratuito a false' 
+        });
+      }
+      
+      const precio = parseFloat(data.precio);
+      if (isNaN(precio) || precio <= 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'El precio debe ser un número positivo' 
+        });
+      }
+      datosActualizacion.precio = precio;
     }
 
     // Validar y convertir fechas
