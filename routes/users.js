@@ -14,7 +14,12 @@ const {
   deleteUser,
   uploadDocuments,
   getDocumentStatus,
-  deleteDocuments
+  deleteDocuments,
+  downloadDocument,
+  getUsersWithPendingDocuments,
+  downloadUserDocument,
+  approveUserDocuments,
+  rejectUserDocuments
 } = require('../controllers/users');
 
 // Obtener perfil del usuario actual
@@ -55,6 +60,19 @@ router.get('/document-status', validateJWT, getDocumentStatus);
 
 // ✅ NUEVA RUTA PARA ELIMINAR DOCUMENTOS
 router.delete('/delete-documents/:tipo', validateJWT, deleteDocuments);
+
+// ✅ NUEVAS RUTAS PARA VERIFICACIÓN DE DOCUMENTOS (solo MASTER)
+// Obtener usuarios con documentos pendientes
+router.get('/pending-documents', [validateJWT, validateRoles('MASTER')], getUsersWithPendingDocuments);
+
+// Descargar documento específico de un usuario
+router.get('/download-document/:userId/:documentType', [validateJWT, validateRoles('MASTER')], downloadUserDocument);
+
+// Aprobar documentos de un usuario
+router.put('/approve-documents/:userId', [validateJWT, validateRoles('MASTER')], approveUserDocuments);
+
+// Rechazar documentos de un usuario
+router.put('/reject-documents/:userId', [validateJWT, validateRoles('MASTER')], rejectUserDocuments);
 
 // RUTAS PARA ADMINISTRACIÓN DE USUARIOS (solo administradores)
 // Crear nuevo usuario
