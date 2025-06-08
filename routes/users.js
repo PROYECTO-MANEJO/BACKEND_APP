@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { check } = require('express-validator');
-const { validateJWT } = require('../middlewares/validateJWT');
+const { validateJWT, validateAdmin } = require('../middlewares/validateJWT');
 const { validateFields } = require('../middlewares/validateFields');
 const { upload, handleMulterError } = require('../middlewares/uploadMiddleware');
 const {
@@ -9,6 +9,9 @@ const {
   updateUserProfile,
   getAllUsers,
   getAdminUsers,
+  createUser,
+  updateUser,
+  deleteUser,
   uploadDocuments,
   getDocumentStatus,
   deleteDocuments
@@ -31,10 +34,10 @@ router.put('/profile', [
 ], updateUserProfile);
 
 // Obtener todos los usuarios (solo para administradores)
-router.get('/',  getAllUsers);
+router.get('/', [validateJWT, validateAdmin], getAllUsers);
 
 // Obtener solo usuarios administradores
-router.get('/admins', getAdminUsers);
+router.get('/admins', [validateJWT, validateAdmin], getAdminUsers);
 
 // Subir documentos de verificación
 router.post('/upload-documents', 
@@ -52,5 +55,33 @@ router.get('/document-status', validateJWT, getDocumentStatus);
 
 // ✅ NUEVA RUTA PARA ELIMINAR DOCUMENTOS
 router.delete('/delete-documents/:tipo', validateJWT, deleteDocuments);
+
+// RUTAS PARA ADMINISTRACIÓN DE USUARIOS (solo administradores)
+// Crear nuevo usuario
+router.post('/', [
+  validateJWT,
+  validateAdmin,
+  check('ced_usu', 'La cédula es obligatoria').not().isEmpty(),
+  check('nom_usu1', 'El primer nombre es obligatorio').not().isEmpty(),
+  check('ape_usu1', 'El primer apellido es obligatorio').not().isEmpty(),
+  check('ema_usu', 'El email debe ser válido').isEmail(),
+  check('rol_cue', 'El rol es obligatorio').not().isEmpty(),
+  check('pas_usu', 'La contraseña debe tener al menos 6 caracteres').isLength({ min: 6 }),
+  validateFields
+], createUser);
+
+// Actualizar usuario por cédula
+router.put('/:cedula', [
+  validateJWT,
+  validateAdmin,
+  check('nom_usu1', 'El primer nombre es obligatorio').optional().not().isEmpty(),
+  check('ape_usu1', 'El primer apellido es obligatorio').optional().not().isEmpty(),
+  check('ema_usu', 'El email debe ser válido').optional().isEmail(),
+  check('pas_usu', 'La contraseña debe tener al menos 6 caracteres').optional().isLength({ min: 6 }),
+  validateFields
+], updateUser);
+
+// Eliminar usuario por cédula
+router.delete('/:cedula', [validateJWT, validateAdmin], deleteUser);
 
 module.exports = router;

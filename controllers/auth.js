@@ -195,7 +195,7 @@ const adminCreateUser = async (req, res) => {
                     fec_nac_usu: fechaNacimiento,
                     num_tel_usu,
                     pas_usu: hashedPassword,
-                    id_car_per
+                    
                 }
             });
 
