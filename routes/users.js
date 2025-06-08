@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { check } = require('express-validator');
-const { validateJWT, validateAdmin } = require('../middlewares/validateJWT');
+const { validateJWT, validateAdmin, validateRoles } = require('../middlewares/validateJWT');
 const { validateFields } = require('../middlewares/validateFields');
 const { upload, handleMulterError } = require('../middlewares/uploadMiddleware');
 const {
@@ -36,8 +36,8 @@ router.put('/profile', [
 // Obtener todos los usuarios (solo para administradores)
 router.get('/', [validateJWT, validateAdmin], getAllUsers);
 
-// Obtener solo usuarios administradores
-router.get('/admins', [validateJWT, validateAdmin], getAdminUsers);
+// Obtener solo usuarios administradores (solo MASTER)
+router.get('/admins', [validateJWT, validateRoles('MASTER')], getAdminUsers);
 
 // Subir documentos de verificación
 router.post('/upload-documents', 
@@ -70,18 +70,18 @@ router.post('/', [
   validateFields
 ], createUser);
 
-// Actualizar usuario por cédula
+// Actualizar usuario por cédula (solo MASTER)
 router.put('/:cedula', [
   validateJWT,
-  validateAdmin,
+  validateRoles('MASTER'),
   check('nom_usu1', 'El primer nombre es obligatorio').optional().not().isEmpty(),
   check('ape_usu1', 'El primer apellido es obligatorio').optional().not().isEmpty(),
-  check('ema_usu', 'El email debe ser válido').optional().isEmail(),
+  check('cor_cue', 'El email debe ser válido').optional().isEmail(),
   check('pas_usu', 'La contraseña debe tener al menos 6 caracteres').optional().isLength({ min: 6 }),
   validateFields
 ], updateUser);
 
-// Eliminar usuario por cédula
-router.delete('/:cedula', [validateJWT, validateAdmin], deleteUser);
+// Eliminar usuario por cédula (solo MASTER)
+router.delete('/:cedula', [validateJWT, validateRoles('MASTER')], deleteUser);
 
 module.exports = router;
