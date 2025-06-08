@@ -173,6 +173,12 @@ model Inscripcion {
   met_pag_ins MetodoPago? @map("MET_PAG_INS") // Opcional para eventos gratuitos
   enl_ord_pag_ins String? @map("ENL_ORD_PAG_INS") @db.Text
 
+  // Campos para comprobante de pago PDF
+  comprobante_pago_pdf Bytes? @map("COMPROBANTE_PAGO_PDF")
+  comprobante_filename String? @map("COMPROBANTE_FILENAME") @db.VarChar(255)
+  comprobante_size Int? @map("COMPROBANTE_SIZE")
+  fec_subida_comprobante DateTime? @map("FEC_SUBIDA_COMPROBANTE") @db.Timestamp
+
   id_usu_ins String @map("ID_USU_INS") @db.Uuid
   id_eve_ins String @map("ID_EVE_INS") @db.Uuid
 
@@ -263,6 +269,12 @@ model InscripcionCurso {
   val_ins_cur Decimal? @map("VAL_INS_CUR") @db.Decimal(6,2) // Opcional para cursos gratuitos
   met_pag_ins_cur MetodoPago? @map("MET_PAG_INS_CUR") // Opcional para cursos gratuitos
   enl_ord_pag_ins_cur String? @map("ENL_ORD_PAG_INS_CUR") @db.Text
+
+  // Campos para comprobante de pago PDF
+  comprobante_pago_pdf Bytes? @map("COMPROBANTE_PAGO_PDF")
+  comprobante_filename String? @map("COMPROBANTE_FILENAME") @db.VarChar(255)
+  comprobante_size Int? @map("COMPROBANTE_SIZE")
+  fec_subida_comprobante DateTime? @map("FEC_SUBIDA_COMPROBANTE") @db.Timestamp
 
   id_usu_ins_cur String @map("ID_USU_INS_CUR") @db.Uuid
   id_cur_ins String @map("ID_CUR_INS") @db.Uuid
