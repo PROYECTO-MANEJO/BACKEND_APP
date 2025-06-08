@@ -12,10 +12,24 @@ const asociarEventoCarrera = async (req, res) => {
 
   try {
     // Validar que el evento existe
-    const evento = await prisma.evento.findUnique({
-      where: { id_eve: eventoId }
-    });
-    if (!evento) return res.status(404).json({ message: 'Evento no encontrado' });
+
+    
+
+const evento = await prisma.evento.findUnique({
+  where: { id_eve: eventoId },
+  select: {
+    tipo_audiencia_eve: true
+  }
+});
+
+if (!evento) return res.status(404).json({ message: 'Evento no encontrado' });
+
+if (evento.tipo_audiencia_eve !== 'CARRERA_ESPECIFICA') {
+  return res.status(400).json({
+    message: 'Solo se pueden asociar carreras a eventos con tipo de audiencia CARRERA_ESPECIFICA'
+  });
+}
+
 
     // Validar que la carrera existe
     const carrera = await prisma.carrera.findUnique({
