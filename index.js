@@ -29,6 +29,7 @@ app.use('/api/cursos', require('./routes/cursos'));
 app.use('/api/users', require('./routes/users')); // Nueva ruta
 app.use('/api/carreras', require('./routes/carreras')); // Nueva ruta
 app.use('/api/inscripciones', require('./routes/inscripciones'));
+app.use('/api/eventosPorCarrera', require('./routes/eventosPorCarrera')); // Nueva ruta
 
 // Función para iniciar el servidor
 const startServer = async () => {

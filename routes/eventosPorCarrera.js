@@ -1,8 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { asociarEventoCarrera } = require('../controllers/eventosPorCarreraController');
+const {
+  asociarEventoCarrera,
+  listarEventosPorCarrera,
+  eliminarEventoCarrera
+} = require('../controllers/eventosPorCarreraController');
 
-// Ruta para asociar un evento a una carrera
 router.post('/asociar', asociarEventoCarrera);
+router.get('/listar', listarEventosPorCarrera);
+router.delete('/eliminar', eliminarEventoCarrera);
 
 module.exports = router;
