@@ -624,6 +624,34 @@ const obtenerEventosDisponibles = async (req, res) => {
   const userId = req.uid;
 
   try {
+    // Obtener información del usuario para filtros
+    const usuario = await prisma.usuario.findUnique({
+      where: { id_usu: userId },
+      include: {
+        cuentas: {
+          select: {
+            rol_cue: true
+          }
+        },
+        carrera: {
+          select: {
+            id_car: true,
+            nom_car: true
+          }
+        }
+      }
+    });
+
+    if (!usuario) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    const rol = usuario.cuentas[0]?.rol_cue;
+    const carreraId = usuario.id_car_per;
+
     // Obtener IDs de eventos donde el usuario ya está inscrito
     const inscripciones = await prisma.inscripcion.findMany({
       where: { id_usu_ins: userId },
@@ -632,13 +660,49 @@ const obtenerEventosDisponibles = async (req, res) => {
 
     const eventosInscritosIds = inscripciones.map(ins => ins.id_eve_ins);
 
-    // Obtener eventos excluyendo los que ya tiene inscripción
+    // Construir filtros de eventos disponibles según rol y carrera
+    let eventosFilter = {
+      id_eve: {
+        notIn: eventosInscritosIds
+      }
+    };
+
+    // Aplicar filtros según el rol del usuario
+    if (rol === 'USUARIO') {
+      // Los usuarios externos solo pueden ver eventos de público general
+      eventosFilter.tipo_audiencia_eve = 'PUBLICO_GENERAL';
+    } else if (rol === 'ESTUDIANTE') {
+      if (!carreraId) {
+        // Si es estudiante pero no tiene carrera asignada, solo eventos públicos
+        eventosFilter.tipo_audiencia_eve = 'PUBLICO_GENERAL';
+      } else {
+        // Si es estudiante con carrera, puede ver:
+        // 1. Eventos públicos generales
+        // 2. Eventos para todas las carreras
+        // 3. Eventos específicos para su carrera
+        eventosFilter.OR = [
+          { tipo_audiencia_eve: 'PUBLICO_GENERAL' },
+          { tipo_audiencia_eve: 'TODAS_CARRERAS' },
+          {
+            AND: [
+              { tipo_audiencia_eve: 'CARRERA_ESPECIFICA' },
+              {
+                eventosPorCarrera: {
+                  some: {
+                    id_car_per: carreraId
+                  }
+                }
+              }
+            ]
+          }
+        ];
+      }
+    }
+    // Los administradores pueden ver todos los eventos (sin filtros adicionales)
+
+    // Obtener eventos con filtros aplicados
     const eventos = await prisma.evento.findMany({
-      where: {
-        id_eve: {
-          notIn: eventosInscritosIds
-        }
-      },
+      where: eventosFilter,
       include: {
         categoria: {
           select: {
