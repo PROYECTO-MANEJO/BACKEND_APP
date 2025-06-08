@@ -2,6 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const path = require('path');
 const fs = require('fs');
+const bcrypt = require('bcrypt');
 
 // Actualizar perfil del usuario actual
 const updateUserProfile = async (req, res) => {
@@ -662,11 +663,364 @@ const getUserProfile = async (req, res) => {
   }
 };
 
+// Obtener solo usuarios administradores
+const getAdminUsers = async (req, res) => {
+  try {
+    const adminUsers = await prisma.usuario.findMany({
+      include: {
+        cuentas: {
+          select: {
+            cor_cue: true,
+            rol_cue: true
+          },
+          where: {
+            rol_cue: 'ADMINISTRADOR'
+          }
+        },
+        carrera: {
+          select: {
+            id_car: true,
+            nom_car: true
+          }
+        }
+      },
+      where: {
+        cuentas: {
+          some: {
+            rol_cue: 'ADMINISTRADOR'
+          }
+        }
+      }
+    });
+
+    const formattedUsers = adminUsers.map(user => ({
+      id_usu: user.id_usu,
+      ced_usu: user.ced_usu,
+      nom_usu1: user.nom_usu1,
+      nom_usu2: user.nom_usu2,
+      ape_usu1: user.ape_usu1,
+      ape_usu2: user.ape_usu2,
+      fec_nac_usu: user.fec_nac_usu,
+      num_tel_usu: user.num_tel_usu,
+      cor_cue: user.cuentas[0]?.cor_cue, // Email con el nombre correcto
+      rol_cue: user.cuentas[0]?.rol_cue,
+      id_car_per: user.carrera?.id_car,
+      carrera: user.carrera ? {
+        id_car: user.carrera.id_car,
+        nom_car: user.carrera.nom_car
+      } : null
+    }));
+
+    res.json({
+      success: true,
+      message: 'Administradores obtenidos exitosamente',
+      usuarios: formattedUsers
+    });
+
+  } catch (error) {
+    console.error('Error en getAdminUsers:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
+// Crear nuevo usuario (solo administradores)
+const createUser = async (req, res) => {
+  try {
+    const {
+      ced_usu,
+      nom_usu1,
+      nom_usu2,
+      ape_usu1,
+      ape_usu2,
+      ema_usu,
+      tel_usu,
+      rol_cue,
+      pas_usu
+    } = req.body;
+
+    // Verificar que no exista un usuario con esa cédula
+    const existingUser = await prisma.usuario.findUnique({
+      where: { ced_usu }
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ya existe un usuario con esa cédula'
+      });
+    }
+
+    // Verificar que no exista una cuenta con ese email
+    const existingAccount = await prisma.cuenta.findUnique({
+      where: { cor_cue: ema_usu }
+    });
+
+    if (existingAccount) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ya existe una cuenta con ese email'
+      });
+    }
+
+    // Encriptar contraseña
+    const hashedPassword = await bcrypt.hash(con_cue, 10);
+
+        // Crear usuario y cuenta en una transacción
+    const result = await prisma.$transaction(async (prisma) => {
+      // Crear usuario
+      const newUser = await prisma.usuario.create({
+        data: {
+          ced_usu,
+          nom_usu1,
+          nom_usu2: nom_usu2 || '',
+          ape_usu1,
+          ape_usu2: ape_usu2 || '',
+          num_tel_usu: tel_usu || null,
+          pas_usu: hashedPassword, // Contraseña va en Usuario
+          fec_nac_usu: new Date(), // Fecha por defecto
+        }
+      });
+
+      // Crear cuenta
+      const newAccount = await prisma.cuenta.create({
+        data: {
+          cor_cue: ema_usu,
+          rol_cue,
+          id_usu_per: newUser.id_usu
+        }
+      });
+
+      return { user: newUser, account: newAccount };
+    });
+
+         res.status(201).json({
+       success: true,
+       message: 'Usuario creado exitosamente',
+       data: {
+         id_usu: result.user.id_usu,
+         ced_usu: result.user.ced_usu,
+         nom_usu1: result.user.nom_usu1,
+         nom_usu2: result.user.nom_usu2,
+         ape_usu1: result.user.ape_usu1,
+         ape_usu2: result.user.ape_usu2,
+         ema_usu: result.account.cor_cue,
+         tel_usu: result.user.num_tel_usu,
+         rol_cue: result.account.rol_cue
+       }
+     });
+
+  } catch (error) {
+    console.error('Error en createUser:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
+// Actualizar usuario administrador (solo administradores)
+const updateUser = async (req, res) => {
+  try {
+    const { cedula } = req.params;
+    const { 
+      nom_usu1, 
+      nom_usu2, 
+      ape_usu1, 
+      ape_usu2, 
+      fec_nac_usu, 
+      num_tel_usu, 
+      pas_usu, 
+      cor_cue 
+    } = req.body;
+
+    // Buscar usuario existente
+    const existingUser = await prisma.usuario.findFirst({
+      where: {
+        ced_usu: cedula
+      },
+      include: {
+        cuentas: true
+      }
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    // Si se proporciona un nuevo email, verificar que no exista en otra cuenta
+    if (cor_cue && cor_cue !== existingUser.cuentas[0]?.cor_cue) {
+      const existingAccountByEmail = await prisma.cuenta.findFirst({
+        where: {
+          cor_cue: cor_cue
+        }
+      });
+
+      if (existingAccountByEmail) {
+        return res.status(409).json({
+          success: false,
+          message: 'Ya existe una cuenta con ese correo electrónico'
+        });
+      }
+    }
+
+    // Validar formato de fecha si se proporciona
+    let fechaNacimiento = existingUser.fec_nac_usu;
+    if (fec_nac_usu) {
+      try {
+        fechaNacimiento = new Date(fec_nac_usu);
+        if (isNaN(fechaNacimiento.getTime())) {
+          return res.status(400).json({
+            success: false,
+            message: 'El formato de fecha de nacimiento es inválido. Use YYYY-MM-DD'
+          });
+        }
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: 'El formato de fecha de nacimiento es inválido. Use YYYY-MM-DD'
+        });
+      }
+    }
+
+    // Encriptar contraseña si se proporciona
+    let hashedPassword = existingUser.pas_usu;
+    if (pas_usu && pas_usu.trim() !== '') {
+      hashedPassword = await bcrypt.hash(pas_usu, 10);
+    }
+
+    // Actualizar en transacción
+    const result = await prisma.$transaction(async (prisma) => {
+      // Actualizar el usuario
+      const updatedUser = await prisma.usuario.update({
+        where: {
+          ced_usu: cedula
+        },
+        data: {
+          nom_usu1: nom_usu1 || existingUser.nom_usu1,
+          nom_usu2: nom_usu2 !== undefined ? nom_usu2 : existingUser.nom_usu2,
+          ape_usu1: ape_usu1 || existingUser.ape_usu1,
+          ape_usu2: ape_usu2 !== undefined ? ape_usu2 : existingUser.ape_usu2,
+          fec_nac_usu: fechaNacimiento,
+          num_tel_usu: num_tel_usu !== undefined ? num_tel_usu : existingUser.num_tel_usu,
+          pas_usu: hashedPassword
+        }
+      });
+
+      // Actualizar cuenta si se proporciona nuevo email
+      let updatedAccount = existingUser.cuentas[0];
+      if (cor_cue && cor_cue !== existingUser.cuentas[0]?.cor_cue) {
+        updatedAccount = await prisma.cuenta.update({
+          where: {
+            id_cue: existingUser.cuentas[0].id_cue
+          },
+          data: {
+            cor_cue: cor_cue
+          }
+        });
+      }
+
+      return { user: updatedUser, account: updatedAccount };
+    });
+
+    res.json({
+      success: true,
+      message: 'Usuario administrador actualizado exitosamente',
+      data: {
+        usuario: {
+          id: result.user.id_usu,
+          cedula: result.user.ced_usu,
+          nom_usu1: result.user.nom_usu1,
+          nom_usu2: result.user.nom_usu2,
+          ape_usu1: result.user.ape_usu1,
+          ape_usu2: result.user.ape_usu2,
+          fec_nac_usu: result.user.fec_nac_usu,
+          num_tel_usu: result.user.num_tel_usu,
+          cor_cue: result.account.cor_cue,
+          rol_cue: result.account.rol_cue
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error al actualizar usuario administrador:', error);
+    
+    // Manejo de errores específicos
+    if (error.code === 'P2002') {
+      return res.status(409).json({ 
+        success: false, 
+        message: 'Error de duplicación. Verifique que los datos no estén ya registrados.' 
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Error al actualizar el usuario administrador',
+      error: error.message
+    });
+  }
+};
+
+// Eliminar usuario (solo administradores)
+const deleteUser = async (req, res) => {
+  try {
+    const { cedula } = req.params;
+
+    // Buscar usuario
+    const existingUser = await prisma.usuario.findUnique({
+      where: { ced_usu: cedula },
+      include: {
+        cuentas: true
+      }
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    // Eliminar en transacción (primero cuenta, luego usuario)
+    await prisma.$transaction(async (prisma) => {
+      // Eliminar cuenta
+      await prisma.cuenta.delete({
+        where: { id_cue: existingUser.cuentas[0].id_cue }
+      });
+
+      // Eliminar usuario
+      await prisma.usuario.delete({
+        where: { ced_usu: cedula }
+      });
+    });
+
+    res.json({
+      success: true,
+      message: 'Usuario eliminado exitosamente'
+    });
+
+  } catch (error) {
+    console.error('Error en deleteUser:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
 module.exports = {
   getUserProfile,
   updateUserProfile,
   getAllUsers,
+  getAdminUsers,
+  createUser,
+  updateUser,
+  deleteUser,
   uploadDocuments,
   getDocumentStatus,
-  deleteDocuments  // ✅ NUEVO
+  deleteDocuments
 };

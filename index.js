@@ -5,7 +5,7 @@ const cors = require('cors');
 require('dotenv').config();
 
 console.log('🔍 Variables de entorno cargadas:');
-console.log('SECRET_JWT_SEED existe:', !!process.env.SECRET_JWT_SEED);
+console.log('SECRET_KEY existe:', !!process.env.SECRET_KEY);
 console.log('PORT:', process.env.PORT);
 
 const app = express();

@@ -69,24 +69,46 @@ const crearSolicitud = async (req, res) => {
 // Obtener todas las solicitudes del usuario autenticado
 const obtenerSolicitudesUsuario = async (req, res) => {
   try {
+    console.log('=== OBTENER SOLICITUDES USUARIO ===');
+    console.log('Query params:', req.query);
+    console.log('Usuario ID:', req.usuario?.id_usu);
+    
     const id_usuario = req.usuario.id_usu;
     const { estado, tipo_cambio, page = 1, limit = 10 } = req.query;
 
-    // Construir filtros
+    // Construir filtros - solo agregar si no están vacíos y son válidos
     const filtros = {
       id_usuario_sol: id_usuario
     };
 
-    if (estado) {
-      filtros.estado_sol = estado;
+    // Validar y agregar filtro de estado
+    if (estado && estado.trim() !== '') {
+      const estadosValidos = ['PENDIENTE', 'EN_REVISION', 'APROBADA', 'RECHAZADA', 'EN_DESARROLLO', 'COMPLETADA'];
+      if (estadosValidos.includes(estado.trim())) {
+        filtros.estado_sol = estado.trim();
+      } else {
+        console.warn('Estado inválido recibido:', estado);
+      }
     }
 
-    if (tipo_cambio) {
-      filtros.tipo_cambio_sol = tipo_cambio;
+    // Validar y agregar filtro de tipo de cambio
+    if (tipo_cambio && tipo_cambio.trim() !== '') {
+      const tiposValidos = ['NUEVA_FUNCIONALIDAD', 'MEJORA_EXISTENTE', 'CORRECCION_ERROR', 'CAMBIO_INTERFAZ', 'OPTIMIZACION', 'OTRO'];
+      if (tiposValidos.includes(tipo_cambio.trim())) {
+        filtros.tipo_cambio_sol = tipo_cambio.trim();
+      } else {
+        console.warn('Tipo de cambio inválido recibido:', tipo_cambio);
+      }
     }
 
-    // Paginación
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    console.log('Filtros aplicados:', filtros);
+
+    // Validar y convertir paginación
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.min(50, Math.max(1, parseInt(limit) || 10));
+    const skip = (pageNum - 1) * limitNum;
+
+    console.log('Paginación:', { page: pageNum, limit: limitNum, skip });
 
     const [solicitudes, total] = await Promise.all([
       prisma.solicitudCambio.findMany({
@@ -116,32 +138,45 @@ const obtenerSolicitudesUsuario = async (req, res) => {
           fec_creacion_sol: 'desc'
         },
         skip,
-        take: parseInt(limit)
+        take: limitNum
       }),
       prisma.solicitudCambio.count({
         where: filtros
       })
     ]);
 
+    console.log(`Usuario ${id_usuario}: Encontradas ${solicitudes.length} solicitudes de ${total} total`);
+
     res.json({
       success: true,
       data: {
         solicitudes,
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
+          page: pageNum,
+          limit: limitNum,
           total,
-          totalPages: Math.ceil(total / parseInt(limit))
+          totalPages: Math.ceil(total / limitNum)
         }
       }
     });
 
   } catch (error) {
     console.error('Error al obtener solicitudes del usuario:', error);
+    console.error('Stack trace:', error.stack);
+    
+    // Manejar errores específicos de Prisma
+    if (error.code === 'P2025') {
+      return res.status(404).json({
+        success: false,
+        message: 'Datos no encontrados'
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
-      error: error.message
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
@@ -216,25 +251,52 @@ const obtenerSolicitudPorId = async (req, res) => {
 // Obtener todas las solicitudes (solo administradores)
 const obtenerTodasLasSolicitudes = async (req, res) => {
   try {
+    console.log('=== OBTENER TODAS LAS SOLICITUDES ===');
+    console.log('Query params:', req.query);
+    
     const { estado, tipo_cambio, prioridad, page = 1, limit = 10 } = req.query;
 
-    // Construir filtros
+    // Construir filtros - solo agregar si no están vacíos y son válidos
     const filtros = {};
 
-    if (estado) {
-      filtros.estado_sol = estado;
+    // Validar y agregar filtro de estado
+    if (estado && estado.trim() !== '') {
+      const estadosValidos = ['PENDIENTE', 'EN_REVISION', 'APROBADA', 'RECHAZADA', 'EN_DESARROLLO', 'COMPLETADA'];
+      if (estadosValidos.includes(estado.trim())) {
+        filtros.estado_sol = estado.trim();
+      } else {
+        console.warn('Estado inválido recibido:', estado);
+      }
     }
 
-    if (tipo_cambio) {
-      filtros.tipo_cambio_sol = tipo_cambio;
+    // Validar y agregar filtro de tipo de cambio
+    if (tipo_cambio && tipo_cambio.trim() !== '') {
+      const tiposValidos = ['NUEVA_FUNCIONALIDAD', 'MEJORA_EXISTENTE', 'CORRECCION_ERROR', 'CAMBIO_INTERFAZ', 'OPTIMIZACION', 'OTRO'];
+      if (tiposValidos.includes(tipo_cambio.trim())) {
+        filtros.tipo_cambio_sol = tipo_cambio.trim();
+      } else {
+        console.warn('Tipo de cambio inválido recibido:', tipo_cambio);
+      }
     }
 
-    if (prioridad) {
-      filtros.prioridad_sol = prioridad;
+    // Validar y agregar filtro de prioridad
+    if (prioridad && prioridad.trim() !== '') {
+      const prioridadesValidas = ['BAJA', 'MEDIA', 'ALTA', 'CRITICA'];
+      if (prioridadesValidas.includes(prioridad.trim())) {
+        filtros.prioridad_sol = prioridad.trim();
+      } else {
+        console.warn('Prioridad inválida recibida:', prioridad);
+      }
     }
 
-    // Paginación
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    console.log('Filtros aplicados:', filtros);
+
+    // Validar y convertir paginación
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.min(50, Math.max(1, parseInt(limit) || 10)); // Limitar entre 1 y 50
+    const skip = (pageNum - 1) * limitNum;
+
+    console.log('Paginación:', { page: pageNum, limit: limitNum, skip });
 
     const [solicitudes, total] = await Promise.all([
       prisma.solicitudCambio.findMany({
@@ -270,36 +332,55 @@ const obtenerTodasLasSolicitudes = async (req, res) => {
           }
         },
         orderBy: [
-          { prioridad_sol: 'desc' }, // Prioridad más alta primero
           { fec_creacion_sol: 'desc' }
         ],
         skip,
-        take: parseInt(limit)
+        take: limitNum
       }),
       prisma.solicitudCambio.count({
         where: filtros
       })
     ]);
 
+    console.log(`Encontradas ${solicitudes.length} solicitudes de ${total} total`);
+
     res.json({
       success: true,
       data: {
         solicitudes,
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
+          page: pageNum,
+          limit: limitNum,
           total,
-          totalPages: Math.ceil(total / parseInt(limit))
+          totalPages: Math.ceil(total / limitNum)
         }
       }
     });
 
   } catch (error) {
     console.error('Error al obtener todas las solicitudes:', error);
+    console.error('Stack trace:', error.stack);
+    
+    // Manejar errores específicos de Prisma
+    if (error.code === 'P2025') {
+      return res.status(404).json({
+        success: false,
+        message: 'Datos no encontrados'
+      });
+    }
+    
+    if (error.code === 'P2002') {
+      return res.status(400).json({
+        success: false,
+        message: 'Error de datos duplicados'
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
-      error: error.message
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
@@ -674,6 +755,9 @@ const actualizarEstadoSolicitud = async (req, res) => {
 // Obtener estadísticas de solicitudes (solo administradores)
 const obtenerEstadisticas = async (req, res) => {
   try {
+    console.log('=== OBTENER ESTADÍSTICAS ===');
+    console.log('Usuario solicitante:', req.usuario?.id_usu);
+    
     const [
       totalSolicitudes,
       solicitudesPorEstado,
@@ -701,6 +785,13 @@ const obtenerEstadisticas = async (req, res) => {
       })
     ]);
 
+    console.log('Estadísticas obtenidas:', {
+      total: totalSolicitudes,
+      porEstado: solicitudesPorEstado.length,
+      porTipo: solicitudesPorTipo.length,
+      porPrioridad: solicitudesPorPrioridad.length
+    });
+
     res.json({
       success: true,
       data: {
@@ -722,10 +813,21 @@ const obtenerEstadisticas = async (req, res) => {
 
   } catch (error) {
     console.error('Error al obtener estadísticas:', error);
+    console.error('Stack trace:', error.stack);
+    
+    // Manejar errores específicos de Prisma
+    if (error.code === 'P2025') {
+      return res.status(404).json({
+        success: false,
+        message: 'Datos no encontrados'
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
-      error: error.message
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };

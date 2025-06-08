@@ -75,7 +75,8 @@ router.put(
 // Editar una solicitud - Solo administradores
 // PUT /api/solicitudes-cambio/admin/:id/editar
 router.put(
-  '/admin/:id/editar',[validateJWT, validateAdmin],
+  '/admin/:id/editar',
+  [validateJWT, validateAdmin, ...validarEdicionSolicitud],
   editarSolicitud
 );
 
