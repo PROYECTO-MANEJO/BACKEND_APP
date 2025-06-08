@@ -766,7 +766,7 @@ const createUser = async (req, res) => {
     }
 
     // Encriptar contraseña
-    const hashedPassword = await bcrypt.hash(con_cue, 10);
+    const hashedPassword = await bcrypt.hash(pas_usu, 10);
 
         // Crear usuario y cuenta en una transacción
     const result = await prisma.$transaction(async (prisma) => {
@@ -1012,6 +1012,235 @@ const deleteUser = async (req, res) => {
   }
 };
 
+// ✅ NUEVAS FUNCIONES PARA VERIFICACIÓN DE DOCUMENTOS
+// Obtener usuarios con documentos pendientes de verificación
+const getUsersWithPendingDocuments = async (req, res) => {
+  try {
+    // Buscar usuarios que tengan documentos subidos pero no verificados
+    const usersWithDocuments = await prisma.usuario.findMany({
+      where: {
+        AND: [
+          {
+            OR: [
+              { enl_ced_pdf: { not: null } },
+              { enl_mat_pdf: { not: null } }
+            ]
+          },
+          {
+            documentos_verificados: false
+          }
+        ]
+      },
+      include: {
+        cuentas: {
+          select: {
+            cor_cue: true,
+            rol_cue: true
+          }
+        },
+        carrera: {
+          select: {
+            id_car: true,
+            nom_car: true
+          }
+        }
+      }
+    });
+
+    // Separar estudiantes y usuarios normales
+    const estudiantes = [];
+    const usuarios = [];
+
+    usersWithDocuments.forEach(user => {
+      const isEstudiante = user.cuentas[0]?.rol_cue === 'ESTUDIANTE';
+      
+      const userData = {
+        id_usu: user.id_usu,
+        ced_usu: user.ced_usu,
+        nombre_completo: `${user.nom_usu1} ${user.nom_usu2} ${user.ape_usu1} ${user.ape_usu2}`.trim().replace(/\s+/g, ' '),
+        email: user.cuentas[0]?.cor_cue,
+        rol: user.cuentas[0]?.rol_cue,
+        carrera: user.carrera ? user.carrera.nom_car : null,
+        documentos: {
+          cedula_subida: !!user.enl_ced_pdf,
+          matricula_subida: !!user.enl_mat_pdf,
+          cedula_filename: user.cedula_filename,
+          matricula_filename: user.matricula_filename,
+          cedula_size: user.cedula_size,
+          matricula_size: user.matricula_size
+        }
+      };
+
+      if (isEstudiante) {
+        estudiantes.push(userData);
+      } else {
+        usuarios.push(userData);
+      }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        estudiantes,
+        usuarios,
+        total: usersWithDocuments.length
+      }
+    });
+
+  } catch (error) {
+    console.error('Error en getUsersWithPendingDocuments:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
+// Descargar documento específico de un usuario
+const downloadUserDocument = async (req, res) => {
+  try {
+    const { userId, documentType } = req.params;
+
+    if (!['cedula', 'matricula'].includes(documentType)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tipo de documento inválido'
+      });
+    }
+
+    const user = await prisma.usuario.findUnique({
+      where: { id_usu: userId },
+      select: {
+        enl_ced_pdf: true,
+        enl_mat_pdf: true,
+        cedula_filename: true,
+        matricula_filename: true,
+        ced_usu: true
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    let documentData;
+    let filename;
+
+    if (documentType === 'cedula') {
+      documentData = user.enl_ced_pdf;
+      filename = user.cedula_filename || `cedula_${user.ced_usu}.pdf`;
+    } else {
+      documentData = user.enl_mat_pdf;
+      filename = user.matricula_filename || `matricula_${user.ced_usu}.pdf`;
+    }
+
+    if (!documentData) {
+      return res.status(404).json({
+        success: false,
+        message: 'Documento no encontrado'
+      });
+    }
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(documentData);
+
+  } catch (error) {
+    console.error('Error en downloadUserDocument:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
+// Aprobar documentos de un usuario
+const approveUserDocuments = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await prisma.usuario.findUnique({
+      where: { id_usu: userId }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    // Actualizar el estado de verificación
+    await prisma.usuario.update({
+      where: { id_usu: userId },
+      data: {
+        documentos_verificados: true,
+        fec_verificacion_docs: new Date()
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Documentos aprobados exitosamente'
+    });
+
+  } catch (error) {
+    console.error('Error en approveUserDocuments:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
+// Rechazar documentos de un usuario
+const rejectUserDocuments = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await prisma.usuario.findUnique({
+      where: { id_usu: userId }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    // Eliminar los documentos y marcar como no verificados
+    await prisma.usuario.update({
+      where: { id_usu: userId },
+      data: {
+        enl_ced_pdf: null,
+        enl_mat_pdf: null,
+        cedula_filename: null,
+        matricula_filename: null,
+        cedula_size: null,
+        matricula_size: null,
+        documentos_verificados: false,
+        fec_verificacion_docs: null
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Documentos rechazados y eliminados. El usuario deberá subir nuevos documentos.'
+    });
+
+  } catch (error) {
+    console.error('Error en rejectUserDocuments:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
 module.exports = {
   getUserProfile,
   updateUserProfile,
@@ -1022,5 +1251,11 @@ module.exports = {
   deleteUser,
   uploadDocuments,
   getDocumentStatus,
-  deleteDocuments
+  deleteDocuments,
+  downloadDocument,
+  // ✅ NUEVAS EXPORTACIONES
+  getUsersWithPendingDocuments,
+  downloadUserDocument,
+  approveUserDocuments,
+  rejectUserDocuments
 };
