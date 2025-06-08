@@ -9,7 +9,7 @@ async function inscribirUsuarioCurso(req, res) {
     return res.status(400).json({ message: 'Faltan campos obligatorios' });
   }
 
-  const metodosPermitidos = ['TARJETA DE CREDITO', 'TRANFERENCIA', 'DEPOSITO'];
+  const metodosPermitidos = ['TARJETA_CREDITO', 'TRANFERENCIA', 'DEPOSITO'];
   if (!metodosPermitidos.includes(metodoPago)) {
     return res.status(400).json({ message: 'Método de pago no válido' });
   }
