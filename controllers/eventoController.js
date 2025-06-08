@@ -619,10 +619,244 @@ const eliminarEvento = async (req, res) => {
   }
 };
 
+// Obtener eventos disponibles para inscribirse (excluyendo los que ya tiene inscripción)
+const obtenerEventosDisponibles = async (req, res) => {
+  const userId = req.uid;
+
+  try {
+    // Obtener información del usuario para filtros
+    const usuario = await prisma.usuario.findUnique({
+      where: { id_usu: userId },
+      include: {
+        cuentas: {
+          select: {
+            rol_cue: true
+          }
+        },
+        carrera: {
+          select: {
+            id_car: true,
+            nom_car: true
+          }
+        }
+      }
+    });
+
+    if (!usuario) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    const rol = usuario.cuentas[0]?.rol_cue;
+    const carreraId = usuario.id_car_per;
+
+    // Obtener IDs de eventos donde el usuario ya está inscrito
+    const inscripciones = await prisma.inscripcion.findMany({
+      where: { id_usu_ins: userId },
+      select: { id_eve_ins: true }
+    });
+
+    const eventosInscritosIds = inscripciones.map(ins => ins.id_eve_ins);
+
+    // Construir filtros de eventos disponibles según rol y carrera
+    let eventosFilter = {
+      id_eve: {
+        notIn: eventosInscritosIds
+      }
+    };
+
+    // Aplicar filtros según el rol del usuario
+    if (rol === 'USUARIO') {
+      // Los usuarios externos solo pueden ver eventos de público general
+      eventosFilter.tipo_audiencia_eve = 'PUBLICO_GENERAL';
+    } else if (rol === 'ESTUDIANTE') {
+      if (!carreraId) {
+        // Si es estudiante pero no tiene carrera asignada, solo eventos públicos
+        eventosFilter.tipo_audiencia_eve = 'PUBLICO_GENERAL';
+      } else {
+        // Si es estudiante con carrera, puede ver:
+        // 1. Eventos públicos generales
+        // 2. Eventos para todas las carreras
+        // 3. Eventos específicos para su carrera
+        eventosFilter.OR = [
+          { tipo_audiencia_eve: 'PUBLICO_GENERAL' },
+          { tipo_audiencia_eve: 'TODAS_CARRERAS' },
+          {
+            AND: [
+              { tipo_audiencia_eve: 'CARRERA_ESPECIFICA' },
+              {
+                eventosPorCarrera: {
+                  some: {
+                    id_car_per: carreraId
+                  }
+                }
+              }
+            ]
+          }
+        ];
+      }
+    }
+    // Los administradores pueden ver todos los eventos (sin filtros adicionales)
+
+    // Obtener eventos con filtros aplicados
+    const eventos = await prisma.evento.findMany({
+      where: eventosFilter,
+      include: {
+        categoria: {
+          select: {
+            id_cat: true,
+            nom_cat: true,
+            des_cat: true
+          }
+        },
+        organizador: {
+          select: {
+            ced_org: true,
+            nom_org1: true,
+            nom_org2: true,
+            ape_org1: true,
+            ape_org2: true,
+            tit_aca_org: true
+          }
+        },
+        eventosPorCarrera: {
+          include: {
+            carrera: {
+              select: {
+                id_car: true,
+                nom_car: true
+              }
+            }
+          }
+        },
+        _count: {
+          select: {
+            inscripciones: true
+          }
+        }
+      },
+      orderBy: {
+        fec_ini_eve: 'desc'
+      }
+    });
+
+    const eventosFormateados = eventos.map(evento => ({
+      ...evento,
+      organizador_nombre: `${evento.organizador.nom_org1} ${evento.organizador.ape_org1}`,
+      categoria_nombre: evento.categoria.nom_cat,
+      carreras: evento.eventosPorCarrera.map(epc => ({
+        id: epc.carrera.id_car,
+        nombre: epc.carrera.nom_car
+      })),
+      total_inscripciones: evento._count.inscripciones,
+      hora_inicio: formatearHora(evento.hor_ini_eve),
+      hora_fin: formatearHora(evento.hor_fin_eve)
+    }));
+
+    res.json({ 
+      success: true, 
+      eventos: eventosFormateados 
+    });
+  } catch (error) {
+    console.error('Error al obtener eventos disponibles:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error del servidor' 
+    });
+  }
+};
+
+// Obtener mis eventos (donde estoy inscrito)
+const obtenerMisEventos = async (req, res) => {
+  const userId = req.uid;
+
+  try {
+    const inscripciones = await prisma.inscripcion.findMany({
+      where: { id_usu_ins: userId },
+      include: {
+        evento: {
+          include: {
+            categoria: {
+              select: {
+                id_cat: true,
+                nom_cat: true,
+                des_cat: true
+              }
+            },
+            organizador: {
+              select: {
+                ced_org: true,
+                nom_org1: true,
+                nom_org2: true,
+                ape_org1: true,
+                ape_org2: true,
+                tit_aca_org: true
+              }
+            },
+            eventosPorCarrera: {
+              include: {
+                carrera: {
+                  select: {
+                    id_car: true,
+                    nom_car: true
+                  }
+                }
+              }
+            },
+            _count: {
+              select: {
+                inscripciones: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        fec_ins: 'desc'
+      }
+    });
+
+    const eventosFormateados = inscripciones.map(inscripcion => ({
+      ...inscripcion.evento,
+      organizador_nombre: `${inscripcion.evento.organizador.nom_org1} ${inscripcion.evento.organizador.ape_org1}`,
+      categoria_nombre: inscripcion.evento.categoria.nom_cat,
+      carreras: inscripcion.evento.eventosPorCarrera.map(epc => ({
+        id: epc.carrera.id_car,
+        nombre: epc.carrera.nom_car
+      })),
+      total_inscripciones: inscripcion.evento._count.inscripciones,
+      hora_inicio: formatearHora(inscripcion.evento.hor_ini_eve),
+      hora_fin: formatearHora(inscripcion.evento.hor_fin_eve),
+      // Agregar información de la inscripción
+      estado_inscripcion: inscripcion.estado_pago,
+      fecha_inscripcion: inscripcion.fec_ins,
+      metodo_pago: inscripcion.met_pag_ins,
+      valor_pagado: inscripcion.val_ins,
+      enlace_pago: inscripcion.enl_ord_pag_ins,
+      fecha_aprobacion: inscripcion.fec_aprobacion
+    }));
+
+    res.json({ 
+      success: true, 
+      eventos: eventosFormateados 
+    });
+  } catch (error) {
+    console.error('Error al obtener mis eventos:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error del servidor' 
+    });
+  }
+};
+
 module.exports = {
   crearEvento,
   obtenerEventos,
   obtenerEventoPorId,
   actualizarEvento,
-  eliminarEvento
+  eliminarEvento,
+  obtenerEventosDisponibles,
+  obtenerMisEventos
 };
