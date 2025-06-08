@@ -399,3 +399,21 @@ model PaginaPrincipal {
   
   @@map("PAGINA_PRINCIPAL")
 }
+
+
+enum TipoReporte {
+  FINANZAS
+  USUARIOS
+  CURSOS
+  EVENTOS
+}
+
+model Reporte {
+  id_rep          String      @id @default(uuid()) @map("ID_REP") @db.Uuid
+  tipo            TipoReporte @map("TIPO")
+  nombre_archivo  String      @map("NOMBRE_ARCHIVO") @db.VarChar(255)
+  archivo_pdf     Bytes       @map("ARCHIVO_PDF")
+  fecha_generado  DateTime    @map("FECHA_GENERADO") @default(now()) @db.Timestamp
+
+  @@map("REPORTES")
+}
