@@ -865,6 +865,95 @@ const obtenerMisCursos = async (req, res) => {
   }
 };
 
+// Actualizar carreras de un curso
+const actualizarCarrerasCurso = async (req, res) => {
+  const { id } = req.params;
+  const { carreras } = req.body;
+  
+  try {
+    // Verificar que el curso existe
+    const curso = await prisma.curso.findUnique({ 
+      where: { id_cur: id },
+      select: {
+        tipo_audiencia_cur: true
+      }
+    });
+    
+    if (!curso) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Curso no encontrado' 
+      });
+    }
+
+    // Solo permitir actualizar carreras si el tipo de audiencia es CARRERA_ESPECIFICA
+    if (curso.tipo_audiencia_cur !== 'CARRERA_ESPECIFICA') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Solo se pueden asignar carreras a cursos con audiencia específica' 
+      });
+    }
+
+    // Validar que carreras sea un array
+    if (!Array.isArray(carreras)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Las carreras deben ser un array de IDs' 
+      });
+    }
+
+    // Verificar que todas las carreras existan
+    if (carreras.length > 0) {
+      const carrerasExistentes = await prisma.carrera.findMany({
+        where: {
+          id_car: {
+            in: carreras
+          }
+        },
+        select: { id_car: true }
+      });
+
+      if (carrerasExistentes.length !== carreras.length) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Una o más carreras especificadas no existen' 
+        });
+      }
+    }
+
+    // Actualizar carreras con transacción
+    await prisma.$transaction(async (tx) => {
+      // Eliminar todas las asignaciones actuales
+      await tx.cursoPorCarrera.deleteMany({
+        where: { id_cur_per: id }
+      });
+
+      // Crear las nuevas asignaciones si hay carreras
+      if (carreras.length > 0) {
+        const asignaciones = carreras.map(id_carrera => ({
+          id_cur_per: id,
+          id_car_per: id_carrera
+        }));
+
+        await tx.cursoPorCarrera.createMany({
+          data: asignaciones
+        });
+      }
+    });
+    
+    res.json({ 
+      success: true, 
+      message: 'Carreras del curso actualizadas correctamente' 
+    });
+  } catch (error) {
+    console.error('Error al actualizar carreras del curso:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error del servidor' 
+    });
+  }
+};
+
 module.exports = {
   crearCurso,
   obtenerCursos,
@@ -872,5 +961,6 @@ module.exports = {
   actualizarCurso,
   eliminarCurso,
   obtenerCursosDisponibles,
-  obtenerMisCursos
+  obtenerMisCursos,
+  actualizarCarrerasCurso
 };

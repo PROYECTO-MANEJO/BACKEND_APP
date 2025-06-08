@@ -10,7 +10,8 @@ const {
   actualizarCurso,
   eliminarCurso,
   obtenerCursosDisponibles,
-  obtenerMisCursos
+  obtenerMisCursos,
+  actualizarCarrerasCurso
 } = require('../controllers/cursoController');
 
 // Crear curso
@@ -30,6 +31,9 @@ router.get('/:id', obtenerCursoPorId);
 
 // Actualizar curso
 router.put('/:id', actualizarCurso);
+
+// Actualizar carreras de un curso
+router.post('/:id/carreras', actualizarCarrerasCurso);
 
 // Eliminar curso
 router.delete('/:id', eliminarCurso);
