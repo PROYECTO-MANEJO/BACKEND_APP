@@ -1016,8 +1016,8 @@ const deleteUser = async (req, res) => {
 // Obtener usuarios con documentos pendientes de verificación
 const getUsersWithPendingDocuments = async (req, res) => {
   try {
-    // Buscar usuarios que tengan documentos subidos pero no verificados
-    const usersWithDocuments = await prisma.usuario.findMany({
+    // Buscar todos los usuarios con documentos no verificados
+    const allUsersWithDocuments = await prisma.usuario.findMany({
       where: {
         AND: [
           {
@@ -1045,6 +1045,21 @@ const getUsersWithPendingDocuments = async (req, res) => {
           }
         }
       }
+    });
+
+    // Filtrar en JavaScript para mayor control
+    const usersWithDocuments = allUsersWithDocuments.filter(user => {
+      const rol = user.cuentas[0]?.rol_cue;
+      
+      if (rol === 'ESTUDIANTE') {
+        // Estudiantes deben tener ambos documentos
+        return !!user.enl_ced_pdf && !!user.enl_mat_pdf;
+      } else if (rol === 'USUARIO') {
+        // Usuarios normales solo necesitan cédula
+        return !!user.enl_ced_pdf;
+      }
+      
+      return false;
     });
 
     // Separar estudiantes y usuarios normales
