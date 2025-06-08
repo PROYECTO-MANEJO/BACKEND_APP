@@ -13,20 +13,10 @@ const obtenerCursosEventosAdministrables = async (req, res) => {
   try {
     const fechaActual = new Date();
     
-    // Obtener eventos administrables (activos o próximos)
+    // Obtener eventos que aún no han terminado
     const eventos = await prisma.evento.findMany({
       where: {
-        OR: [
-          // Eventos que aún no han terminado
-          { fec_fin_eve: { gte: fechaActual } },
-          // Eventos sin fecha fin pero que iniciaron hace menos de 30 días
-          {
-            AND: [
-              { fec_fin_eve: null },
-              { fec_ini_eve: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } }
-            ]
-          }
-        ]
+        fec_fin_eve: { gte: fechaActual }
       },
       include: {
         categoria: {
@@ -54,20 +44,10 @@ const obtenerCursosEventosAdministrables = async (req, res) => {
       ]
     });
 
-    // Obtener cursos administrables (activos o próximos)
+    // Obtener cursos que aún no han terminado
     const cursos = await prisma.curso.findMany({
       where: {
-        OR: [
-          // Cursos que aún no han terminado
-          { fec_fin_cur: { gte: fechaActual } },
-          // Cursos sin fecha fin pero que iniciaron hace menos de 60 días
-          {
-            AND: [
-              { fec_fin_cur: null },
-              { fec_ini_cur: { gte: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000) } }
-            ]
-          }
-        ]
+        fec_fin_cur: { gte: fechaActual }
       },
       include: {
         categoria: {
@@ -86,7 +66,7 @@ const obtenerCursosEventosAdministrables = async (req, res) => {
         },
         _count: {
           select: {
-            inscripciones: true
+            inscripcionesCurso: true
           }
         }
       },
@@ -113,7 +93,17 @@ const obtenerCursosEventosAdministrables = async (req, res) => {
         };
 
         estadisticas.forEach(stat => {
-          stats[stat.estado_pago.toLowerCase() + 's'] = stat._count;
+          switch(stat.estado_pago.toLowerCase()) {
+            case 'aprobada':
+              stats.aprobadas = stat._count;
+              break;
+            case 'pendiente':
+              stats.pendientes = stat._count;
+              break;
+            case 'rechazada':
+              stats.rechazadas = stat._count;
+              break;
+          }
         });
 
         return {
@@ -130,21 +120,31 @@ const obtenerCursosEventosAdministrables = async (req, res) => {
     const cursosConEstadisticas = await Promise.all(
       cursos.map(async (curso) => {
         const estadisticas = await prisma.inscripcionCurso.groupBy({
-          by: ['estado_pago'],
+          by: ['estado_pago_cur'],
           where: { id_cur_ins: curso.id_cur },
           _count: true
         });
 
         const stats = {
-          total: curso._count.inscripciones,
+          total: curso._count.inscripcionesCurso,
           aprobadas: 0,
           pendientes: 0,
           rechazadas: 0,
-          disponibles: curso.capacidad_max_cur - curso._count.inscripciones
+          disponibles: curso.capacidad_max_cur - curso._count.inscripcionesCurso
         };
 
         estadisticas.forEach(stat => {
-          stats[stat.estado_pago.toLowerCase() + 's'] = stat._count;
+          switch(stat.estado_pago_cur.toLowerCase()) {
+            case 'aprobado':
+              stats.aprobadas = stat._count;
+              break;
+            case 'pendiente':
+              stats.pendientes = stat._count;
+              break;
+            case 'rechazado':
+              stats.rechazadas = stat._count;
+              break;
+          }
         });
 
         return {
@@ -167,7 +167,7 @@ const obtenerCursosEventosAdministrables = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Cursos y eventos administrables obtenidos exitosamente',
+      message: 'Cursos y eventos activos obtenidos exitosamente',
       data: {
         total: todosLosItems.length,
         eventos: eventosConEstadisticas.length,
