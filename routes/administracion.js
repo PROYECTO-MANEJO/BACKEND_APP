@@ -12,7 +12,9 @@ const {
   rechazarInscripcionCurso,
   descargarComprobantePago,
   registrarParticipacionEvento,
-  registrarParticipacionCurso
+  registrarParticipacionCurso,
+  obtenerParticipacionesEvento,
+  obtenerParticipacionesCurso
 } = require('../controllers/administracionController');
 
 // =====================================================
@@ -145,5 +147,25 @@ router.post('/curso/:idCurso/participacion', [
   validateJWT,
   validateAdmin
 ], registrarParticipacionCurso);
+
+/**
+ * GET /api/administracion/evento/:idEvento/participaciones
+ * Obtener participaciones existentes de un evento
+ * Requiere: Autenticación + Rol Admin
+ */
+router.get('/evento/:idEvento/participaciones', [
+  validateJWT,
+  validateAdmin
+], obtenerParticipacionesEvento);
+
+/**
+ * GET /api/administracion/curso/:idCurso/participaciones
+ * Obtener participaciones existentes de un curso
+ * Requiere: Autenticación + Rol Admin
+ */
+router.get('/curso/:idCurso/participaciones', [
+  validateJWT,
+  validateAdmin
+], obtenerParticipacionesCurso);
 
 module.exports = router; 

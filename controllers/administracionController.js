@@ -1108,14 +1108,10 @@ const registrarParticipacionEvento = async (req, res) => {
     });
 
     if (participacion) {
-      // Actualizar registro existente
-      participacion = await prisma.participacion.update({
-        where: { id_par: participacion.id_par },
-        data: {
-          asi_par: asistencia,
-          aprobado: aprobado,
-          fec_evaluacion: new Date()
-        }
+      // Si ya existe participación, no permitir modificaciones
+      return res.status(400).json({
+        success: false,
+        message: 'La asistencia de este usuario ya ha sido registrada y no se puede modificar'
       });
     } else {
       // Crear nuevo registro
@@ -1249,25 +1245,21 @@ const registrarParticipacionCurso = async (req, res) => {
       }
     });
 
-    const dataToUpdate = {
-      asistencia_porcentaje: asistencia,
-      nota_final: nota,
-      aprobado: aprobado,
-      fecha_evaluacion: new Date()
-    };
-
     if (participacion) {
-      // Actualizar registro existente
-      participacion = await prisma.participacionCurso.update({
-        where: { id_par_cur: participacion.id_par_cur },
-        data: dataToUpdate
+      // Si ya existe participación, no permitir modificaciones
+      return res.status(400).json({
+        success: false,
+        message: 'La calificación y asistencia de este usuario ya han sido registradas y no se pueden modificar'
       });
     } else {
       // Crear nuevo registro
       participacion = await prisma.participacionCurso.create({
         data: {
           id_ins_cur_per: inscripcion_id,
-          ...dataToUpdate
+          asistencia_porcentaje: asistencia,
+          nota_final: nota,
+          aprobado: aprobado,
+          fecha_evaluacion: new Date()
         }
       });
     }
@@ -1316,6 +1308,86 @@ const registrarParticipacionCurso = async (req, res) => {
 // EXPORTACIONES
 // =====================================================
 
+/**
+ * Obtener participaciones existentes para un evento
+ */
+const obtenerParticipacionesEvento = async (req, res) => {
+  try {
+    const { idEvento } = req.params;
+
+    const participaciones = await prisma.participacion.findMany({
+      where: {
+        inscripcion: {
+          id_eve_ins: idEvento
+        }
+      },
+      include: {
+        inscripcion: {
+          include: {
+            usuario: {
+              select: {
+                nom_usu1: true,
+                ape_usu1: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    return res.json({
+      success: true,
+      data: participaciones
+    });
+  } catch (error) {
+    console.error('❌ Error al obtener participaciones del evento:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
+/**
+ * Obtener participaciones existentes para un curso
+ */
+const obtenerParticipacionesCurso = async (req, res) => {
+  try {
+    const { idCurso } = req.params;
+
+    const participaciones = await prisma.participacionCurso.findMany({
+      where: {
+        inscripcionCurso: {
+          id_cur_ins: idCurso
+        }
+      },
+      include: {
+        inscripcionCurso: {
+          include: {
+            usuario: {
+              select: {
+                nom_usu1: true,
+                ape_usu1: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    return res.json({
+      success: true,
+      data: participaciones
+    });
+  } catch (error) {
+    console.error('❌ Error al obtener participaciones del curso:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
 module.exports = {
   obtenerCursosEventosAdministrables,
   obtenerDetallesEventoAdmin,
@@ -1326,5 +1398,7 @@ module.exports = {
   rechazarInscripcionCurso,
   descargarComprobantePago,
   registrarParticipacionEvento,
-  registrarParticipacionCurso
+  registrarParticipacionCurso,
+  obtenerParticipacionesEvento,
+  obtenerParticipacionesCurso
 };
