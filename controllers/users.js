@@ -318,34 +318,14 @@ const uploadDocuments = async (req, res) => {
   }
 };
 
-// ✅ NUEVA FUNCIÓN: Descargar documentos (solo admins)
+// ✅ FUNCIÓN: Descargar documentos propios del usuario
 const downloadDocument = async (req, res) => {
   try {
-    const { userId, tipo } = req.params; // tipo: 'cedula' o 'matricula'
+    const { tipo } = req.params; // tipo: 'cedula' o 'matricula'
+    const userId = req.uid; // ID del usuario autenticado
     
-    // Verificar que el usuario solicitante es admin
-    const currentUser = await prisma.usuario.findUnique({
-      where: { id_usu: req.uid },
-      include: {
-        cuentas: {
-          select: {
-            rol_cue: true
-          }
-        }
-      }
-    });
-
-    const isAdmin = ['ADMINISTRADOR', 'MASTER'].includes(currentUser.cuentas[0]?.rol_cue);
-    
-    if (!isAdmin) {
-      return res.status(403).json({
-        success: false,
-        message: 'No autorizado para descargar documentos'
-      });
-    }
-
-    // Obtener el usuario objetivo
-    const targetUser = await prisma.usuario.findUnique({
+    // Obtener el usuario autenticado
+    const user = await prisma.usuario.findUnique({
       where: { id_usu: userId },
       select: {
         enl_ced_pdf: true,        // Archivo como Buffer
@@ -356,7 +336,7 @@ const downloadDocument = async (req, res) => {
       }
     });
 
-    if (!targetUser) {
+    if (!user) {
       return res.status(404).json({
         success: false,
         message: 'Usuario no encontrado'
@@ -368,14 +348,14 @@ const downloadDocument = async (req, res) => {
     let originalName;
 
     // ✅ OBTENER ARCHIVO DESDE BD
-    if (tipo === 'cedula' && targetUser.enl_ced_pdf) {
-      fileBuffer = targetUser.enl_ced_pdf;
-      originalName = targetUser.cedula_filename || 'cedula.pdf';
-      fileName = `cedula_${targetUser.ced_usu}_${originalName}`;
-    } else if (tipo === 'matricula' && targetUser.enl_mat_pdf) {
-      fileBuffer = targetUser.enl_mat_pdf;
-      originalName = targetUser.matricula_filename || 'matricula.pdf';
-      fileName = `matricula_${targetUser.ced_usu}_${originalName}`;
+    if (tipo === 'cedula' && user.enl_ced_pdf) {
+      fileBuffer = user.enl_ced_pdf;
+      originalName = user.cedula_filename || 'cedula.pdf';
+      fileName = `cedula_${user.ced_usu}_${originalName}`;
+    } else if (tipo === 'matricula' && user.enl_mat_pdf) {
+      fileBuffer = user.enl_mat_pdf;
+      originalName = user.matricula_filename || 'matricula.pdf';
+      fileName = `matricula_${user.ced_usu}_${originalName}`;
     } else {
       return res.status(404).json({
         success: false,
@@ -383,7 +363,7 @@ const downloadDocument = async (req, res) => {
       });
     }
 
-    console.log('📥 Descargando desde BD:', fileName, 'Tamaño:', fileBuffer.length);
+    console.log('📥 Usuario descargando su propio documento:', fileName, 'Tamaño:', fileBuffer.length);
 
     // ✅ ENVIAR ARCHIVO DESDE BUFFER
     res.setHeader('Content-Type', 'application/pdf');
