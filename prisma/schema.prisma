@@ -308,8 +308,6 @@ model ParticipacionCurso {
   
   // Metadatos de evaluación
   fecha_evaluacion DateTime? @map("FECHA_EVALUACION") @db.Timestamp
-  responsable String? @map("RESPONSABLE") @db.VarChar(100) // Nombre del instructor
-  observaciones String? @map("OBSERVACIONES") @db.Text
   
   // Certificación (solo si aprobado = true)
   enl_cer_par_cur String? @map("ENL_CER_PAR_CUR") @db.Text
