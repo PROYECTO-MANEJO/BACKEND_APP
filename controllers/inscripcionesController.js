@@ -258,6 +258,12 @@ async function descargarComprobantePagoEvento(req, res) {
   try {
     const { inscripcionId } = req.params;
 
+    // Validar ID
+    if (!inscripcionId) {
+      res.status(400);
+      return res.send('Error: ID de inscripción es obligatorio');
+    }
+
     // Verificar que el usuario solicitante es admin
     const currentUser = await prisma.usuario.findUnique({
       where: { id_usu: req.uid },
@@ -273,10 +279,8 @@ async function descargarComprobantePagoEvento(req, res) {
     const isAdmin = ['ADMINISTRADOR', 'MASTER'].includes(currentUser.cuentas[0]?.rol_cue);
     
     if (!isAdmin) {
-      return res.status(403).json({
-        success: false,
-        message: 'No autorizado para descargar comprobantes de pago'
-      });
+      res.status(403);
+      return res.send('Error: No autorizado para descargar comprobantes de pago');
     }
 
     // Obtener la inscripción con el comprobante
@@ -289,7 +293,8 @@ async function descargarComprobantePagoEvento(req, res) {
         usuario: {
           select: {
             ced_usu: true,
-            nom_usu: true
+            nom_usu1: true,
+            ape_usu1: true
           }
         },
         evento: {
@@ -301,32 +306,69 @@ async function descargarComprobantePagoEvento(req, res) {
     });
 
     if (!inscripcion) {
-      return res.status(404).json({
-        success: false,
-        message: 'Inscripción no encontrada'
-      });
+      res.status(404);
+      return res.send('Error: Inscripción no encontrada');
     }
 
     if (!inscripcion.comprobante_pago_pdf) {
-      return res.status(404).json({
-        success: false,
-        message: 'Comprobante de pago no encontrado'
-      });
+      res.status(404);
+      return res.send('Error: Comprobante de pago no encontrado para esta inscripción');
+    }
+
+    // Verificar que el comprobante tiene datos
+    console.log('🔍 Debugging comprobante evento:');
+    console.log('- Tipo de dato:', typeof inscripcion.comprobante_pago_pdf);
+    console.log('- Es Buffer:', Buffer.isBuffer(inscripcion.comprobante_pago_pdf));
+    console.log('- Longitud:', inscripcion.comprobante_pago_pdf ? inscripcion.comprobante_pago_pdf.length : 'null');
+
+    if (!inscripcion.comprobante_pago_pdf) {
+      res.status(500);
+      return res.send('Error: El comprobante_pago_pdf es null o undefined');
+    }
+
+    if (inscripcion.comprobante_pago_pdf.length === 0) {
+      res.status(500);
+      return res.send('Error: El archivo del comprobante tiene longitud 0');
+    }
+
+    // Convertir a Buffer si no lo es (puede venir como Uint8Array de Prisma)
+    let bufferComprobante;
+    if (Buffer.isBuffer(inscripcion.comprobante_pago_pdf)) {
+      bufferComprobante = inscripcion.comprobante_pago_pdf;
+    } else if (inscripcion.comprobante_pago_pdf instanceof Uint8Array) {
+      bufferComprobante = Buffer.from(inscripcion.comprobante_pago_pdf);
+      console.log('✅ Convertido de Uint8Array a Buffer');
+    } else {
+      res.status(500);
+      return res.send(`Error: Tipo de dato no soportado: ${typeof inscripcion.comprobante_pago_pdf}`);
     }
 
     // Generar nombre del archivo
-    const fileName = `comprobante_evento_${inscripcion.usuario.ced_usu}_${inscripcion.comprobante_filename || 'comprobante.pdf'}`;
+    const fileName = inscripcion.comprobante_filename || 
+                    `comprobante_evento_${inscripcion.usuario.nom_usu1}_${inscripcion.usuario.ape_usu1}.pdf`;
 
+    // Log para debugging
+    console.log(`📄 Descargando comprobante evento: ${fileName}, Tamaño: ${bufferComprobante.length} bytes`);
+
+    // Configurar headers para descarga de PDF
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    res.send(inscripcion.comprobante_pago_pdf);
+    res.setHeader('Content-Length', bufferComprobante.length);
+    res.setHeader('Cache-Control', 'no-cache');
+
+    // Enviar el archivo binario
+    return res.end(bufferComprobante);
 
   } catch (error) {
     console.error('❌ Error en descargarComprobantePagoEvento:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor'
-    });
+    
+    // Si ya se enviaron headers, no podemos enviar JSON
+    if (res.headersSent) {
+      return res.end();
+    }
+    
+    res.status(500);
+    return res.send(`Error interno del servidor: ${error.message}`);
   }
 }
 

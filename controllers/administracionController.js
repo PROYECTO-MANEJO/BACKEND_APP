@@ -913,22 +913,34 @@ const descargarComprobantePago = async (req, res) => {
   try {
     const { tipo, idInscripcion } = req.params;
 
+    // Validar tipo
     if (!['evento', 'curso'].includes(tipo)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Tipo debe ser "evento" o "curso"'
-      });
+      res.status(400);
+      return res.send('Error: Tipo debe ser "evento" o "curso"');
+    }
+
+    // Validar ID
+    if (!idInscripcion) {
+      res.status(400);
+      return res.send('Error: ID de inscripción es obligatorio');
     }
 
     let inscripcion;
 
+    // Obtener inscripción según el tipo
     if (tipo === 'evento') {
       inscripcion = await prisma.inscripcion.findUnique({
         where: { id_ins: idInscripcion },
         select: {
           comprobante_pago_pdf: true,
           comprobante_filename: true,
-          comprobante_size: true
+          comprobante_size: true,
+          usuario: {
+            select: {
+              nom_usu1: true,
+              ape_usu1: true
+            }
+          }
         }
       });
     } else {
@@ -937,40 +949,84 @@ const descargarComprobantePago = async (req, res) => {
         select: {
           comprobante_pago_pdf: true,
           comprobante_filename: true,
-          comprobante_size: true
+          comprobante_size: true,
+          usuario: {
+            select: {
+              nom_usu1: true,
+              ape_usu1: true
+            }
+          }
         }
       });
     }
 
+    // Verificar que existe la inscripción
     if (!inscripcion) {
-      return res.status(404).json({
-        success: false,
-        message: 'Inscripción no encontrada'
-      });
+      res.status(404);
+      return res.send('Error: Inscripción no encontrada');
     }
 
+    // Verificar que existe el comprobante
     if (!inscripcion.comprobante_pago_pdf) {
-      return res.status(404).json({
-        success: false,
-        message: 'No hay comprobante de pago disponible'
-      });
+      res.status(404);
+      return res.send('Error: No hay comprobante de pago disponible para esta inscripción');
     }
+
+    // Verificar que el comprobante tiene datos
+    console.log('🔍 Debugging comprobante:');
+    console.log('- Tipo de dato:', typeof inscripcion.comprobante_pago_pdf);
+    console.log('- Es Buffer:', Buffer.isBuffer(inscripcion.comprobante_pago_pdf));
+    console.log('- Longitud:', inscripcion.comprobante_pago_pdf ? inscripcion.comprobante_pago_pdf.length : 'null');
+    console.log('- Primeros bytes:', inscripcion.comprobante_pago_pdf ? inscripcion.comprobante_pago_pdf.slice(0, 10) : 'null');
+
+    if (!inscripcion.comprobante_pago_pdf) {
+      res.status(500);
+      return res.send('Error: El comprobante_pago_pdf es null o undefined');
+    }
+
+    if (inscripcion.comprobante_pago_pdf.length === 0) {
+      res.status(500);
+      return res.send('Error: El archivo del comprobante tiene longitud 0');
+    }
+
+    // Convertir a Buffer si no lo es (puede venir como Uint8Array de Prisma)
+    let bufferComprobante;
+    if (Buffer.isBuffer(inscripcion.comprobante_pago_pdf)) {
+      bufferComprobante = inscripcion.comprobante_pago_pdf;
+    } else if (inscripcion.comprobante_pago_pdf instanceof Uint8Array) {
+      bufferComprobante = Buffer.from(inscripcion.comprobante_pago_pdf);
+      console.log('✅ Convertido de Uint8Array a Buffer');
+    } else {
+      res.status(500);
+      return res.send(`Error: Tipo de dato no soportado: ${typeof inscripcion.comprobante_pago_pdf}`);
+    }
+
+    // Generar nombre de archivo si no existe
+    const filename = inscripcion.comprobante_filename || 
+                    `comprobante_${inscripcion.usuario.nom_usu1}_${inscripcion.usuario.ape_usu1}_${tipo}.pdf`;
+
+    // Log para debugging
+    console.log(`📄 Descargando comprobante: ${filename}, Tamaño: ${bufferComprobante.length} bytes`);
 
     // Configurar headers para descarga de PDF
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${inscripcion.comprobante_filename || 'comprobante.pdf'}"`);
-    res.setHeader('Content-Length', inscripcion.comprobante_size || inscripcion.comprobante_pago_pdf.length);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', bufferComprobante.length);
+    res.setHeader('Cache-Control', 'no-cache');
 
-    // Enviar el archivo
-    return res.send(inscripcion.comprobante_pago_pdf);
+    // Enviar el archivo binario
+    return res.end(bufferComprobante);
 
   } catch (error) {
     console.error('❌ Error al descargar comprobante:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    
+    // Si ya se enviaron headers, no podemos enviar JSON
+    if (res.headersSent) {
+      return res.end();
+    }
+    
+    res.status(500);
+    return res.send(`Error interno del servidor: ${error.message}`);
   }
 };
 
