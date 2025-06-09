@@ -206,7 +206,9 @@ model Participacion {
   aprobado Boolean @map("APROBADO") @default(false) // Calculado: asi_par >= 80
   
   // Certificado de participación (si aprobado)
-  enl_cer_par String? @map("ENL_CER_PAR") @db.Text
+  certificado_pdf Bytes? @map("CERTIFICADO_PDF")
+  certificado_filename String? @map("CERTIFICADO_FILENAME") @db.VarChar(255)
+  certificado_size Int? @map("CERTIFICADO_SIZE")
   fec_cer_par DateTime? @map("FEC_CER_PAR") @db.Date
   fec_evaluacion DateTime? @map("FEC_EVALUACION") @db.Timestamp
   
@@ -310,7 +312,9 @@ model ParticipacionCurso {
   fecha_evaluacion DateTime? @map("FECHA_EVALUACION") @db.Timestamp
   
   // Certificación (solo si aprobado = true)
-  enl_cer_par_cur String? @map("ENL_CER_PAR_CUR") @db.Text
+  certificado_pdf Bytes? @map("CERTIFICADO_PDF")
+  certificado_filename String? @map("CERTIFICADO_FILENAME") @db.VarChar(255)
+  certificado_size Int? @map("CERTIFICADO_SIZE")
   fec_cer_par_cur DateTime? @map("FEC_CER_PAR_CUR") @db.Date
   
   // Relación

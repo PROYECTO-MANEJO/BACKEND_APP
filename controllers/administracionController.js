@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const { generarCertificadoAutomatico } = require('../helpers/certificadosHelper');
 const prisma = new PrismaClient();
 
 // =====================================================
@@ -1128,6 +1129,21 @@ const registrarParticipacionEvento = async (req, res) => {
       });
     }
 
+    // Generar certificado automáticamente si está aprobado
+    let certificadoInfo = null;
+    if (aprobado) {
+      try {
+        certificadoInfo = await generarCertificadoAutomatico('evento', inscripcion_id, {
+          aprobado,
+          asi_par: asistencia,
+          asistencia_porcentaje: asistencia
+        });
+      } catch (certError) {
+        console.error('❌ Error al generar certificado automático:', certError);
+        // No falla la operación principal si hay error en el certificado
+      }
+    }
+
     return res.status(200).json({
       success: true,
       message: `Participación de ${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.ape_usu1} registrada exitosamente`,
@@ -1137,7 +1153,8 @@ const registrarParticipacionEvento = async (req, res) => {
         usuario: `${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.ape_usu1}`,
         asistencia_porcentaje: asistencia,
         aprobado: aprobado,
-        estado: aprobado ? 'APROBADO' : 'REPROBADO'
+        estado: aprobado ? 'APROBADO' : 'REPROBADO',
+        certificado: certificadoInfo || null
       }
     });
 
@@ -1255,6 +1272,21 @@ const registrarParticipacionCurso = async (req, res) => {
       });
     }
 
+    // Generar certificado automáticamente si está aprobado
+    let certificadoInfo = null;
+    if (aprobado) {
+      try {
+        certificadoInfo = await generarCertificadoAutomatico('curso', inscripcion_id, {
+          aprobado,
+          nota_final: nota,
+          asistencia_porcentaje: asistencia
+        });
+      } catch (certError) {
+        console.error('❌ Error al generar certificado automático:', certError);
+        // No falla la operación principal si hay error en el certificado
+      }
+    }
+
     return res.status(200).json({
       success: true,
       message: `Participación de ${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.ape_usu1} registrada exitosamente`,
@@ -1265,7 +1297,8 @@ const registrarParticipacionCurso = async (req, res) => {
         asistencia_porcentaje: asistencia,
         nota_final: nota,
         aprobado: aprobado,
-        estado: aprobado ? 'APROBADO' : 'REPROBADO'
+        estado: aprobado ? 'APROBADO' : 'REPROBADO',
+        certificado: certificadoInfo || null
       }
     });
 

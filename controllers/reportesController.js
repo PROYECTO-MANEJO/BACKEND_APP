@@ -4,6 +4,8 @@ const getStream = require('get-stream');
 const { PassThrough } = require('stream');
 const prisma = new PrismaClient();
 
+
+
 async function guardarReporteFinanciero(req, res) {
   try {
     // 🔍 Inscripciones aprobadas a eventos
@@ -291,10 +293,183 @@ async function descargarReportePorId(req, res) {
     res.status(500).json({ success: false, message: 'Error al descargar el reporte' });
   }
 }
-
 module.exports = {
   guardarReporteFinanciero,
   listarReportesPorTipo,
   descargarReportePorId,
   generarReporteUsuarios
+};
+
+async function listarReportesPorTipo(req, res) {
+  const { tipo } = req.query;
+  if (!tipo) return res.status(400).json({ success: false, message: 'Tipo de reporte requerido' });
+  try {
+    const reportes = await prisma.reporte.findMany({
+      where: { tipo },
+      orderBy: { fecha_generado: 'desc' },
+      select: { id_rep: true, nombre_archivo: true, fecha_generado: true }
+    });
+    res.json({ success: true, reportes });
+  } catch (err) {
+    console.error('[Error al listar reportes]', err);
+    res.status(500).json({ success: false, message: 'Error al obtener el historial' });
+  }
+}
+
+async function descargarReportePorId(req, res) {
+  const { id } = req.params;
+  try {
+    const reporte = await prisma.reporte.findUnique({ where: { id_rep: id } });
+    if (!reporte) return res.status(404).json({ success: false, message: 'Reporte no encontrado' });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${reporte.nombre_archivo}"`);
+    res.send(reporte.archivo_pdf);
+  } catch (err) {
+    console.error('[Error al descargar reporte]', err);
+    res.status(500).json({ success: false, message: 'Error al descargar el reporte' });
+  }
+}
+
+async function generarReporteEventos(req, res) {
+  try {
+    const inscripciones = await prisma.inscripcion.findMany({
+      include: {
+        usuario: { select: { nom_usu1: true, nom_usu2: true, ape_usu1: true, ape_usu2: true } },
+        evento: { select: { nom_eve: true, fec_ini_eve: true, fec_fin_eve: true } }
+      }
+    });
+
+    const agrupados = {};
+    inscripciones.forEach(insc => {
+      const nombreEvento = insc.evento.nom_eve;
+      if (!agrupados[nombreEvento]) {
+        agrupados[nombreEvento] = {
+          evento: insc.evento,
+          participantes: []
+        };
+      }
+      const u = insc.usuario;
+      agrupados[nombreEvento].participantes.push(`${u.nom_usu1} ${u.nom_usu2 ?? ''} ${u.ape_usu1} ${u.ape_usu2}`);
+    });
+
+    const doc = new PDFDocument({ margin: 50 });
+    const stream = new PassThrough();
+    const bufferPromise = getStream.buffer(stream);
+    doc.pipe(stream);
+
+    doc.rect(40, 40, 515, 712).stroke();
+    doc.fontSize(10).font('Times-Roman')
+      .text('Sistema de Gestión de Eventos', 110, 50)
+      .text('Reporte Generado Automáticamente', 110, 65)
+      .text(`Fecha: ${new Date().toLocaleDateString('es-EC')}`, 110, 80);
+
+    doc.moveDown(2);
+    doc.fillColor('black').fontSize(18).font('Times-Bold')
+      .text('REPORTE DE EVENTOS', { align: 'center' });
+    doc.moveDown(1.5);
+
+    for (const clave in agrupados) {
+      const { evento, participantes } = agrupados[clave];
+      doc.fontSize(12).font('Times-Bold').text(`Evento: ${evento.nom_eve}`);
+      doc.fontSize(10).font('Times-Roman')
+        .text(`Fecha Inicio: ${evento.fec_ini_eve.toLocaleDateString('es-EC')}`)
+        .text(`Fecha Fin: ${evento.fec_fin_eve.toLocaleDateString('es-EC')}`)
+        .text('Participantes:');
+      participantes.forEach((p, i) => {
+        doc.text(`${i + 1}. ${p}`);
+      });
+      doc.moveDown(1);
+    }
+
+    doc.lineWidth(0.5).moveTo(50, 770 - 20).lineTo(545, 770 - 20).stroke();
+    doc.fontSize(9).font('Times-Italic').fillColor('gray')
+      .text('© 2025 - Sistema de Gestión de Eventos', 50, 760, { align: 'center', width: 500 });
+
+    doc.end();
+    const buffer = await bufferPromise;
+    await prisma.reporte.create({
+      data: { tipo: 'EVENTOS', nombre_archivo: `reporte_eventos_${Date.now()}.pdf`, archivo_pdf: buffer }
+    });
+
+    res.status(201).json({ success: true, message: 'Reporte de eventos generado y almacenado correctamente' });
+  } catch (error) {
+    console.error('[ERROR][Generar PDF Eventos]', error);
+    res.status(500).json({ success: false, message: 'Error al generar y guardar el reporte de eventos' });
+  }
+}
+
+async function generarReporteCursos(req, res) {
+  try {
+    const inscripciones = await prisma.inscripcionCurso.findMany({
+      include: {
+        usuario: { select: { nom_usu1: true, nom_usu2: true, ape_usu1: true, ape_usu2: true } },
+        curso: { select: { nom_cur: true, fec_ini_cur: true, fec_fin_cur: true } }
+      }
+    });
+
+    const agrupados = {};
+    inscripciones.forEach(insc => {
+      const nombreCurso = insc.curso.nom_cur;
+      if (!agrupados[nombreCurso]) {
+        agrupados[nombreCurso] = {
+          curso: insc.curso,
+          participantes: []
+        };
+      }
+      const u = insc.usuario;
+      agrupados[nombreCurso].participantes.push(`${u.nom_usu1} ${u.nom_usu2 ?? ''} ${u.ape_usu1} ${u.ape_usu2}`);
+    });
+
+    const doc = new PDFDocument({ margin: 50 });
+    const stream = new PassThrough();
+    const bufferPromise = getStream.buffer(stream);
+    doc.pipe(stream);
+
+    doc.rect(40, 40, 515, 712).stroke();
+    doc.fontSize(10).font('Times-Roman')
+      .text('Sistema de Gestión de Cursos', 110, 50)
+      .text('Reporte Generado Automáticamente', 110, 65)
+      .text(`Fecha: ${new Date().toLocaleDateString('es-EC')}`, 110, 80);
+
+    doc.moveDown(2);
+    doc.fillColor('black').fontSize(18).font('Times-Bold')
+      .text('REPORTE DE CURSOS', { align: 'center' });
+    doc.moveDown(1.5);
+
+    for (const clave in agrupados) {
+      const { curso, participantes } = agrupados[clave];
+      doc.fontSize(12).font('Times-Bold').text(`Curso: ${curso.nom_cur}`);
+      doc.fontSize(10).font('Times-Roman')
+        .text(`Fecha Inicio: ${curso.fec_ini_cur.toLocaleDateString('es-EC')}`)
+        .text(`Fecha Fin: ${curso.fec_fin_cur.toLocaleDateString('es-EC')}`)
+        .text('Estudiantes:');
+      participantes.forEach((p, i) => {
+        doc.text(`${i + 1}. ${p}`);
+      });
+      doc.moveDown(1);
+    }
+
+    doc.lineWidth(0.5).moveTo(50, 770 - 20).lineTo(545, 770 - 20).stroke();
+    doc.fontSize(9).font('Times-Italic').fillColor('gray')
+      .text('© 2025 - Sistema de Gestión de Cursos', 50, 760, { align: 'center', width: 500 });
+
+    doc.end();
+    const buffer = await bufferPromise;
+    await prisma.reporte.create({
+      data: { tipo: 'CURSOS', nombre_archivo: `reporte_cursos_${Date.now()}.pdf`, archivo_pdf: buffer }
+    });
+
+    res.status(201).json({ success: true, message: 'Reporte de cursos generado y almacenado correctamente' });
+  } catch (error) {
+    console.error('[ERROR][Generar PDF Cursos]', error);
+    res.status(500).json({ success: false, message: 'Error al generar y guardar el reporte de cursos' });
+  }
+}
+
+module.exports = {
+  guardarReporteFinanciero,
+  listarReportesPorTipo,
+  descargarReportePorId,
+  generarReporteEventos,
+  generarReporteCursos
 };
