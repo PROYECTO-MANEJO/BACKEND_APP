@@ -868,6 +868,111 @@ const regenerarCertificado = async (req, res) => {
   }
 };
 
+/**
+ * Obtener todas las participaciones del usuario que ya han sido evaluadas
+ */
+const obtenerParticipacionesTerminadas = async (req, res) => {
+  try {
+    const userId = req.uid;
+
+    // COPIA EXACTA DEL DEBUG
+    const participacionesEventos = await prisma.participacion.findMany({
+      where: {
+        inscripcion: {
+          id_usu_ins: userId
+        }
+      },
+      include: {
+        inscripcion: {
+          include: {
+            evento: {
+              select: {
+                nom_eve: true
+              }
+            },
+            usuario: {
+              select: {
+                nom_usu1: true,
+                ape_usu1: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    const participacionesCursos = await prisma.participacionCurso.findMany({
+      where: {
+        inscripcionCurso: {
+          id_usu_ins_cur: userId
+        }
+      },
+      include: {
+        inscripcionCurso: {
+          include: {
+            curso: {
+              select: {
+                nom_cur: true
+              }
+            },
+            usuario: {
+              select: {
+                nom_usu1: true,
+                ape_usu1: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Participaciones evaluadas obtenidas exitosamente',
+      data: {
+        userId: userId,
+        eventos: participacionesEventos
+          .filter(p => p.asi_par !== null) // Solo evaluados
+          .map(p => ({
+            id_par: p.id_par,
+            id_ins_per: p.id_ins_per,
+            aprobado: p.aprobado,
+            asi_par: p.asi_par,
+            tiene_certificado_pdf: !!p.certificado_pdf,
+            certificado_filename: p.certificado_filename,
+            certificado_size: p.certificado_size,
+            fec_cer_par: p.fec_cer_par,
+            evento: p.inscripcion?.evento?.nom_eve,
+            usuario: `${p.inscripcion?.usuario?.nom_usu1} ${p.inscripcion?.usuario?.ape_usu1}`
+          })),
+        cursos: participacionesCursos
+          .filter(p => p.nota_final !== null) // Solo evaluados
+          .map(p => ({
+            id_par_cur: p.id_par_cur,
+            id_ins_cur_per: p.id_ins_cur_per,
+            aprobado: p.aprobado,
+            nota_final: p.nota_final,
+            asistencia_porcentaje: p.asistencia_porcentaje,
+            tiene_certificado_pdf: !!p.certificado_pdf,
+            certificado_filename: p.certificado_filename,
+            certificado_size: p.certificado_size,
+            fec_cer_par_cur: p.fec_cer_par_cur,
+            curso: p.inscripcionCurso?.curso?.nom_cur,
+            usuario: `${p.inscripcionCurso?.usuario?.nom_usu1} ${p.inscripcionCurso?.usuario?.ape_usu1}`
+          }))
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error al obtener participaciones terminadas:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 // =====================================================
 // EXPORTACIONES
 // =====================================================
@@ -878,5 +983,6 @@ module.exports = {
   descargarCertificado,
   obtenerMisCertificados,
   regenerarCertificado,
-  debugCertificados
+  debugCertificados,
+  obtenerParticipacionesTerminadas
 };
