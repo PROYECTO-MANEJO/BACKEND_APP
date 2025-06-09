@@ -1,0 +1,5 @@
+-- DropIndex
+DROP INDEX "Usuario_PAS_USU_key";
+
+-- AlterTable
+ALTER TABLE "Usuario" ALTER COLUMN "PAS_USU" SET DATA TYPE VARCHAR(60);
