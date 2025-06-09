@@ -293,42 +293,7 @@ async function descargarReportePorId(req, res) {
     res.status(500).json({ success: false, message: 'Error al descargar el reporte' });
   }
 }
-module.exports = {
-  guardarReporteFinanciero,
-  listarReportesPorTipo,
-  descargarReportePorId,
-  generarReporteUsuarios
-};
 
-async function listarReportesPorTipo(req, res) {
-  const { tipo } = req.query;
-  if (!tipo) return res.status(400).json({ success: false, message: 'Tipo de reporte requerido' });
-  try {
-    const reportes = await prisma.reporte.findMany({
-      where: { tipo },
-      orderBy: { fecha_generado: 'desc' },
-      select: { id_rep: true, nombre_archivo: true, fecha_generado: true }
-    });
-    res.json({ success: true, reportes });
-  } catch (err) {
-    console.error('[Error al listar reportes]', err);
-    res.status(500).json({ success: false, message: 'Error al obtener el historial' });
-  }
-}
-
-async function descargarReportePorId(req, res) {
-  const { id } = req.params;
-  try {
-    const reporte = await prisma.reporte.findUnique({ where: { id_rep: id } });
-    if (!reporte) return res.status(404).json({ success: false, message: 'Reporte no encontrado' });
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${reporte.nombre_archivo}"`);
-    res.send(reporte.archivo_pdf);
-  } catch (err) {
-    console.error('[Error al descargar reporte]', err);
-    res.status(500).json({ success: false, message: 'Error al descargar el reporte' });
-  }
-}
 
 async function generarReporteEventos(req, res) {
   try {
@@ -471,5 +436,6 @@ module.exports = {
   listarReportesPorTipo,
   descargarReportePorId,
   generarReporteEventos,
-  generarReporteCursos
+  generarReporteCursos,
+  generarReporteUsuarios
 };
