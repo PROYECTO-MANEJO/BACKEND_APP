@@ -10,7 +10,9 @@ const {
   rechazarInscripcionEvento,
   aprobarInscripcionCurso,
   rechazarInscripcionCurso,
-  descargarComprobantePago
+  descargarComprobantePago,
+  registrarParticipacionEvento,
+  registrarParticipacionCurso
 } = require('../controllers/administracionController');
 
 // =====================================================
@@ -117,5 +119,31 @@ router.get('/comprobante/:tipo/:idInscripcion', [
   validateJWT,
   validateAdmin
 ], descargarComprobantePago);
+
+// =====================================================
+// RUTAS PARA GESTIÓN DE CALIFICACIONES Y ASISTENCIA
+// =====================================================
+
+/**
+ * POST /api/administracion/evento/:idEvento/participacion
+ * Registrar asistencia en evento
+ * Body: { inscripcion_id: string, asistencia: boolean }
+ * Requiere: Autenticación + Rol Admin
+ */
+router.post('/evento/:idEvento/participacion', [
+  validateJWT,
+  validateAdmin
+], registrarParticipacionEvento);
+
+/**
+ * POST /api/administracion/curso/:idCurso/participacion
+ * Registrar calificación y asistencia en curso
+ * Body: { inscripcion_id: string, asistencia: boolean, nota_final?: number }
+ * Requiere: Autenticación + Rol Admin
+ */
+router.post('/curso/:idCurso/participacion', [
+  validateJWT,
+  validateAdmin
+], registrarParticipacionCurso);
 
 module.exports = router; 
