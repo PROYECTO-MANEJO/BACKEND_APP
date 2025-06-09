@@ -1040,14 +1040,22 @@ const descargarComprobantePago = async (req, res) => {
 const registrarParticipacionEvento = async (req, res) => {
   try {
     const { idEvento } = req.params;
-    const { inscripcion_id, asistencia } = req.body;
-    const adminId = req.user.id_usu;
+    const { inscripcion_id, asistencia_porcentaje } = req.body;
 
     // Validar datos requeridos
-    if (!inscripcion_id || asistencia === undefined) {
+    if (!inscripcion_id || asistencia_porcentaje === undefined) {
       return res.status(400).json({
         success: false,
-        message: 'ID de inscripción y asistencia son obligatorios'
+        message: 'ID de inscripción y porcentaje de asistencia son obligatorios'
+      });
+    }
+
+    // Validar porcentaje de asistencia
+    const asistencia = parseInt(asistencia_porcentaje);
+    if (isNaN(asistencia) || asistencia < 0 || asistencia > 100) {
+      return res.status(400).json({
+        success: false,
+        message: 'El porcentaje de asistencia debe ser un número entre 0 y 100'
       });
     }
 
@@ -1088,6 +1096,9 @@ const registrarParticipacionEvento = async (req, res) => {
       });
     }
 
+    // Calcular aprobación automáticamente (70% mínimo para aprobar)
+    const aprobado = asistencia >= 70;
+
     // Buscar si ya existe un registro de participación
     let participacion = await prisma.participacion.findFirst({
       where: {
@@ -1095,16 +1106,12 @@ const registrarParticipacionEvento = async (req, res) => {
       }
     });
 
-    // Para eventos, convertir asistencia booleana a porcentaje (100% o 0%)
-    const asistenciaPorcentaje = asistencia ? 100 : 0;
-    const aprobado = asistenciaPorcentaje >= 80; // 80% mínimo para aprobar
-
     if (participacion) {
       // Actualizar registro existente
       participacion = await prisma.participacion.update({
         where: { id_par: participacion.id_par },
         data: {
-          asi_par: asistenciaPorcentaje,
+          asi_par: asistencia,
           aprobado: aprobado,
           fec_evaluacion: new Date()
         }
@@ -1114,7 +1121,7 @@ const registrarParticipacionEvento = async (req, res) => {
       participacion = await prisma.participacion.create({
         data: {
           id_ins_per: inscripcion_id,
-          asi_par: asistenciaPorcentaje,
+          asi_par: asistencia,
           aprobado: aprobado,
           fec_evaluacion: new Date()
         }
@@ -1123,12 +1130,14 @@ const registrarParticipacionEvento = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: `Asistencia de ${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.ape_usu1} registrada exitosamente`,
+      message: `Participación de ${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.ape_usu1} registrada exitosamente`,
       data: {
         participacion,
         evento: inscripcion.evento.nom_eve,
         usuario: `${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.ape_usu1}`,
-        asistencia: asistencia ? 'Presente' : 'Ausente'
+        asistencia_porcentaje: asistencia,
+        aprobado: aprobado,
+        estado: aprobado ? 'APROBADO' : 'REPROBADO'
       }
     });
 
@@ -1148,26 +1157,32 @@ const registrarParticipacionEvento = async (req, res) => {
 const registrarParticipacionCurso = async (req, res) => {
   try {
     const { idCurso } = req.params;
-    const { inscripcion_id, asistencia, nota_final } = req.body;
-    const adminId = req.user.id_usu;
+    const { inscripcion_id, asistencia_porcentaje, nota_final } = req.body;
 
     // Validar datos requeridos
-    if (!inscripcion_id || asistencia === undefined) {
+    if (!inscripcion_id || asistencia_porcentaje === undefined || nota_final === undefined) {
       return res.status(400).json({
         success: false,
-        message: 'ID de inscripción y asistencia son obligatorios'
+        message: 'ID de inscripción, porcentaje de asistencia y nota final son obligatorios'
       });
     }
 
-    // Validar nota si se proporciona
-    if (nota_final !== null && nota_final !== undefined) {
-      const nota = parseFloat(nota_final);
-      if (isNaN(nota) || nota < 0 || nota > 100) {
-        return res.status(400).json({
-          success: false,
-          message: 'La nota debe ser un número entre 0 y 100'
-        });
-      }
+    // Validar porcentaje de asistencia
+    const asistencia = parseFloat(asistencia_porcentaje);
+    if (isNaN(asistencia) || asistencia < 0 || asistencia > 100) {
+      return res.status(400).json({
+        success: false,
+        message: 'El porcentaje de asistencia debe ser un número entre 0 y 100'
+      });
+    }
+
+    // Validar nota final
+    const nota = parseFloat(nota_final);
+    if (isNaN(nota) || nota < 0 || nota > 100) {
+      return res.status(400).json({
+        success: false,
+        message: 'La nota final debe ser un número entre 0 y 100'
+      });
     }
 
     // Verificar que la inscripción existe y pertenece al curso
@@ -1207,6 +1222,9 @@ const registrarParticipacionCurso = async (req, res) => {
       });
     }
 
+    // Calcular aprobación automáticamente (nota >= 70 && asistencia >= 70%)
+    const aprobado = nota >= 70 && asistencia >= 70;
+
     // Buscar si ya existe un registro de participación
     let participacion = await prisma.participacionCurso.findFirst({
       where: {
@@ -1214,16 +1232,9 @@ const registrarParticipacionCurso = async (req, res) => {
       }
     });
 
-    // Para cursos, convertir asistencia booleana a porcentaje (100% o 0%)
-    const asistenciaPorcentaje = asistencia ? 100 : 0;
-    const notaFinalDecimal = nota_final !== null && nota_final !== undefined ? parseFloat(nota_final) : 0;
-    
-    // Calcular si aprobó (nota >= 70 && asistencia >= 75%)
-    const aprobado = notaFinalDecimal >= 70 && asistenciaPorcentaje >= 75;
-
     const dataToUpdate = {
-      asistencia_porcentaje: asistenciaPorcentaje,
-      nota_final: notaFinalDecimal,
+      asistencia_porcentaje: asistencia,
+      nota_final: nota,
       aprobado: aprobado,
       fecha_evaluacion: new Date()
     };
@@ -1246,13 +1257,15 @@ const registrarParticipacionCurso = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: `Calificación de ${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.ape_usu1} registrada exitosamente`,
+      message: `Participación de ${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.ape_usu1} registrada exitosamente`,
       data: {
         participacion,
         curso: inscripcion.curso.nom_cur,
         usuario: `${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.ape_usu1}`,
-        asistencia: asistencia ? 'Presente' : 'Ausente',
-        nota: nota_final || 'No asignada'
+        asistencia_porcentaje: asistencia,
+        nota_final: nota,
+        aprobado: aprobado,
+        estado: aprobado ? 'APROBADO' : 'REPROBADO'
       }
     });
 
