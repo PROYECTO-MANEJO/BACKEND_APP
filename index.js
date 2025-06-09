@@ -39,7 +39,7 @@ app.use('/api/admin/inscripciones', require('./routes/inscripcionesCursos')); //
 app.use('/api/administracion', require('./routes/administracion')); // Nueva ruta para administración completa
 
 app.use('/api/reportes', require('./routes/reportes')); // Nueva ruta
-// Nueva ruta
+app.use('/api/certificados', require('./routes/certificados')); // Rutas para certificados
 
 
 // Función para iniciar el servidor
