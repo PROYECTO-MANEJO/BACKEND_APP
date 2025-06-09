@@ -9,6 +9,14 @@ const prisma = new PrismaClient();
 const forgotPassword = async (req, res) => {
   const { email } = req.body;
   console.log(`Solicitud de recuperación de contraseña para: ${email}`);
+  
+  if (!email) {
+    return res.status(400).json({
+      success: false,
+      message: 'El correo electrónico es requerido'
+    });
+  }
+
   try {
     // Buscar la cuenta y su usuario asociado
     const cuenta = await prisma.cuenta.findFirst({
@@ -16,7 +24,7 @@ const forgotPassword = async (req, res) => {
       include: { usuario: true }
     });
 
-    // Siempre responder que se envió el correo si la cuenta existe o no
+    // Siempre responder que se envió el correo si la cuenta existe o no (por seguridad)
     if (!cuenta || !cuenta.usuario) {
       return res.json({
         success: true,
@@ -46,7 +54,7 @@ const forgotPassword = async (req, res) => {
       message: 'Si existe una cuenta con ese correo, se enviarán instrucciones para restablecer la contraseña.'
     });
   } catch (error) {
-    console.error(error);
+    console.error('[forgotPassword] Error:', error);
     return res.status(500).json({
       success: false,
       message: 'Error en el servidor, contacte al administrador'
@@ -57,23 +65,47 @@ const forgotPassword = async (req, res) => {
 // Endpoint para restablecer la contraseña
 const resetPassword = async (req, res) => {
   const { token, password } = req.body;
+  
+  if (!token || !password) {
+    return res.status(400).json({
+      success: false,
+      message: 'Token y contraseña son requeridos'
+    });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({
+      success: false,
+      message: 'La contraseña debe tener al menos 6 caracteres'
+    });
+  }
+
   try {
     console.log("[resetPassword] Iniciando verificación del token...");
+    
     // Obtener todos los usuarios con token vigente
     const usuariosValidos = await prisma.usuario.findMany({
-      where: { resetTokenExpiry: { gt: new Date() } }
+      where: { 
+        resetTokenExpiry: { gt: new Date() },
+        resetToken: { not: null }
+      }
     });
-    console.log("[resetPassword] Usuarios con token vigente:", usuariosValidos.map(u => u.id_usu));
+    console.log("[resetPassword] Usuarios con token vigente:", usuariosValidos.length);
 
     let usuario = null;
     for (const u of usuariosValidos) {
       // Log para cada usuario
       console.log(`[resetPassword] Comparando token para usuario: ${u.id_usu}`);
-      const compareResult = await bcrypt.compare(token, u.resetToken);
-      console.log(`[resetPassword] Resultado de bcrypt.compare para ${u.id_usu}:`, compareResult);
-      if (compareResult) {
-        usuario = u;
-        break;
+      try {
+        const compareResult = await bcrypt.compare(token, u.resetToken);
+        console.log(`[resetPassword] Resultado de bcrypt.compare para ${u.id_usu}:`, compareResult);
+        if (compareResult) {
+          usuario = u;
+          break;
+        }
+      } catch (compareError) {
+        console.error(`[resetPassword] Error comparando token para usuario ${u.id_usu}:`, compareError);
+        continue;
       }
     }
 
@@ -86,6 +118,7 @@ const resetPassword = async (req, res) => {
     }
 
     console.log("[resetPassword] Usuario encontrado:", usuario.id_usu);
+    
     // Encriptar la nueva contraseña
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
@@ -101,7 +134,7 @@ const resetPassword = async (req, res) => {
         resetTokenExpiry: null
       }
     });
-    console.log("[resetPassword] Usuario actualizado:", updateResult);
+    console.log("[resetPassword] Usuario actualizado exitosamente");
 
     return res.json({
       success: true,
@@ -118,22 +151,38 @@ const resetPassword = async (req, res) => {
 
 // Endpoint para verificar la validez del token
 const verifyResetToken = async (req, res) => {
-    console.log("el body es:",req.body);
+  console.log("Verificando token - body:", req.body);
   const { token } = req.body;
-  console.log("token es:",token)
+  
+  if (!token) {
+    return res.status(400).json({
+      success: false,
+      message: 'Token es requerido'
+    });
+  }
+
+  console.log("Token recibido:", token);
+  
   try {
     // Obtener todos los usuarios con token vigente
     const usuariosValidos = await prisma.usuario.findMany({
       where: {
-        resetTokenExpiry: { gt: new Date() }
+        resetTokenExpiry: { gt: new Date() },
+        resetToken: { not: null }
       }
     });
-    console.log(usuariosValidos ? `Usuarios con token vigente: ${usuariosValidos.map(u => u.id_usu)}` : "No hay usuarios con token vigente");
+    console.log(usuariosValidos ? `Usuarios con token vigente: ${usuariosValidos.length}` : "No hay usuarios con token vigente");
+    
     let usuarioValido = null;
     for (const u of usuariosValidos) {
-      if (await bcrypt.compare(token, u.resetToken)) {
-        usuarioValido = u;
-        break;
+      try {
+        if (await bcrypt.compare(token, u.resetToken)) {
+          usuarioValido = u;
+          break;
+        }
+      } catch (compareError) {
+        console.error(`Error comparando token para usuario ${u.id_usu}:`, compareError);
+        continue;
       }
     }
 
@@ -149,7 +198,7 @@ const verifyResetToken = async (req, res) => {
       message: 'Token válido'
     });
   } catch (error) {
-    console.error(error);
+    console.error('[verifyResetToken] Error:', error);
     return res.status(500).json({
       success: false,
       message: 'Error en el servidor, contacte al administrador'

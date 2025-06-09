@@ -61,6 +61,9 @@ router.get('/document-status', validateJWT, getDocumentStatus);
 // ✅ NUEVA RUTA PARA ELIMINAR DOCUMENTOS
 router.delete('/delete-documents/:tipo', validateJWT, deleteDocuments);
 
+// ✅ RUTA PARA QUE EL USUARIO DESCARGUE SUS PROPIOS DOCUMENTOS
+router.get('/my-document/:tipo', validateJWT, downloadDocument);
+
 // ✅ NUEVAS RUTAS PARA VERIFICACIÓN DE DOCUMENTOS (solo MASTER)
 // Obtener usuarios con documentos pendientes
 router.get('/pending-documents', [validateJWT, validateRoles('MASTER')], getUsersWithPendingDocuments);
