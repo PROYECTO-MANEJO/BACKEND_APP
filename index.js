@@ -32,9 +32,15 @@ app.use('/api/inscripciones', require('./routes/inscripciones'));
 app.use('/api/eventosPorCarrera', require('./routes/eventosPorCarrera')); // Nueva ruta
 app.use('/api/cursosPorCarrera', require('./routes/cursoPorCarrera')); 
 app.use('/api/inscripcionesCursos', require('./routes/inscripcionesCursos')); // Nueva ruta
+
+
 app.use('/api/admin/inscripciones', require('./routes/inscripciones')); // Rutas admin para inscripciones
 app.use('/api/admin/inscripciones', require('./routes/inscripcionesCursos')); // Rutas admin para inscripciones de cursos
 app.use('/api/administracion', require('./routes/administracion')); // Nueva ruta para administración completa
+
+app.use('/api/reportes', require('./routes/reportes')); // Nueva ruta
+// Nueva ruta
+
 
 // Función para iniciar el servidor
 const startServer = async () => {
