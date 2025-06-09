@@ -130,6 +130,121 @@ async function guardarReporteFinanciero(req, res) {
   }
 }
 
+async function generarReporteUsuarios(req, res) {
+  try {
+    const usuarios = await prisma.usuario.findMany({
+      include: {
+        cuentas: {
+          select: {
+            rol_cue: true,
+            cor_cue: true
+          }
+        },
+        inscripcionesCurso: {
+          include: {
+            curso: {
+              select: {
+                nom_cur: true,
+                fec_ini_cur: true,
+                fec_fin_cur: true
+              }
+            }
+          }
+        },
+        inscripciones: {
+          include: {
+            evento: {
+              select: {
+                nom_eve: true,
+                fec_ini_eve: true,
+                fec_fin_eve: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    const doc = new PDFDocument({ margin: 50 });
+    const stream = new PassThrough();
+    const bufferPromise = getStream.buffer(stream);
+    doc.pipe(stream);
+
+    doc.rect(40, 40, 515, 712).stroke();
+    doc.fontSize(10).font('Times-Roman')
+      .text('Sistema de Gestión Académica', 110, 50)
+      .text('Reporte de Usuarios y Cursos/Eventos', 110, 65)
+      .text(`Fecha: ${new Date().toLocaleDateString('es-EC')}`, 110, 80);
+
+    doc.moveDown(2);
+    doc.fillColor('black').fontSize(18).font('Times-Bold')
+      .text('REPORTE DE USUARIOS', { align: 'center' });
+    doc.moveDown(1.5);
+
+    usuarios.forEach(u => {
+      const nombreCompleto = `${u.nom_usu1} ${u.nom_usu2 ?? ''} ${u.ape_usu1} ${u.ape_usu2}`.trim();
+      const cuenta = u.cuentas[0];
+      const correo = cuenta?.cor_cue || 'Sin correo';
+      const rol = cuenta?.rol_cue || 'No definido';
+
+      doc.fontSize(12).font('Times-Bold').text(`Usuario: ${nombreCompleto}`);
+      doc.fontSize(10).font('Times-Roman')
+        .text(`Cédula: ${u.ced_usu}`)
+        .text(`Correo: ${correo}`)
+        .text(`Rol: ${rol}`);
+
+      doc.moveDown(0.5);
+      doc.font('Times-Bold').text('Cursos Inscritos:');
+      doc.font('Times-Roman');
+      if (u.inscripcionesCurso.length === 0) {
+        doc.text('- No tiene cursos inscritos');
+      } else {
+        u.inscripcionesCurso.forEach((insc, i) => {
+          const c = insc.curso;
+          doc.text(`${i + 1}. ${c.nom_cur} (${c.fec_ini_cur.toLocaleDateString('es-EC')} - ${c.fec_fin_cur.toLocaleDateString('es-EC')})`);
+        });
+      }
+
+      doc.moveDown(0.5);
+      doc.font('Times-Bold').text('Eventos Inscritos:');
+      doc.font('Times-Roman');
+      if (u.inscripciones.length === 0) {
+        doc.text('- No tiene eventos inscritos');
+      } else {
+        u.inscripciones.forEach((insc, i) => {
+          const e = insc.evento;
+          doc.text(`${i + 1}. ${e.nom_eve} (${e.fec_ini_eve.toLocaleDateString('es-EC')} - ${e.fec_fin_eve?.toLocaleDateString('es-EC') || 'sin fecha fin'})`);
+        });
+      }
+
+      doc.moveDown(1);
+    });
+
+    const bottomY = 770;
+    doc.lineWidth(0.5).moveTo(50, bottomY - 20).lineTo(545, bottomY - 20).stroke();
+    doc.fontSize(9).font('Times-Italic').fillColor('gray')
+      .text('© 2025 - FISEI UTA | Sistema de Gestión de Cursos y Eventos', 50, bottomY - 10, { align: 'center', width: 500 });
+
+    doc.end();
+    const buffer = await bufferPromise;
+    await prisma.reporte.create({
+      data: {
+        tipo: 'USUARIOS',
+        nombre_archivo: `reporte_usuarios_${Date.now()}.pdf`,
+        archivo_pdf: buffer
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Reporte de usuarios generado correctamente'
+    });
+  } catch (error) {
+    console.error('[ERROR][Generar PDF Usuarios]', error);
+    res.status(500).json({ success: false, message: 'Error al generar el reporte de usuarios' });
+  }
+}
+
 
 // 📄 GET: /api/reportes?tipo=FINANZAS
 async function listarReportesPorTipo(req, res) {
@@ -181,7 +296,8 @@ async function descargarReportePorId(req, res) {
 module.exports = {
   guardarReporteFinanciero,
   listarReportesPorTipo,
-  descargarReportePorId
+  descargarReportePorId,
+  generarReporteUsuarios
 };
 
 async function listarReportesPorTipo(req, res) {

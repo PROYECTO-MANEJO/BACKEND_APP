@@ -6,7 +6,8 @@ const {
   generarReporteEventos,
   generarReporteCursos,
   listarReportesPorTipo,
-  descargarReportePorId
+  descargarReportePorId,
+  generarReporteUsuarios
 } = require('../controllers/reportesController');
 
 // ==================== RUTAS PARA REPORTES ====================
@@ -26,6 +27,9 @@ router.get('/', listarReportesPorTipo);
 // Descargar PDF de reporte por ID
 router.get('/download/:id', descargarReportePorId);
 
-// =============================================================
 
+//PARA REPORTES DE USUARIOS
+ router.post('/usuarios/pdf', generarReporteUsuarios);
+
+// =============================================================
 module.exports = router;
