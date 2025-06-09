@@ -252,13 +252,22 @@ const login = async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        // Buscar la cuenta por el correo electrónico
+        // Buscar la cuenta por el correo electrónico con información completa del usuario
         const cuenta = await prisma.cuenta.findFirst({
             where: {
                 cor_cue: email
             },
             include: {
-                usuario: true
+                usuario: {
+                    include: {
+                        carrera: {
+                            select: {
+                                id_car: true,
+                                nom_car: true
+                            }
+                        }
+                    }
+                }
             }
         });
 
@@ -295,15 +304,43 @@ const login = async (req, res) => {
             token = await generateJWT(cuenta.usuario.id_usu);
         }
 
+        const user = cuenta.usuario;
+        const isEstudiante = cuenta.rol_cue === 'ESTUDIANTE';
+
+        // Formatear la respuesta completa incluyendo estado de documentos
+        const userProfile = {
+            id_usu: user.id_usu,
+            ced_usu: user.ced_usu,
+            nom_usu1: user.nom_usu1,
+            nom_usu2: user.nom_usu2,
+            ape_usu1: user.ape_usu1,
+            ape_usu2: user.ape_usu2,
+            fec_nac_usu: user.fec_nac_usu,
+            num_tel_usu: user.num_tel_usu,
+            id_car_per: user.id_car_per,
+            email: cuenta.cor_cue,
+            rol: cuenta.rol_cue,
+            carrera: user.carrera ? {
+                id_car: user.carrera.id_car,
+                nom_car: user.carrera.nom_car
+            } : null,
+            // ✅ INCLUIR ESTADO DE DOCUMENTOS
+            documentos: {
+                cedula_subida: !!user.enl_ced_pdf,
+                matricula_subida: !!user.enl_mat_pdf,
+                matricula_requerida: isEstudiante,
+                documentos_verificados: user.documentos_verificados,
+                fecha_verificacion: user.fec_verificacion_docs,
+                archivos_completos: isEstudiante 
+                    ? (!!user.enl_ced_pdf && !!user.enl_mat_pdf)
+                    : !!user.enl_ced_pdf
+            }
+        };
+
         // Respuesta exitosa
         res.json({
             success: true,
-            user: {
-                id: cuenta.usuario.id_usu,
-                nombre: cuenta.usuario.nom_usu1,
-                apellido: cuenta.usuario.ape_usu1,
-                rol: cuenta.rol_cue
-            },
+            user: userProfile,
             token
         });
 
@@ -329,22 +366,47 @@ const renewToken = async (req, res) => {
             }
         });
 
+        if (!cuenta) {
+            return res.status(404).json({
+                success: false,
+                message: 'Cuenta no encontrada'
+            });
+        }
+
         // Generar un nuevo token según el rol
         let token;
-        if (cuenta && (cuenta.rol_cue === 'ADMINISTRADOR' || cuenta.rol_cue === 'MASTER')) {
+        if (cuenta.rol_cue === 'ADMINISTRADOR' || cuenta.rol_cue === 'MASTER') {
             token = await generateAdminJWT(usuario.id_usu);
         } else {
             token = await generateJWT(usuario.id_usu);
         }
 
-        // Respuesta exitosa
+        // Respuesta simplificada
         res.json({
             success: true,
             user: {
-                id: usuario.id_usu,
-                nombre: usuario.nom_usu1,
-                apellido: usuario.ape_usu1,
-                rol: cuenta ? cuenta.rol_cue : 'USUARIO'
+                id_usu: usuario.id_usu,
+                ced_usu: usuario.ced_usu,
+                nom_usu1: usuario.nom_usu1,
+                nom_usu2: usuario.nom_usu2,
+                ape_usu1: usuario.ape_usu1,
+                ape_usu2: usuario.ape_usu2,
+                fec_nac_usu: usuario.fec_nac_usu,
+                num_tel_usu: usuario.num_tel_usu,
+                id_car_per: usuario.id_car_per,
+                email: cuenta.cor_cue,
+                rol: cuenta.rol_cue,
+                carrera: null,
+                documentos: {
+                    cedula_subida: !!usuario.enl_ced_pdf,
+                    matricula_subida: !!usuario.enl_mat_pdf,
+                    matricula_requerida: cuenta.rol_cue === 'ESTUDIANTE',
+                    documentos_verificados: usuario.documentos_verificados,
+                    fecha_verificacion: usuario.fec_verificacion_docs,
+                    archivos_completos: cuenta.rol_cue === 'ESTUDIANTE' 
+                        ? (!!usuario.enl_ced_pdf && !!usuario.enl_mat_pdf)
+                        : !!usuario.enl_ced_pdf
+                }
             },
             token
         });

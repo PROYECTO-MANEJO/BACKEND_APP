@@ -23,14 +23,44 @@ async function inscribirUsuarioCurso(req, res) {
       });
     }
 
-    // Verificar que el usuario existe
+    // Verificar que el usuario existe y obtener información de documentos
     const usuario = await prisma.usuario.findUnique({
-      where: { id_usu: idUsuario }
+      where: { id_usu: idUsuario },
+      include: {
+        cuentas: {
+          select: {
+            rol_cue: true
+          }
+        }
+      }
     });
 
     if (!usuario) {
       return res.status(404).json({ 
         message: 'Usuario no encontrado' 
+      });
+    }
+
+    // ✅ VERIFICACIÓN OBLIGATORIA DE DOCUMENTOS - SIN EXCEPCIONES
+    const isEstudiante = usuario.cuentas[0]?.rol_cue === 'ESTUDIANTE';
+    
+    // Verificar que los documentos están verificados por el admin
+    if (!usuario.documentos_verificados) {
+      return res.status(400).json({
+        message: 'Debes tener tus documentos verificados por un administrador antes de poder inscribirte. Sube tu cédula' + 
+                 (isEstudiante ? ' y matrícula' : '') + ' en tu perfil y espera la verificación administrativa.'
+      });
+    }
+
+    // Verificar que tiene todos los documentos requeridos subidos
+    const tieneDocumentosCompletos = isEstudiante 
+      ? (!!usuario.enl_ced_pdf && !!usuario.enl_mat_pdf)
+      : !!usuario.enl_ced_pdf;
+
+    if (!tieneDocumentosCompletos) {
+      return res.status(400).json({
+        message: 'Debes subir todos los documentos requeridos (cédula' + 
+                 (isEstudiante ? ' y matrícula' : '') + ') antes de poder inscribirte.'
       });
     }
 
