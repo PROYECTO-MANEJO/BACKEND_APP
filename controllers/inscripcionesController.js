@@ -4,70 +4,50 @@ const prisma = new PrismaClient();
 
 // Inscribir usuario a un evento (validación completa)
 async function inscribirUsuarioEvento(req, res) {
-  const { idUsuario, idEvento, metodoPago, enlacePago } = req.body;
-
-  if (!idUsuario || !idEvento || !metodoPago) {
-    return res.status(400).json({ message: 'Faltan campos obligatorios' });
-  }
-
-  const metodosPermitidos = ['TARJETA DE CREDITO', 'TRANFERENCIA', 'DEPOSITO'];
-  if (!metodosPermitidos.includes(metodoPago)) {
-    return res.status(400).json({ message: 'Método de pago no válido' });
-  }
-
   try {
-    // Obtener la cuenta y su usuario asociado
-    const cuenta = await prisma.cuenta.findFirst({
-      where: { id_usu_per: idUsuario },
-      include: { usuario: true }
+    const { idUsuario, idEvento, metodoPago } = req.body;
+    
+    // Obtener archivo de comprobante si existe
+    const comprobantePago = req.file;
+
+    console.log('📝 Datos de inscripción recibidos:', {
+      idUsuario,
+      idEvento,
+      metodoPago,
+      tieneComprobante: !!comprobantePago
     });
 
-    if (!cuenta) return res.status(404).json({ message: 'Cuenta no encontrada' });
-
-    const rol = cuenta.rol_cue;
-    const carreraId = cuenta.usuario?.id_car_per;
-
-    // Obtener el evento con su tipo de audiencia
-    const evento = await prisma.evento.findUnique({
-      where: { id_eve: idEvento },
-      select: {
-        tipo_audiencia_eve: true
-      }
-    });
-
-    if (!evento) return res.status(404).json({ message: 'Evento no encontrado' });
-
-    // Lógica de validación por tipo de usuario
-    if (rol === 'USUARIO' && evento.tipo_audiencia_eve !== 'PUBLICO_GENERAL') {
-      return res.status(403).json({ message: 'Solo puedes inscribirte en eventos públicos' });
+    // Validaciones básicas
+    if (!idUsuario || !idEvento) {
+      return res.status(400).json({ 
+        message: 'ID de usuario e ID de evento son obligatorios' 
+      });
     }
 
-    if (rol === 'ESTUDIANTE') {
-      if (!carreraId) {
-        return res.status(400).json({ message: 'No tienes una carrera asignada. Contacta al administrador.' });
-      }
+    // Verificar que el usuario existe
+    const usuario = await prisma.usuario.findUnique({
+      where: { id_usu: idUsuario }
+    });
 
-      // Verificar si el evento está permitido para su carrera
-      const permitido = await prisma.eventoPorCarrera.findFirst({
-        where: {
-          id_car_per: carreraId,
-          id_eve_per: idEvento
-        }
+    if (!usuario) {
+      return res.status(404).json({ 
+        message: 'Usuario no encontrado' 
       });
+    }
 
-      if (
-        !permitido &&
-        evento.tipo_audiencia_eve !== 'PUBLICO_GENERAL' &&
-        evento.tipo_audiencia_eve !== 'TODAS_CARRERAS'
-      ) {
-        return res.status(403).json({
-          message: 'Este evento no está habilitado para tu carrera'
-        });
-      }
+    // Verificar que el evento existe
+    const evento = await prisma.evento.findUnique({
+      where: { id_eve: idEvento }
+    });
+
+    if (!evento) {
+      return res.status(404).json({ 
+        message: 'Evento no encontrado' 
+      });
     }
 
     // Verificar si ya está inscrito
-    const yaInscrito = await prisma.inscripcion.findUnique({
+    const inscripcionExistente = await prisma.inscripcion.findUnique({
       where: {
         id_usu_ins_id_eve_ins: {
           id_usu_ins: idUsuario,
@@ -76,27 +56,108 @@ async function inscribirUsuarioEvento(req, res) {
       }
     });
 
-    if (yaInscrito) {
-      return res.status(400).json({ message: 'Ya estás inscrito en este evento' });
+    if (inscripcionExistente) {
+      return res.status(400).json({ 
+        message: 'Ya estás inscrito en este evento' 
+      });
     }
 
-    // Crear inscripción
-    await prisma.inscripcion.create({
-      data: {
-        id_usu_ins: idUsuario,
+    // Verificar capacidad disponible
+    const inscripcionesActuales = await prisma.inscripcion.count({
+      where: { 
         id_eve_ins: idEvento,
-        fec_ins: new Date(),
-        val_ins: 0,
-        met_pag_ins: metodoPago,
-        enl_ord_pag_ins: enlacePago || '',
-        estado_pago: 'PENDIENTE'
+        estado_pago: { in: ['APROBADO', 'PENDIENTE'] }
       }
     });
 
-    return res.status(201).json({ message: 'Inscripción realizada con éxito' });
+    if (inscripcionesActuales >= evento.cap_eve) {
+      return res.status(400).json({ 
+        message: 'El evento ha alcanzado su capacidad máxima' 
+      });
+    }
+
+    // Preparar datos de inscripción
+    const datosInscripcion = {
+      id_usu_ins: idUsuario,
+      id_eve_ins: idEvento,
+      fec_ins: new Date()
+    };
+
+    if (evento.es_gratuito) {
+      // EVENTO GRATUITO: No requiere datos de pago
+      if (metodoPago || comprobantePago) {
+        return res.status(400).json({ 
+          message: 'Este evento es gratuito, no debe incluir información de pago' 
+        });
+      }
+      
+      datosInscripcion.val_ins = null;
+      datosInscripcion.met_pag_ins = null;
+      datosInscripcion.enl_ord_pag_ins = null;
+      datosInscripcion.comprobante_pago_pdf = null;
+      datosInscripcion.comprobante_filename = null;
+      datosInscripcion.comprobante_size = null;
+      datosInscripcion.fec_subida_comprobante = null;
+      datosInscripcion.estado_pago = 'APROBADO'; // Automáticamente aprobado
+      datosInscripcion.fec_aprobacion = new Date();
+      
+    } else {
+      // EVENTO PAGADO: Requiere datos de pago
+      if (!metodoPago) {
+        return res.status(400).json({ 
+          message: 'Para eventos pagados, el método de pago es obligatorio' 
+        });
+      }
+
+      const metodosPermitidos = ['TARJETA_CREDITO', 'TRANFERENCIA', 'DEPOSITO'];
+      if (!metodosPermitidos.includes(metodoPago)) {
+        return res.status(400).json({ 
+          message: `Método de pago no válido. Valores permitidos: ${metodosPermitidos.join(', ')}` 
+        });
+      }
+
+      if (!comprobantePago) {
+        return res.status(400).json({ 
+          message: 'Para eventos pagados, el comprobante de pago (archivo PDF) es obligatorio' 
+        });
+      }
+      
+      datosInscripcion.val_ins = evento.precio;
+      datosInscripcion.met_pag_ins = metodoPago;
+      datosInscripcion.enl_ord_pag_ins = null; // Ya no usamos enlaces de texto
+      datosInscripcion.comprobante_pago_pdf = comprobantePago.buffer;
+      datosInscripcion.comprobante_filename = comprobantePago.originalname;
+      datosInscripcion.comprobante_size = comprobantePago.size;
+      datosInscripcion.fec_subida_comprobante = new Date();
+      datosInscripcion.estado_pago = 'PENDIENTE'; // Requiere aprobación manual
+    }
+
+    // Crear inscripción
+    const nuevaInscripcion = await prisma.inscripcion.create({
+      data: datosInscripcion
+    });
+
+    const mensaje = evento.es_gratuito 
+      ? 'Inscripción gratuita realizada con éxito' 
+      : 'Inscripción enviada. Pendiente de aprobación de pago';
+
+    return res.status(201).json({ 
+      message: mensaje,
+      inscripcion: {
+        id: nuevaInscripcion.id_ins,
+        estado: nuevaInscripcion.estado_pago,
+        esGratuito: evento.es_gratuito,
+        precio: evento.precio,
+        tieneComprobante: !!nuevaInscripcion.comprobante_pago_pdf
+      }
+    });
+
   } catch (error) {
-    console.error('❌ Error al inscribirse:', error);
-    res.status(500).json({ message: 'Error interno del servidor', error: error.message });
+    console.error('❌ Error en inscribirUsuarioEvento:', error);
+    return res.status(500).json({ 
+      message: 'Error interno del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 }
 
@@ -192,8 +253,200 @@ const aprobarInscripcionEvento = async (req, res) => {
   }
 };
 
+// ✅ DESCARGAR COMPROBANTE DE PAGO DE EVENTO
+async function descargarComprobantePagoEvento(req, res) {
+  try {
+    const { inscripcionId } = req.params;
+
+    // Validar ID
+    if (!inscripcionId) {
+      res.status(400);
+      return res.send('Error: ID de inscripción es obligatorio');
+    }
+
+    // Verificar que el usuario solicitante es admin
+    const currentUser = await prisma.usuario.findUnique({
+      where: { id_usu: req.uid },
+      include: {
+        cuentas: {
+          select: {
+            rol_cue: true
+          }
+        }
+      }
+    });
+
+    const isAdmin = ['ADMINISTRADOR', 'MASTER'].includes(currentUser.cuentas[0]?.rol_cue);
+    
+    if (!isAdmin) {
+      res.status(403);
+      return res.send('Error: No autorizado para descargar comprobantes de pago');
+    }
+
+    // Obtener la inscripción con el comprobante
+    const inscripcion = await prisma.inscripcion.findUnique({
+      where: { id_ins: inscripcionId },
+      select: {
+        comprobante_pago_pdf: true,
+        comprobante_filename: true,
+        comprobante_size: true,
+        usuario: {
+          select: {
+            ced_usu: true,
+            nom_usu1: true,
+            ape_usu1: true
+          }
+        },
+        evento: {
+          select: {
+            nom_eve: true
+          }
+        }
+      }
+    });
+
+    if (!inscripcion) {
+      res.status(404);
+      return res.send('Error: Inscripción no encontrada');
+    }
+
+    if (!inscripcion.comprobante_pago_pdf) {
+      res.status(404);
+      return res.send('Error: Comprobante de pago no encontrado para esta inscripción');
+    }
+
+    // Verificar que el comprobante tiene datos
+    console.log('🔍 Debugging comprobante evento:');
+    console.log('- Tipo de dato:', typeof inscripcion.comprobante_pago_pdf);
+    console.log('- Es Buffer:', Buffer.isBuffer(inscripcion.comprobante_pago_pdf));
+    console.log('- Longitud:', inscripcion.comprobante_pago_pdf ? inscripcion.comprobante_pago_pdf.length : 'null');
+
+    if (!inscripcion.comprobante_pago_pdf) {
+      res.status(500);
+      return res.send('Error: El comprobante_pago_pdf es null o undefined');
+    }
+
+    if (inscripcion.comprobante_pago_pdf.length === 0) {
+      res.status(500);
+      return res.send('Error: El archivo del comprobante tiene longitud 0');
+    }
+
+    // Convertir a Buffer si no lo es (puede venir como Uint8Array de Prisma)
+    let bufferComprobante;
+    if (Buffer.isBuffer(inscripcion.comprobante_pago_pdf)) {
+      bufferComprobante = inscripcion.comprobante_pago_pdf;
+    } else if (inscripcion.comprobante_pago_pdf instanceof Uint8Array) {
+      bufferComprobante = Buffer.from(inscripcion.comprobante_pago_pdf);
+      console.log('✅ Convertido de Uint8Array a Buffer');
+    } else {
+      res.status(500);
+      return res.send(`Error: Tipo de dato no soportado: ${typeof inscripcion.comprobante_pago_pdf}`);
+    }
+
+    // Generar nombre del archivo
+    const fileName = inscripcion.comprobante_filename || 
+                    `comprobante_evento_${inscripcion.usuario.nom_usu1}_${inscripcion.usuario.ape_usu1}.pdf`;
+
+    // Log para debugging
+    console.log(`📄 Descargando comprobante evento: ${fileName}, Tamaño: ${bufferComprobante.length} bytes`);
+
+    // Configurar headers para descarga de PDF
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Length', bufferComprobante.length);
+    res.setHeader('Cache-Control', 'no-cache');
+
+    // Enviar el archivo binario
+    return res.end(bufferComprobante);
+
+  } catch (error) {
+    console.error('❌ Error en descargarComprobantePagoEvento:', error);
+    
+    // Si ya se enviaron headers, no podemos enviar JSON
+    if (res.headersSent) {
+      return res.end();
+    }
+    
+    res.status(500);
+    return res.send(`Error interno del servidor: ${error.message}`);
+  }
+}
+
+// ✅ OBTENER TODAS LAS INSCRIPCIONES DE EVENTOS (SOLO ADMIN)
+async function obtenerTodasInscripcionesEventos(req, res) {
+  try {
+    // Verificar que el usuario es admin
+    const currentUser = await prisma.usuario.findUnique({
+      where: { id_usu: req.uid },
+      include: {
+        cuentas: {
+          select: {
+            rol_cue: true
+          }
+        }
+      }
+    });
+
+    const isAdmin = ['ADMINISTRADOR', 'MASTER'].includes(currentUser.cuentas[0]?.rol_cue);
+    
+    if (!isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'No autorizado para ver todas las inscripciones'
+      });
+    }
+
+    const inscripciones = await prisma.inscripcion.findMany({
+      include: {
+        usuario: {
+          select: {
+            id_usu: true,
+            nom_usu: true,
+            ape_usu: true,
+            cor_usu: true,
+            ced_usu: true
+          }
+        },
+        evento: {
+          select: {
+            id_eve: true,
+            nom_eve: true,
+            des_eve: true,
+            fec_ini_eve: true,
+            precio: true,
+            es_gratuito: true
+          }
+        },
+        adminAprobador: {
+          select: {
+            nom_usu: true,
+            ape_usu: true
+          }
+        }
+      },
+      orderBy: {
+        fec_ins: 'desc'
+      }
+    });
+
+    res.json({
+      success: true,
+      data: inscripciones
+    });
+
+  } catch (error) {
+    console.error('❌ Error en obtenerTodasInscripcionesEventos:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+}
+
 module.exports = {
   inscribirUsuarioEvento,
   obtenerMisInscripcionesEvento,
-  aprobarInscripcionEvento
+  aprobarInscripcionEvento,
+  descargarComprobantePagoEvento,
+  obtenerTodasInscripcionesEventos
 };

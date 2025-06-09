@@ -3,77 +3,50 @@ const prisma = new PrismaClient();
 
 // Inscribir usuario a un curso (validación completa)
 async function inscribirUsuarioCurso(req, res) {
-  const { idUsuario, idCurso, metodoPago, enlacePago } = req.body;
-
-  if (!idUsuario || !idCurso || !metodoPago) {
-    return res.status(400).json({ message: 'Faltan campos obligatorios' });
-  }
-
-  const metodosPermitidos = ['TARJETA_CREDITO', 'TRANFERENCIA', 'DEPOSITO'];
-  if (!metodosPermitidos.includes(metodoPago)) {
-    return res.status(400).json({ message: 'Método de pago no válido' });
-  }
-
   try {
-    // Obtener cuenta y usuario asociado
-    const cuenta = await prisma.cuenta.findFirst({
-      where: { id_usu_per: idUsuario },
-      include: { usuario: true }
+    const { idUsuario, idCurso, metodoPago } = req.body;
+    
+    // Obtener archivo de comprobante si existe
+    const comprobantePago = req.file;
+
+    console.log('📝 Datos de inscripción en curso recibidos:', {
+      idUsuario,
+      idCurso,
+      metodoPago,
+      tieneComprobante: !!comprobantePago
     });
 
-    if (!cuenta) return res.status(404).json({ message: 'Cuenta no encontrada' });
-
-    const rol = cuenta.rol_cue;
-    const usuario = cuenta.usuario;
-    const carreraId = usuario?.id_car_per;
-
-    // Obtener el curso con su tipo de audiencia y si requiere verificación
-    const curso = await prisma.curso.findUnique({
-      where: { id_cur: idCurso },
-      select: {
-        tipo_audiencia_cur: true,
-        requiere_verificacion_docs: true
-      }
-    });
-
-    if (!curso) return res.status(404).json({ message: 'Curso no encontrado' });
-
-    // Validación por tipo de usuario
-    if (rol === 'USUARIO') {
-      if (curso.tipo_audiencia_cur !== 'PUBLICO_GENERAL') {
-        return res.status(403).json({ message: 'Solo puedes inscribirte en cursos públicos' });
-      }
+    // Validaciones básicas
+    if (!idUsuario || !idCurso) {
+      return res.status(400).json({ 
+        message: 'ID de usuario e ID de curso son obligatorios' 
+      });
     }
 
-    if (rol === 'ESTUDIANTE') {
-      if (!carreraId) {
-        return res.status(400).json({ message: 'No tienes una carrera asignada. Contacta al administrador.' });
-      }
+    // Verificar que el usuario existe
+    const usuario = await prisma.usuario.findUnique({
+      where: { id_usu: idUsuario }
+    });
 
-      if (curso.requiere_verificacion_docs && !usuario.documentos_verificados) {
-        return res.status(403).json({ message: 'Debes tener los documentos verificados para inscribirte' });
-      }
-
-      const permitido = await prisma.cursoPorCarrera.findFirst({
-        where: {
-          id_car_per: carreraId,
-          id_cur_per: idCurso
-        }
+    if (!usuario) {
+      return res.status(404).json({ 
+        message: 'Usuario no encontrado' 
       });
+    }
 
-      if (
-        !permitido &&
-        curso.tipo_audiencia_cur !== 'PUBLICO_GENERAL' &&
-        curso.tipo_audiencia_cur !== 'TODAS_CARRERAS'
-      ) {
-        return res.status(403).json({
-          message: 'Este curso no está habilitado para tu carrera'
-        });
-      }
+    // Verificar que el curso existe
+    const curso = await prisma.curso.findUnique({
+      where: { id_cur: idCurso }
+    });
+
+    if (!curso) {
+      return res.status(404).json({ 
+        message: 'Curso no encontrado' 
+      });
     }
 
     // Verificar si ya está inscrito
-    const yaInscrito = await prisma.inscripcionCurso.findUnique({
+    const inscripcionExistente = await prisma.inscripcionCurso.findUnique({
       where: {
         id_usu_ins_cur_id_cur_ins: {
           id_usu_ins_cur: idUsuario,
@@ -82,27 +55,108 @@ async function inscribirUsuarioCurso(req, res) {
       }
     });
 
-    if (yaInscrito) {
-      return res.status(400).json({ message: 'Ya estás inscrito en este curso' });
+    if (inscripcionExistente) {
+      return res.status(400).json({ 
+        message: 'Ya estás inscrito en este curso' 
+      });
     }
 
-    // Crear inscripción
-    await prisma.inscripcionCurso.create({
-      data: {
-        id_usu_ins_cur: idUsuario,
+    // Verificar capacidad disponible
+    const inscripcionesActuales = await prisma.inscripcionCurso.count({
+      where: { 
         id_cur_ins: idCurso,
-        fec_ins_cur: new Date(),
-        val_ins_cur: 0,
-        met_pag_ins_cur: metodoPago,
-        enl_ord_pag_ins_cur: enlacePago || '',
-        estado_pago_cur: 'PENDIENTE'
+        estado_pago_cur: { in: ['APROBADO', 'PENDIENTE'] }
       }
     });
 
-    return res.status(201).json({ message: 'Inscripción realizada con éxito' });
+    if (inscripcionesActuales >= curso.cap_cur) {
+      return res.status(400).json({ 
+        message: 'El curso ha alcanzado su capacidad máxima' 
+      });
+    }
+
+    // Preparar datos de inscripción
+    const datosInscripcion = {
+      id_usu_ins_cur: idUsuario,
+      id_cur_ins: idCurso,
+      fec_ins_cur: new Date()
+    };
+
+    if (curso.es_gratuito) {
+      // CURSO GRATUITO: No requiere datos de pago
+      if (metodoPago || comprobantePago) {
+        return res.status(400).json({ 
+          message: 'Este curso es gratuito, no debe incluir información de pago' 
+        });
+      }
+      
+      datosInscripcion.val_ins_cur = null;
+      datosInscripcion.met_pag_ins_cur = null;
+      datosInscripcion.enl_ord_pag_ins_cur = null;
+      datosInscripcion.comprobante_pago_pdf = null;
+      datosInscripcion.comprobante_filename = null;
+      datosInscripcion.comprobante_size = null;
+      datosInscripcion.fec_subida_comprobante = null;
+      datosInscripcion.estado_pago_cur = 'APROBADO'; // Automáticamente aprobado
+      datosInscripcion.fec_aprobacion_cur = new Date();
+      
+    } else {
+      // CURSO PAGADO: Requiere datos de pago
+      if (!metodoPago) {
+        return res.status(400).json({ 
+          message: 'Para cursos pagados, el método de pago es obligatorio' 
+        });
+      }
+
+      const metodosPermitidos = ['TARJETA_CREDITO', 'TRANFERENCIA', 'DEPOSITO'];
+      if (!metodosPermitidos.includes(metodoPago)) {
+        return res.status(400).json({ 
+          message: `Método de pago no válido. Valores permitidos: ${metodosPermitidos.join(', ')}` 
+        });
+      }
+
+      if (!comprobantePago) {
+        return res.status(400).json({ 
+          message: 'Para cursos pagados, el comprobante de pago (archivo PDF) es obligatorio' 
+        });
+      }
+      
+      datosInscripcion.val_ins_cur = curso.precio;
+      datosInscripcion.met_pag_ins_cur = metodoPago;
+      datosInscripcion.enl_ord_pag_ins_cur = null; // Ya no usamos enlaces de texto
+      datosInscripcion.comprobante_pago_pdf = comprobantePago.buffer;
+      datosInscripcion.comprobante_filename = comprobantePago.originalname;
+      datosInscripcion.comprobante_size = comprobantePago.size;
+      datosInscripcion.fec_subida_comprobante = new Date();
+      datosInscripcion.estado_pago_cur = 'PENDIENTE'; // Requiere aprobación manual
+    }
+
+    // Crear inscripción
+    const nuevaInscripcion = await prisma.inscripcionCurso.create({
+      data: datosInscripcion
+    });
+
+    const mensaje = curso.es_gratuito 
+      ? 'Inscripción gratuita realizada con éxito' 
+      : 'Inscripción enviada. Pendiente de aprobación de pago';
+
+    return res.status(201).json({ 
+      message: mensaje,
+      inscripcion: {
+        id: nuevaInscripcion.id_ins_cur,
+        estado: nuevaInscripcion.estado_pago_cur,
+        esGratuito: curso.es_gratuito,
+        precio: curso.precio,
+        tieneComprobante: !!nuevaInscripcion.comprobante_pago_pdf
+      }
+    });
+
   } catch (error) {
-    console.error('❌ Error al inscribirse en curso:', error);
-    res.status(500).json({ message: 'Error interno del servidor', error: error.message });
+    console.error('❌ Error en inscribirUsuarioCurso:', error);
+    return res.status(500).json({ 
+      message: 'Error interno del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 }
 
@@ -182,8 +236,200 @@ const aprobarInscripcionCurso = async (req, res) => {
   }
 };
 
+// ✅ DESCARGAR COMPROBANTE DE PAGO DE CURSO
+async function descargarComprobantePagoCurso(req, res) {
+  try {
+    const { inscripcionId } = req.params;
+
+    // Validar ID
+    if (!inscripcionId) {
+      res.status(400);
+      return res.send('Error: ID de inscripción es obligatorio');
+    }
+
+    // Verificar que el usuario solicitante es admin
+    const currentUser = await prisma.usuario.findUnique({
+      where: { id_usu: req.uid },
+      include: {
+        cuentas: {
+          select: {
+            rol_cue: true
+          }
+        }
+      }
+    });
+
+    const isAdmin = ['ADMINISTRADOR', 'MASTER'].includes(currentUser.cuentas[0]?.rol_cue);
+    
+    if (!isAdmin) {
+      res.status(403);
+      return res.send('Error: No autorizado para descargar comprobantes de pago');
+    }
+
+    // Obtener la inscripción con el comprobante
+    const inscripcion = await prisma.inscripcionCurso.findUnique({
+      where: { id_ins_cur: inscripcionId },
+      select: {
+        comprobante_pago_pdf: true,
+        comprobante_filename: true,
+        comprobante_size: true,
+        usuario: {
+          select: {
+            ced_usu: true,
+            nom_usu1: true,
+            ape_usu1: true
+          }
+        },
+        curso: {
+          select: {
+            nom_cur: true
+          }
+        }
+      }
+    });
+
+    if (!inscripcion) {
+      res.status(404);
+      return res.send('Error: Inscripción no encontrada');
+    }
+
+    if (!inscripcion.comprobante_pago_pdf) {
+      res.status(404);
+      return res.send('Error: Comprobante de pago no encontrado para esta inscripción');
+    }
+
+    // Verificar que el comprobante tiene datos
+    console.log('🔍 Debugging comprobante curso:');
+    console.log('- Tipo de dato:', typeof inscripcion.comprobante_pago_pdf);
+    console.log('- Es Buffer:', Buffer.isBuffer(inscripcion.comprobante_pago_pdf));
+    console.log('- Longitud:', inscripcion.comprobante_pago_pdf ? inscripcion.comprobante_pago_pdf.length : 'null');
+
+    if (!inscripcion.comprobante_pago_pdf) {
+      res.status(500);
+      return res.send('Error: El comprobante_pago_pdf es null o undefined');
+    }
+
+    if (inscripcion.comprobante_pago_pdf.length === 0) {
+      res.status(500);
+      return res.send('Error: El archivo del comprobante tiene longitud 0');
+    }
+
+    // Convertir a Buffer si no lo es (puede venir como Uint8Array de Prisma)
+    let bufferComprobante;
+    if (Buffer.isBuffer(inscripcion.comprobante_pago_pdf)) {
+      bufferComprobante = inscripcion.comprobante_pago_pdf;
+    } else if (inscripcion.comprobante_pago_pdf instanceof Uint8Array) {
+      bufferComprobante = Buffer.from(inscripcion.comprobante_pago_pdf);
+      console.log('✅ Convertido de Uint8Array a Buffer');
+    } else {
+      res.status(500);
+      return res.send(`Error: Tipo de dato no soportado: ${typeof inscripcion.comprobante_pago_pdf}`);
+    }
+
+    // Generar nombre del archivo
+    const fileName = inscripcion.comprobante_filename || 
+                    `comprobante_curso_${inscripcion.usuario.nom_usu1}_${inscripcion.usuario.ape_usu1}.pdf`;
+
+    // Log para debugging
+    console.log(`📄 Descargando comprobante curso: ${fileName}, Tamaño: ${bufferComprobante.length} bytes`);
+
+    // Configurar headers para descarga de PDF
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Length', bufferComprobante.length);
+    res.setHeader('Cache-Control', 'no-cache');
+
+    // Enviar el archivo binario
+    return res.end(bufferComprobante);
+
+  } catch (error) {
+    console.error('❌ Error en descargarComprobantePagoCurso:', error);
+    
+    // Si ya se enviaron headers, no podemos enviar JSON
+    if (res.headersSent) {
+      return res.end();
+    }
+    
+    res.status(500);
+    return res.send(`Error interno del servidor: ${error.message}`);
+  }
+}
+
+// ✅ OBTENER TODAS LAS INSCRIPCIONES DE CURSOS (SOLO ADMIN)
+async function obtenerTodasInscripcionesCursos(req, res) {
+  try {
+    // Verificar que el usuario es admin
+    const currentUser = await prisma.usuario.findUnique({
+      where: { id_usu: req.uid },
+      include: {
+        cuentas: {
+          select: {
+            rol_cue: true
+          }
+        }
+      }
+    });
+
+    const isAdmin = ['ADMINISTRADOR', 'MASTER'].includes(currentUser.cuentas[0]?.rol_cue);
+    
+    if (!isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'No autorizado para ver todas las inscripciones'
+      });
+    }
+
+    const inscripciones = await prisma.inscripcionCurso.findMany({
+      include: {
+        usuario: {
+          select: {
+            id_usu: true,
+            nom_usu: true,
+            ape_usu: true,
+            cor_usu: true,
+            ced_usu: true
+          }
+        },
+        curso: {
+          select: {
+            id_cur: true,
+            nom_cur: true,
+            des_cur: true,
+            fec_ini_cur: true,
+            precio: true,
+            es_gratuito: true
+          }
+        },
+        adminAprobador: {
+          select: {
+            nom_usu: true,
+            ape_usu: true
+          }
+        }
+      },
+      orderBy: {
+        fec_ins_cur: 'desc'
+      }
+    });
+
+    res.json({
+      success: true,
+      data: inscripciones
+    });
+
+  } catch (error) {
+    console.error('❌ Error en obtenerTodasInscripcionesCursos:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+}
+
 module.exports = {
   inscribirUsuarioCurso,
   obtenerMisInscripcionesCurso,
-  aprobarInscripcionCurso
+  aprobarInscripcionCurso,
+  descargarComprobantePagoCurso,
+  obtenerTodasInscripcionesCursos
 };
