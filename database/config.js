@@ -6,14 +6,41 @@ let client;
 // Inicializar la conexión
 const initConnection = async () => {
   try {
-    // Crear un cliente de conexión única y persistente
-    client = new Client({
-      user: process.env.DB_USER,
-      host: process.env.DB_HOST,
-      database: process.env.DB_NAME,
-      password: process.env.DB_PASSWORD,
-      port: process.env.DB_PORT,
-    });
+    // Verificar si tenemos DATABASE_URL (para producción) o variables individuales (para desarrollo)
+    const connectionString = process.env.DATABASE_URL;
+
+    if (connectionString) {
+      // Configuración para producción o desarrollo con DATABASE_URL
+      // Verificar si es un entorno local (localhost) para deshabilitar SSL
+      const isLocal = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
+      
+      client = new Client({
+        connectionString: connectionString,
+        ssl: isLocal ? false : {
+          rejectUnauthorized: false
+        }
+      });
+    } else {
+      // Configuración para desarrollo local (usando variables individuales)
+      const dbConfig = {
+        user: process.env.DB_USER,
+        host: process.env.DB_HOST,
+        database: process.env.DB_NAME,
+        password: process.env.DB_PASSWORD,
+        port: process.env.DB_PORT || 5432,
+        // No SSL para desarrollo local
+        ssl: false
+      };
+
+      // Verificar que tengamos las variables necesarias
+      if (!dbConfig.user || !dbConfig.host || !dbConfig.database || !dbConfig.password) {
+        console.error('❌ Variables de entorno de base de datos faltantes.');
+        console.log('Necesitas: DB_USER, DB_HOST, DB_NAME, DB_PASSWORD');
+        return false;
+      }
+
+      client = new Client(dbConfig);
+    }
 
     // Conectar al iniciar la aplicación
     await client.connect();
@@ -28,7 +55,7 @@ const initConnection = async () => {
 // Función para consultas
 const query = async (text, params) => {
   if (!client) {
-    throw new Error('La conexión a la base de datos no está inicializada');
+    throw new Error('La conexión a la base de datos no está inicializada. Intenta llamar a initConnection() primero.');
   }
   return client.query(text, params);
 };
