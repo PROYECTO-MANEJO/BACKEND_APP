@@ -25,7 +25,7 @@ app.use(express.json());
 
 // Define los orígenes permitidos
 const allowedOrigins = [
-  'https://frontend-llxm4areg-adrianmora8s-projects.vercel.app', // <-- ¡TU URL EXACTA DE VERCEL AQUÍ!
+  'https://frontend-rkqe3156f-adrianmora8s-projects.vercel.app', // <-- ¡TU URL EXACTA DE VERCEL AQUÍ!
   'http://localhost:5173', // Para desarrollo local de tu frontend con Vite
   'http://localhost:3000'  // Si tu frontend corre en 3000 en desarrollo (ej. Create React App)
   // Si tienes otras URLs de desarrollo o staging, añádelas aquí
