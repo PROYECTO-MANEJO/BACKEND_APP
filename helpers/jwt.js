@@ -27,21 +27,36 @@ const generateAdminJWT = (id) => {
 };
 
 const generateVerificationJWT = (id) => {
-    return new Promise((resolve, reject) => {
-        const payload = { id, type: 'emailVerification' }; // Añadimos el tipo para saber que es un token de verificación
-        jwt.sign(payload, process.env.SECRET_KEY, { expiresIn: '1h' }, (err, token) => {
-            if (err) {
-                reject('No se pudo generar el token de verificación de correo');
-            } else {
-                resolve(token);
-            }
-        });
+  return new Promise((resolve, reject) => {
+    const payload = { id, type: 'emailVerification' };
+    jwt.sign(payload, process.env.SECRET_KEY, { expiresIn: '1h' }, (err, token) => {
+      if (err) {
+        reject('No se pudo generar el token de verificación');
+      } else {
+        resolve(token);
+      }
     });
+  });
 };
+
+// Verificar el token de verificación
+const verifyVerificationJWT = (token) => {
+  return new Promise((resolve, reject) => {
+    jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
+      if (err) {
+        reject('Token inválido o expirado');
+      } else {
+        resolve(decoded); // Devolver el contenido decodificado
+      }
+    });
+  });
+};
+
 
 
 module.exports = {
     generateJWT,
     generateAdminJWT,
-    generateVerificationJWT
+    generateVerificationJWT,
+    verifyVerificationJWT
 };
