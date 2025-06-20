@@ -1,6 +1,8 @@
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcrypt');
 const { generateJWT, generateAdminJWT } = require('../helpers/jwt');
+// controllers/auth.js
+const { sendVerificationToken } = require('../controllers/verificationController'); // Ruta correcta
 
 const prisma = new PrismaClient();
 
@@ -97,12 +99,15 @@ const register = async (req, res) => {
                 data: {
                     cor_cue: email,
                     rol_cue: rolAsignado,
-                    id_usu_per: newUser.id_usu
+                    id_usu_per: newUser.id_usu,
+                    isVerified: false // Inicialmente no verificada
                 }
             });
 
             return { user: newUser, account: newAccount };
         });
+
+         await sendVerificationToken(email, result.user.id_usu);
 
         // Generar el token JWT para el nuevo usuario
         const token = await generateJWT(result.user.id_usu);
@@ -118,7 +123,8 @@ const register = async (req, res) => {
                 apellido2: result.user.ape_usu2,
                 rol: rolAsignado
             },
-            token
+            token,
+            message: 'Se ha enviado un correo de verificación a tu dirección de correo electrónico. Por favor, verifica tu cuenta.'
         });
 
     } catch (error) {
@@ -287,6 +293,14 @@ const login = async (req, res) => {
             });
         }
 
+        // Verificar si la cuenta está verificada
+        if (!cuenta.isVerified) {
+            return res.status(401).json({
+                success: false,
+                message: 'Tu cuenta aún no ha sido verificada. Revisa tu correo electrónico.'
+            });
+        }
+
         // Verificar la contraseña
         const validPassword = await bcrypt.compare(password, cuenta.usuario.pas_usu);
         if (!validPassword) {
@@ -331,7 +345,7 @@ const login = async (req, res) => {
                 matricula_requerida: isEstudiante,
                 documentos_verificados: user.documentos_verificados,
                 fecha_verificacion: user.fec_verificacion_docs,
-                archivos_completos: isEstudiante 
+                archivos_completos: isEstudiante
                     ? (!!user.enl_ced_pdf && !!user.enl_mat_pdf)
                     : !!user.enl_ced_pdf
             }
