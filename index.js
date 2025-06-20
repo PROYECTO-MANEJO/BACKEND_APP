@@ -87,6 +87,8 @@ app.use('/api/administracion', require('./routes/administracion'));
 app.use('/api/reportes', require('./routes/reportes'));
 app.use('/api/certificados', require('./routes/certificados'));
 
+app.use('/api/verification', require('./routes/verificationRoutes')); // Ruta para verificación de cuenta
+
 
 // Función para iniciar el servidor
 const startServer = async () => {
@@ -105,6 +107,7 @@ const startServer = async () => {
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => {
       console.log(`Servidor corriendo en el puerto ${PORT}`);
+      console.log(process.env.SMTP_HOST);
     });
   } catch (error) {
     console.error('Error al iniciar el servidor:', error);
