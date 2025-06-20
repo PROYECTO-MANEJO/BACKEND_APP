@@ -77,7 +77,9 @@ model Cuenta {
   cor_cue String @map("COR_CUE") @db.VarChar(150)
   rol_cue RolCuenta @map("ROL_CUE")
   id_usu_per String @map("ID_USU_PER") @db.Uuid
-
+  isVerified Boolean @default(false) // Este es el campo que indica si la cuenta está verificada
+  emailVerificationToken String?      // El token de verificación
+  emailVerificationExpiry DateTime?
   usuario Usuario @relation(fields: [id_usu_per], references: [id_usu])
   
   @@map("CUENTAS")
