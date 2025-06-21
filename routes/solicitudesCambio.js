@@ -9,7 +9,9 @@ const {
   responderSolicitud,
   editarSolicitud,
   actualizarEstadoSolicitud,
-  obtenerEstadisticas
+  obtenerEstadisticas,
+  gestionarSolicitudTecnica,
+  obtenerSolicitudAdmin
 } = require('../controllers/solicitudesCambio');
 
 // Importar middlewares
@@ -19,7 +21,8 @@ const {
   validarRespuestaSolicitud,
   validarEdicionSolicitud,
   validarActualizacionEstado,
-  validarIdSolicitud
+  validarIdSolicitud,
+  validarGestionTecnica
 } = require('../middlewares/validacionSolicitudes');
 
 const router = Router();
@@ -88,6 +91,14 @@ router.put(
   actualizarEstadoSolicitud
 );
 
+// Gestión técnica de una solicitud - Solo administradores
+// PUT /api/solicitudes-cambio/admin/:id/gestion-tecnica
+router.put(
+  '/admin/:id/gestion-tecnica',
+  [validateJWT, validateAdmin, ...validarGestionTecnica],
+  gestionarSolicitudTecnica
+);
+
 // Obtener estadísticas de solicitudes - Solo administradores
 // GET /api/solicitudes-cambio/admin/estadisticas
 router.get(
@@ -100,59 +111,12 @@ router.get(
 // RUTAS ADICIONALES (PARA DESARROLLO)
 // =======================
 
-// Obtener una solicitud específica por ID (para administradores)
+// Obtener una solicitud específica por ID (para administradores) - INCLUYE TODOS LOS CAMPOS TÉCNICOS
 // GET /api/solicitudes-cambio/admin/:id
 router.get(
   '/admin/:id',
   [validateJWT, validateAdmin, ...validarIdSolicitud],
-  async (req, res) => {
-    try {
-      const { id } = req.params;
-
-      const solicitud = await require('@prisma/client').PrismaClient().solicitudCambio.findUnique({
-        where: { id_sol: id },
-        include: {
-          usuario: {
-            select: {
-              nom_usu1: true,
-              nom_usu2: true,
-              ape_usu1: true,
-              ape_usu2: true,
-              ced_usu: true
-            }
-          },
-          adminResponsable: {
-            select: {
-              nom_usu1: true,
-              nom_usu2: true,
-              ape_usu1: true,
-              ape_usu2: true
-            }
-          }
-        }
-      });
-
-      if (!solicitud) {
-        return res.status(404).json({
-          success: false,
-          message: 'Solicitud no encontrada'
-        });
-      }
-
-      res.json({
-        success: true,
-        data: solicitud
-      });
-
-    } catch (error) {
-      console.error('Error al obtener solicitud:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error interno del servidor',
-        error: error.message
-      });
-    }
-  }
+  obtenerSolicitudAdmin
 );
 
 module.exports = router; 

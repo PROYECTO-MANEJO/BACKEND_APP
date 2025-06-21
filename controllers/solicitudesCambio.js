@@ -21,22 +21,49 @@ const crearSolicitud = async (req, res) => {
       descripcion_sol, 
       justificacion_sol, 
       tipo_cambio_sol, 
-      prioridad_sol 
+      prioridad_sol,
+      // Nuevos campos del solicitante
+      impacto_negocio_sol,
+      urgencia_sol,
+      beneficios_esperados_sol,
+      recursos_necesarios_sol,
+      fecha_limite_deseada,
+      usuarios_afectados_sol
     } = req.body;
 
     // Obtener el ID del usuario del token JWT (viene del middleware de autenticación)
     const id_usuario_sol = req.usuario.id_usu;
 
+    // Preparar datos para la creación
+    const datosCreacion = {
+      titulo_sol,
+      descripcion_sol,
+      justificacion_sol,
+      tipo_cambio_sol,
+      prioridad_sol: prioridad_sol || 'MEDIA',
+      urgencia_sol: urgencia_sol || 'NORMAL',
+      id_usuario_sol
+    };
+
+    // Agregar campos opcionales solo si se proporcionan
+    if (impacto_negocio_sol) datosCreacion.impacto_negocio_sol = impacto_negocio_sol;
+    if (beneficios_esperados_sol) datosCreacion.beneficios_esperados_sol = beneficios_esperados_sol;
+    if (recursos_necesarios_sol) datosCreacion.recursos_necesarios_sol = recursos_necesarios_sol;
+    if (usuarios_afectados_sol) datosCreacion.usuarios_afectados_sol = usuarios_afectados_sol;
+    
+    // Validar y agregar fecha límite deseada
+    if (fecha_limite_deseada) {
+      const fechaLimite = new Date(fecha_limite_deseada);
+      const ahora = new Date();
+      
+      if (fechaLimite > ahora) {
+        datosCreacion.fecha_limite_deseada = fechaLimite;
+      }
+    }
+
     // Crear la solicitud
     const nuevaSolicitud = await prisma.solicitudCambio.create({
-      data: {
-        titulo_sol,
-        descripcion_sol,
-        justificacion_sol,
-        tipo_cambio_sol,
-        prioridad_sol: prioridad_sol || 'MEDIA',
-        id_usuario_sol
-      },
+      data: datosCreacion,
       include: {
         usuario: {
           select: {
@@ -83,7 +110,23 @@ const obtenerSolicitudesUsuario = async (req, res) => {
 
     // Validar y agregar filtro de estado
     if (estado && estado.trim() !== '') {
-      const estadosValidos = ['PENDIENTE', 'EN_REVISION', 'APROBADA', 'RECHAZADA', 'EN_DESARROLLO', 'COMPLETADA'];
+      const estadosValidos = [
+        'PENDIENTE', 
+        'EN_REVISION', 
+        'PENDIENTE_APROBACION_TECNICA',
+        'PENDIENTE_APROBACION_NEGOCIO',
+        'APROBADA', 
+        'RECHAZADA', 
+        'CANCELADA',
+        'EN_DESARROLLO', 
+        'EN_TESTING',
+        'EN_DESPLIEGUE',
+        'COMPLETADA',
+        'FALLIDA',
+        'CERRADA',
+        'EN_PAUSA',
+        'ESPERANDO_INFORMACION'
+      ];
       if (estadosValidos.includes(estado.trim())) {
         filtros.estado_sol = estado.trim();
       } else {
@@ -93,7 +136,18 @@ const obtenerSolicitudesUsuario = async (req, res) => {
 
     // Validar y agregar filtro de tipo de cambio
     if (tipo_cambio && tipo_cambio.trim() !== '') {
-      const tiposValidos = ['NUEVA_FUNCIONALIDAD', 'MEJORA_EXISTENTE', 'CORRECCION_ERROR', 'CAMBIO_INTERFAZ', 'OPTIMIZACION', 'OTRO'];
+      const tiposValidos = [
+        'NUEVA_FUNCIONALIDAD', 
+        'MEJORA_EXISTENTE', 
+        'CORRECCION_ERROR', 
+        'CAMBIO_INTERFAZ', 
+        'OPTIMIZACION', 
+        'ACTUALIZACION_DATOS',
+        'CAMBIO_SEGURIDAD',
+        'MIGRACION_DATOS',
+        'INTEGRACION_EXTERNA',
+        'OTRO'
+      ];
       if (tiposValidos.includes(tipo_cambio.trim())) {
         filtros.tipo_cambio_sol = tipo_cambio.trim();
       } else {
@@ -261,7 +315,23 @@ const obtenerTodasLasSolicitudes = async (req, res) => {
 
     // Validar y agregar filtro de estado
     if (estado && estado.trim() !== '') {
-      const estadosValidos = ['PENDIENTE', 'EN_REVISION', 'APROBADA', 'RECHAZADA', 'EN_DESARROLLO', 'COMPLETADA'];
+      const estadosValidos = [
+        'PENDIENTE', 
+        'EN_REVISION', 
+        'PENDIENTE_APROBACION_TECNICA',
+        'PENDIENTE_APROBACION_NEGOCIO',
+        'APROBADA', 
+        'RECHAZADA', 
+        'CANCELADA',
+        'EN_DESARROLLO', 
+        'EN_TESTING',
+        'EN_DESPLIEGUE',
+        'COMPLETADA',
+        'FALLIDA',
+        'CERRADA',
+        'EN_PAUSA',
+        'ESPERANDO_INFORMACION'
+      ];
       if (estadosValidos.includes(estado.trim())) {
         filtros.estado_sol = estado.trim();
       } else {
@@ -271,7 +341,18 @@ const obtenerTodasLasSolicitudes = async (req, res) => {
 
     // Validar y agregar filtro de tipo de cambio
     if (tipo_cambio && tipo_cambio.trim() !== '') {
-      const tiposValidos = ['NUEVA_FUNCIONALIDAD', 'MEJORA_EXISTENTE', 'CORRECCION_ERROR', 'CAMBIO_INTERFAZ', 'OPTIMIZACION', 'OTRO'];
+      const tiposValidos = [
+        'NUEVA_FUNCIONALIDAD', 
+        'MEJORA_EXISTENTE', 
+        'CORRECCION_ERROR', 
+        'CAMBIO_INTERFAZ', 
+        'OPTIMIZACION', 
+        'ACTUALIZACION_DATOS',
+        'CAMBIO_SEGURIDAD',
+        'MIGRACION_DATOS',
+        'INTEGRACION_EXTERNA',
+        'OTRO'
+      ];
       if (tiposValidos.includes(tipo_cambio.trim())) {
         filtros.tipo_cambio_sol = tipo_cambio.trim();
       } else {
@@ -281,7 +362,7 @@ const obtenerTodasLasSolicitudes = async (req, res) => {
 
     // Validar y agregar filtro de prioridad
     if (prioridad && prioridad.trim() !== '') {
-      const prioridadesValidas = ['BAJA', 'MEDIA', 'ALTA', 'CRITICA'];
+      const prioridadesValidas = ['BAJA', 'MEDIA', 'ALTA', 'CRITICA', 'URGENTE'];
       if (prioridadesValidas.includes(prioridad.trim())) {
         filtros.prioridad_sol = prioridad.trim();
       } else {
@@ -832,6 +913,337 @@ const obtenerEstadisticas = async (req, res) => {
   }
 };
 
+// Función para que los administradores gestionen los aspectos técnicos de la solicitud
+const gestionarSolicitudTecnica = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      // =========================================
+      // CAMPOS BÁSICOS DE GESTIÓN
+      // =========================================
+      estado_sol,
+      prioridad_sol,
+      comentarios_admin_sol,
+      comentarios_internos_sol,
+      
+      // =========================================
+      // ANÁLISIS DE RIESGO Y CATEGORIZACIÓN
+      // =========================================
+      riesgo_cambio_sol,
+      categoria_cambio_sol,
+      comentarios_tecnicos_sol,
+      
+      // =========================================
+      // ANÁLISIS DE IMPACTO
+      // =========================================
+      impacto_negocio_sol,
+      impacto_tecnico_sol,
+      tiempo_inactividad_estimado_sol,
+      
+      // =========================================
+      // PLANES DE IMPLEMENTACIÓN
+      // =========================================
+      plan_implementacion_sol,
+      plan_rollout_sol,
+      plan_backout_sol,
+      plan_rollback_sol,
+      plan_testing_sol,
+      observaciones_implementacion_sol,
+      
+      // =========================================
+      // PLANIFICACIÓN TEMPORAL
+      // =========================================
+      fecha_planificada_inicio_sol,
+      hora_planificada_inicio_sol,
+      fecha_planificada_fin_sol,
+      hora_planificada_fin_sol,
+      
+      fecha_real_inicio_sol,
+      hora_real_inicio_sol,
+      fecha_real_fin_sol,
+      hora_real_fin_sol,
+      
+      tiempo_estimado_horas_sol,
+      tiempo_real_horas_sol,
+      
+      // =========================================
+      // ASIGNACIONES
+      // =========================================
+      id_implementador,
+      
+      // =========================================
+      // RESULTADOS Y MÉTRICAS
+      // =========================================
+      exito_implementacion,
+      problemas_encontrados,
+      satisfaccion_usuario
+    } = req.body;
+
+    const id_admin = req.usuario.id_usu;
+
+    console.log('=== GESTIÓN TÉCNICA DEBUG ===');
+    console.log('ID Solicitud:', id);
+    console.log('ID Admin:', id_admin);
+    console.log('Datos recibidos:', req.body);
+
+    // Verificar que la solicitud existe
+    const solicitudExistente = await prisma.solicitudCambio.findUnique({
+      where: { id_sol: id }
+    });
+
+    if (!solicitudExistente) {
+      return res.status(404).json({
+        success: false,
+        message: 'Solicitud no encontrada'
+      });
+    }
+
+    // Preparar datos de actualización
+    const datosActualizacion = {
+      id_admin_resp_sol: id_admin,
+      fec_ultima_actualizacion: new Date()
+    };
+
+    // =========================================
+    // CAMPOS BÁSICOS DE GESTIÓN
+    // =========================================
+    if (estado_sol) datosActualizacion.estado_sol = estado_sol;
+    if (prioridad_sol) datosActualizacion.prioridad_sol = prioridad_sol;
+    if (comentarios_admin_sol !== undefined) datosActualizacion.comentarios_admin_sol = comentarios_admin_sol;
+    if (comentarios_internos_sol !== undefined) datosActualizacion.comentarios_internos_sol = comentarios_internos_sol;
+
+    // =========================================
+    // ANÁLISIS DE RIESGO Y CATEGORIZACIÓN
+    // =========================================
+    if (riesgo_cambio_sol) datosActualizacion.riesgo_cambio_sol = riesgo_cambio_sol;
+    if (categoria_cambio_sol) datosActualizacion.categoria_cambio_sol = categoria_cambio_sol;
+    if (comentarios_tecnicos_sol !== undefined) datosActualizacion.comentarios_tecnicos_sol = comentarios_tecnicos_sol;
+
+    // =========================================
+    // ANÁLISIS DE IMPACTO
+    // =========================================
+    if (impacto_negocio_sol !== undefined) datosActualizacion.impacto_negocio_sol = impacto_negocio_sol;
+    if (impacto_tecnico_sol !== undefined) datosActualizacion.impacto_tecnico_sol = impacto_tecnico_sol;
+    if (tiempo_inactividad_estimado_sol !== undefined) datosActualizacion.tiempo_inactividad_estimado_sol = tiempo_inactividad_estimado_sol;
+
+    // =========================================
+    // PLANES DE IMPLEMENTACIÓN
+    // =========================================
+    if (plan_implementacion_sol !== undefined) datosActualizacion.plan_implementacion_sol = plan_implementacion_sol;
+    if (plan_rollout_sol !== undefined) datosActualizacion.plan_rollout_sol = plan_rollout_sol;
+    if (plan_backout_sol !== undefined) datosActualizacion.plan_backout_sol = plan_backout_sol;
+    if (plan_rollback_sol !== undefined) datosActualizacion.plan_rollback_sol = plan_rollback_sol;
+    if (plan_testing_sol !== undefined) datosActualizacion.plan_testing_sol = plan_testing_sol;
+    if (observaciones_implementacion_sol !== undefined) datosActualizacion.observaciones_implementacion_sol = observaciones_implementacion_sol;
+
+    // =========================================
+    // PLANIFICACIÓN TEMPORAL
+    // =========================================
+    if (fecha_planificada_inicio_sol) {
+      datosActualizacion.fecha_planificada_inicio_sol = new Date(fecha_planificada_inicio_sol);
+    }
+    if (hora_planificada_inicio_sol !== undefined) datosActualizacion.hora_planificada_inicio_sol = hora_planificada_inicio_sol;
+    if (fecha_planificada_fin_sol) {
+      datosActualizacion.fecha_planificada_fin_sol = new Date(fecha_planificada_fin_sol);
+    }
+    if (hora_planificada_fin_sol !== undefined) datosActualizacion.hora_planificada_fin_sol = hora_planificada_fin_sol;
+
+    if (fecha_real_inicio_sol) {
+      datosActualizacion.fecha_real_inicio_sol = new Date(fecha_real_inicio_sol);
+    }
+    if (hora_real_inicio_sol !== undefined) datosActualizacion.hora_real_inicio_sol = hora_real_inicio_sol;
+    if (fecha_real_fin_sol) {
+      datosActualizacion.fecha_real_fin_sol = new Date(fecha_real_fin_sol);
+    }
+    if (hora_real_fin_sol !== undefined) datosActualizacion.hora_real_fin_sol = hora_real_fin_sol;
+
+    if (tiempo_estimado_horas_sol !== undefined && tiempo_estimado_horas_sol !== '') {
+      datosActualizacion.tiempo_estimado_horas_sol = parseInt(tiempo_estimado_horas_sol) || null;
+    }
+    if (tiempo_real_horas_sol !== undefined && tiempo_real_horas_sol !== '') {
+      datosActualizacion.tiempo_real_horas_sol = parseInt(tiempo_real_horas_sol) || null;
+    }
+
+    // =========================================
+    // ASIGNACIONES
+    // =========================================
+    if (id_implementador) {
+      datosActualizacion.id_implementador = id_implementador;
+    }
+
+    // =========================================
+    // RESULTADOS Y MÉTRICAS
+    // =========================================
+    if (typeof exito_implementacion === 'boolean') {
+      datosActualizacion.exito_implementacion = exito_implementacion;
+    }
+    if (problemas_encontrados !== undefined) datosActualizacion.problemas_encontrados = problemas_encontrados;
+    if (satisfaccion_usuario !== undefined && satisfaccion_usuario !== '') {
+      datosActualizacion.satisfaccion_usuario = parseInt(satisfaccion_usuario) || null;
+    }
+
+    // =========================================
+    // GESTIÓN AUTOMÁTICA DE FECHAS SEGÚN ESTADO
+    // =========================================
+    if (estado_sol) {
+      const ahora = new Date();
+      switch (estado_sol) {
+        case 'APROBADA':
+          if (!solicitudExistente.fec_respuesta_sol) {
+            datosActualizacion.fec_respuesta_sol = ahora;
+          }
+          break;
+        case 'EN_DESARROLLO':
+          if (!solicitudExistente.fecha_real_inicio_sol && !fecha_real_inicio_sol) {
+            datosActualizacion.fecha_real_inicio_sol = ahora;
+          }
+          break;
+        case 'COMPLETADA':
+          if (!solicitudExistente.fecha_real_fin_sol && !fecha_real_fin_sol) {
+            datosActualizacion.fecha_real_fin_sol = ahora;
+          }
+          if (typeof exito_implementacion !== 'boolean') {
+            datosActualizacion.exito_implementacion = true; // Por defecto, si se completa es exitoso
+          }
+          break;
+        case 'FALLIDA':
+          if (!solicitudExistente.fecha_real_fin_sol && !fecha_real_fin_sol) {
+            datosActualizacion.fecha_real_fin_sol = ahora;
+          }
+          datosActualizacion.exito_implementacion = false;
+          break;
+        case 'RECHAZADA':
+        case 'CANCELADA':
+          if (!solicitudExistente.fec_respuesta_sol) {
+            datosActualizacion.fec_respuesta_sol = ahora;
+          }
+          break;
+      }
+    }
+
+    console.log('Datos de actualización:', datosActualizacion);
+
+    // Actualizar la solicitud
+    const solicitudActualizada = await prisma.solicitudCambio.update({
+      where: { id_sol: id },
+      data: datosActualizacion,
+      include: {
+        usuario: {
+          select: {
+            nom_usu1: true,
+            nom_usu2: true,
+            ape_usu1: true,
+            ape_usu2: true,
+            ced_usu: true
+          }
+        },
+        adminResponsable: {
+          select: {
+            nom_usu1: true,
+            nom_usu2: true,
+            ape_usu1: true,
+            ape_usu2: true,
+            ced_usu: true
+          }
+        },
+        implementador: {
+          select: {
+            nom_usu1: true,
+            nom_usu2: true,
+            ape_usu1: true,
+            ape_usu2: true,
+            ced_usu: true
+          }
+        }
+      }
+    });
+
+    console.log('Solicitud actualizada exitosamente');
+
+    res.json({
+      success: true,
+      message: 'Gestión técnica actualizada exitosamente',
+      data: solicitudActualizada
+    });
+
+  } catch (error) {
+    console.error('Error al gestionar solicitud técnica:', error);
+    console.error('Stack trace:', error.stack);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+// Obtener una solicitud específica por ID (para administradores) - INCLUYE TODOS LOS CAMPOS TÉCNICOS
+const obtenerSolicitudAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    console.log('=== OBTENER SOLICITUD ADMIN ===');
+    console.log('ID Solicitud:', id);
+    console.log('Admin ID:', req.usuario?.id_usu);
+
+    const solicitud = await prisma.solicitudCambio.findUnique({
+      where: { id_sol: id },
+      include: {
+        usuario: {
+          select: {
+            nom_usu1: true,
+            nom_usu2: true,
+            ape_usu1: true,
+            ape_usu2: true,
+            ced_usu: true
+          }
+        },
+        adminResponsable: {
+          select: {
+            nom_usu1: true,
+            nom_usu2: true,
+            ape_usu1: true,
+            ape_usu2: true,
+            ced_usu: true
+          }
+        },
+        implementador: {
+          select: {
+            nom_usu1: true,
+            nom_usu2: true,
+            ape_usu1: true,
+            ape_usu2: true,
+            ced_usu: true
+          }
+        }
+      }
+    });
+
+    if (!solicitud) {
+      return res.status(404).json({
+        success: false,
+        message: 'Solicitud no encontrada'
+      });
+    }
+
+    console.log('Solicitud encontrada:', solicitud.titulo_sol);
+
+    res.json({
+      success: true,
+      data: solicitud
+    });
+
+  } catch (error) {
+    console.error('Error al obtener solicitud admin:', error);
+    console.error('Stack trace:', error.stack);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   crearSolicitud,
   obtenerSolicitudesUsuario,
@@ -840,5 +1252,7 @@ module.exports = {
   responderSolicitud,
   editarSolicitud,
   actualizarEstadoSolicitud,
-  obtenerEstadisticas
+  obtenerEstadisticas,
+  gestionarSolicitudTecnica,
+  obtenerSolicitudAdmin
 }; 
