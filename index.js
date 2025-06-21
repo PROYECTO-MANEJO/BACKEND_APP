@@ -86,6 +86,7 @@ app.use('/api/administracion', require('./routes/administracion'));
 
 app.use('/api/reportes', require('./routes/reportes'));
 app.use('/api/certificados', require('./routes/certificados'));
+app.use('/api/github', require('./routes/github'));
 
 
 // Función para iniciar el servidor

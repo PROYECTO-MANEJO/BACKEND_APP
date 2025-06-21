@@ -435,6 +435,16 @@ model SolicitudCambio {
   satisfaccion_usuario Int? @map("SATISFACCION_USUARIO") @db.SmallInt
   
   // =========================================
+  // INTEGRACIÓN CON GITHUB
+  // =========================================
+  github_repo_url String? @map("GITHUB_REPO_URL") @db.VarChar(500)
+  github_branch_name String? @map("GITHUB_BRANCH_NAME") @db.VarChar(200)
+  github_pr_number Int? @map("GITHUB_PR_NUMBER")
+  github_pr_url String? @map("GITHUB_PR_URL") @db.VarChar(500)
+  github_commits Json? @map("GITHUB_COMMITS")
+  github_last_sync DateTime? @map("GITHUB_LAST_SYNC") @db.Timestamp
+  
+  // =========================================
   // METADATOS DEL SISTEMA
   // =========================================
   fec_creacion_sol DateTime @map("FEC_CREACION_SOL") @default(now()) @db.Timestamp
