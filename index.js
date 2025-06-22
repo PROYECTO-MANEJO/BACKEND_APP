@@ -51,9 +51,11 @@ const corsOptions = {
       callback(new Error(msg), false);
     }
   },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Asegúrate de que todos los métodos HTTP que usas estén aquí
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Asegúrate de que todos los métodos HTTP que usas estén aquí
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-token'], // Headers permitidos
   credentials: true, // Si usas cookies o tokens de autorización personalizados (como 'x-token')
-  optionsSuccessStatus: 200 // Para compatibilidad con navegadores antiguos
+  optionsSuccessStatus: 200, // Para compatibilidad con navegadores antiguos
+  maxAge: 86400 // Cache preflight por 24 horas para reducir peticiones OPTIONS
 };
 
 app.use(cors(corsOptions));

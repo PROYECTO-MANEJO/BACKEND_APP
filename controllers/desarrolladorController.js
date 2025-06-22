@@ -5,6 +5,17 @@ const prisma = new PrismaClient();
 const getSolicitudesAsignadas = async (req, res) => {
   try {
     const { desarrolladorId } = req.params;
+    
+    console.log('=== GET SOLICITUDES ASIGNADAS ===');
+    console.log('Desarrollador ID:', desarrolladorId);
+
+    // Validar que el ID es un string válido (UUID)
+    if (!desarrolladorId || typeof desarrolladorId !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de desarrollador inválido'
+      });
+    }
 
     // Verificar que el desarrollador existe y tiene el rol correcto
     const desarrollador = await prisma.usuario.findFirst({
@@ -28,12 +39,14 @@ const getSolicitudesAsignadas = async (req, res) => {
       });
     }
 
+    console.log('Desarrollador encontrado:', `${desarrollador.nom_usu1} ${desarrollador.ape_usu1}`);
+
     // Obtener solicitudes asignadas al desarrollador
     const solicitudes = await prisma.solicitudCambio.findMany({
       where: {
         id_desarrollador_asignado: desarrolladorId,
         estado_sol: {
-          in: ['APROBADA', 'EN_DESARROLLO', 'EN_TESTING', 'EN_PAUSA']
+          in: ['APROBADA', 'EN_DESARROLLO', 'PLANES_PENDIENTES_APROBACION', 'LISTO_PARA_IMPLEMENTAR', 'EN_TESTING', 'EN_PAUSA']
         }
       },
       include: {
@@ -65,6 +78,8 @@ const getSolicitudesAsignadas = async (req, res) => {
       ]
     });
 
+    console.log('Solicitudes encontradas:', solicitudes.length);
+
     // Formatear datos para el frontend
     const solicitudesFormateadas = solicitudes.map(solicitud => ({
       ...solicitud,
@@ -82,10 +97,12 @@ const getSolicitudesAsignadas = async (req, res) => {
 
   } catch (error) {
     console.error('Error obteniendo solicitudes asignadas:', error);
+    console.error('Stack trace:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
-      error: error.message
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
@@ -94,12 +111,24 @@ const getSolicitudesAsignadas = async (req, res) => {
 const getSolicitudEspecifica = async (req, res) => {
   try {
     const { id } = req.params;
-    const { desarrolladorId } = req.user; // Asumiendo que viene del middleware de autenticación
+    const desarrolladorId = req.user?.userId || req.user?.id_usu || req.usuario?.id_usu; // Compatibilidad con diferentes middlewares
+    
+    console.log('=== GET SOLICITUD ESPECÍFICA ===');
+    console.log('Solicitud ID:', id);
+    console.log('Usuario completo:', req.user || req.usuario);
+    console.log('Desarrollador ID extraído:', desarrolladorId);
+
+    if (!desarrolladorId) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de desarrollador no encontrado en la sesión'
+      });
+    }
 
     const solicitud = await prisma.solicitudCambio.findFirst({
       where: {
-        id_sol: id,
-        id_desarrollador_asignado: desarrolladorId
+        id_sol: id
+        // Removemos la restricción de desarrollador asignado para permitir más flexibilidad
       },
       include: {
         usuario: {
@@ -137,9 +166,16 @@ const getSolicitudEspecifica = async (req, res) => {
     if (!solicitud) {
       return res.status(404).json({
         success: false,
-        message: 'Solicitud no encontrada o no asignada a este desarrollador'
+        message: 'Solicitud no encontrada'
       });
     }
+
+    console.log('Solicitud encontrada:', {
+      id: solicitud.id_sol,
+      titulo: solicitud.titulo_sol,
+      estado: solicitud.estado_sol,
+      desarrollador_asignado: solicitud.id_desarrollador_asignado
+    });
 
     // Formatear datos
     const solicitudFormateada = {
@@ -172,20 +208,47 @@ const actualizarEstadoSolicitud = async (req, res) => {
   try {
     const { id } = req.params;
     const { estado } = req.body;
-    const { userId } = req.user; // Del middleware de autenticación
+    const userId = req.user?.userId || req.user?.id_usu || req.usuario?.id_usu; // Compatibilidad con diferentes middlewares
+    
+    console.log('=== ACTUALIZAR ESTADO SOLICITUD ===');
+    console.log('Solicitud ID:', id);
+    console.log('Nuevo estado:', estado);
+    console.log('Usuario completo:', req.user || req.usuario);
+    console.log('User ID extraído:', userId);
 
-    // Verificar que la solicitud está asignada al desarrollador
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de usuario no encontrado en la sesión'
+      });
+    }
+
+    // Verificar que la solicitud existe
     const solicitud = await prisma.solicitudCambio.findFirst({
       where: {
-        id_sol: id,
-        id_desarrollador_asignado: userId
+        id_sol: id
       }
     });
 
     if (!solicitud) {
       return res.status(404).json({
         success: false,
-        message: 'Solicitud no encontrada o no asignada a este desarrollador'
+        message: 'Solicitud no encontrada'
+      });
+    }
+
+    console.log('Solicitud encontrada para actualizar estado:', {
+      id: solicitud.id_sol,
+      estado_actual: solicitud.estado_sol,
+      desarrollador_asignado: solicitud.id_desarrollador_asignado,
+      usuario_solicitante: userId
+    });
+
+    // Verificar permisos: debe ser el desarrollador asignado
+    if (solicitud.id_desarrollador_asignado !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para modificar esta solicitud'
       });
     }
 
@@ -245,7 +308,7 @@ const agregarComentarioDesarrollo = async (req, res) => {
   try {
     const { id } = req.params;
     const { comentario } = req.body;
-    const { userId } = req.user;
+    const userId = req.user?.userId || req.user?.id_usu || req.usuario?.id_usu;
 
     // Verificar que la solicitud está asignada al desarrollador
     const solicitud = await prisma.solicitudCambio.findFirst({
@@ -364,7 +427,7 @@ const actualizarPlanesTecnicos = async (req, res) => {
       plan_testing_sol,
       observaciones_implementacion_sol 
     } = req.body;
-    const { userId } = req.user;
+    const userId = req.user?.userId || req.user?.id_usu || req.usuario?.id_usu;
 
     // Verificar que la solicitud está asignada al desarrollador
     const solicitud = await prisma.solicitudCambio.findFirst({
@@ -418,11 +481,77 @@ const actualizarPlanesTecnicos = async (req, res) => {
   }
 };
 
+// Enviar planes técnicos a revisión del MASTER
+const enviarPlanesARevision = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.userId || req.user?.id_usu || req.usuario?.id_usu; // Compatibilidad con diferentes middlewares
+
+    console.log('=== ENVIAR PLANES A REVISIÓN ===');
+    console.log('Solicitud ID:', id);
+    console.log('Desarrollador ID:', userId);
+
+    // Verificar que la solicitud existe y está asignada al desarrollador
+    const solicitud = await prisma.solicitudCambio.findFirst({
+      where: {
+        id_sol: id,
+        id_desarrollador_asignado: userId,
+        estado_sol: 'EN_DESARROLLO'
+      }
+    });
+
+    if (!solicitud) {
+      return res.status(404).json({
+        success: false,
+        message: 'Solicitud no encontrada o no está en desarrollo'
+      });
+    }
+
+    // Validar que los planes técnicos estén completos
+    const planesCompletos = solicitud.plan_rollout_sol && 
+                           solicitud.plan_backout_sol && 
+                           solicitud.plan_testing_sol;
+
+    if (!planesCompletos) {
+      return res.status(400).json({
+        success: false,
+        message: 'Debe completar todos los planes técnicos (Roll-out, Back-out y Testing) antes de enviar a revisión'
+      });
+    }
+
+    // Actualizar el estado y marcar como enviado a revisión
+    const solicitudActualizada = await prisma.solicitudCambio.update({
+      where: { id_sol: id },
+      data: {
+        estado_sol: 'PLANES_PENDIENTES_APROBACION',
+        planes_enviados_revision: true,
+        fecha_envio_planes: new Date(),
+        fec_ultima_actualizacion: new Date()
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Planes técnicos enviados a revisión del MASTER exitosamente',
+      data: solicitudActualizada
+    });
+
+  } catch (error) {
+    console.error('Error enviando planes a revisión:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getSolicitudesAsignadas,
   getSolicitudEspecifica,
   actualizarEstadoSolicitud,
   agregarComentarioDesarrollo,
   getEstadisticasDesarrollador,
-  actualizarPlanesTecnicos
+  actualizarPlanesTecnicos,
+  enviarPlanesARevision
 }; 

@@ -14,7 +14,9 @@ const {
   obtenerSolicitudAdmin,
   asignarDesarrollador,
   obtenerDesarrolladoresDisponibles,
-  enviarSolicitud
+  enviarSolicitud,
+  obtenerSolicitudesPlanesPendientes,
+  aprobarRechazarPlanes
 } = require('../controllers/solicitudesCambio');
 
 // Importar controlador de desarrolladores
@@ -121,6 +123,22 @@ router.get(
   obtenerEstadisticas
 );
 
+// Obtener lista de desarrolladores disponibles (admin)
+// GET /api/solicitudes-cambio/admin/desarrolladores/disponibles
+router.get(
+  '/admin/desarrolladores/disponibles',
+  [validateJWT, validateAdmin],
+  obtenerDesarrolladoresDisponibles
+);
+
+// Obtener solicitudes con planes pendientes de aprobación
+// GET /api/solicitudes-cambio/admin/planes-pendientes
+router.get(
+  '/admin/planes-pendientes',
+  [validateJWT, validateAdmin],
+  obtenerSolicitudesPlanesPendientes
+);
+
 // =======================
 // RUTAS ADICIONALES (PARA DESARROLLO)
 // =======================
@@ -139,14 +157,6 @@ router.post(
   '/:id/asignar-desarrollador',
   [validateJWT, validateAdmin],
   asignarDesarrollador
-);
-
-// Obtener lista de desarrolladores disponibles (admin)
-// GET /api/solicitudes-cambio/admin/desarrolladores/disponibles
-router.get(
-  '/admin/desarrolladores/disponibles',
-  [validateJWT, validateAdmin],
-  obtenerDesarrolladoresDisponibles
 );
 
 // ========================
@@ -183,6 +193,34 @@ router.post(
   '/:id/comentario-desarrollo',
   validateJWT,
   desarrolladorController.agregarComentarioDesarrollo
+);
+
+// Actualizar planes técnicos (desarrolladores)
+// PUT /api/solicitudes-cambio/desarrollador/solicitud/:id/planes-tecnicos
+router.put(
+  '/desarrollador/solicitud/:id/planes-tecnicos',
+  validateJWT,
+  desarrolladorController.actualizarPlanesTecnicos
+);
+
+// Enviar planes técnicos a revisión (desarrolladores)
+// POST /api/solicitudes-cambio/:id/enviar-planes-revision
+router.post(
+  '/:id/enviar-planes-revision',
+  validateJWT,
+  desarrolladorController.enviarPlanesARevision
+);
+
+// ========================
+// RUTAS PARA REVISIÓN DE PLANES (MASTER)
+// ========================
+
+// Aprobar o rechazar planes técnicos
+// GET /api/solicitudes-cambio/:id/aprobar-rechazar-planes (CAMBIADO A GET PARA EVITAR OPTIONS)
+router.get(
+  '/:id/aprobar-rechazar-planes',
+  [validateJWT, validateAdmin],
+  aprobarRechazarPlanes
 );
 
 module.exports = router; 

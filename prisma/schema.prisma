@@ -399,6 +399,13 @@ model SolicitudCambio {
   plan_testing_sol String? @map("PLAN_TESTING_SOL") @db.Text
   observaciones_implementacion_sol String? @map("OBSERVACIONES_IMPLEMENTACION_SOL") @db.Text
   
+  // Control de aprobación de planes técnicos
+  planes_enviados_revision Boolean @map("PLANES_ENVIADOS_REVISION") @default(false)
+  fecha_envio_planes DateTime? @map("FECHA_ENVIO_PLANES") @db.Timestamp
+  planes_aprobados Boolean? @map("PLANES_APROBADOS") @default(false)
+  fecha_aprobacion_planes DateTime? @map("FECHA_APROBACION_PLANES") @db.Timestamp
+  comentarios_aprobacion_planes String? @map("COMENTARIOS_APROBACION_PLANES") @db.Text
+  
   // =========================================
   // PLANIFICACIÓN TEMPORAL
   // =========================================
@@ -529,6 +536,8 @@ enum EstadoSolicitud {
   
   // Estados de implementación
   EN_DESARROLLO                  // En proceso de implementación
+  PLANES_PENDIENTES_APROBACION   // Planes técnicos esperando aprobación del MASTER
+  LISTO_PARA_IMPLEMENTAR         // Planes aprobados, listo para implementar
   EN_TESTING                     // En fase de pruebas
   EN_DESPLIEGUE                  // Siendo desplegada
   

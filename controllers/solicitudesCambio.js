@@ -1254,8 +1254,10 @@ const asignarDesarrollador = async (req, res) => {
     const { desarrolladorId } = req.body;
 
     console.log('=== ASIGNAR DESARROLLADOR ===');
-    console.log('Solicitud ID:', id);
-    console.log('Desarrollador ID:', desarrolladorId);
+    console.log('Solicitud ID:', id, 'Tipo:', typeof id);
+    console.log('Desarrollador ID:', desarrolladorId, 'Tipo:', typeof desarrolladorId);
+    console.log('Body completo:', req.body);
+    console.log('Params completos:', req.params);
 
     // Verificar que la solicitud existe
     const solicitud = await prisma.solicitudCambio.findUnique({
@@ -1505,6 +1507,283 @@ const validarTransicionEstado = (estadoActual, nuevoEstado, rol) => {
   return transicionesPermitidas.includes(nuevoEstado);
 };
 
+// Obtener solicitudes con planes pendientes de aprobación (para MASTER)
+const obtenerSolicitudesPlanesPendientes = async (req, res) => {
+  try {
+    console.log('=== OBTENER SOLICITUDES CON PLANES PENDIENTES ===');
+
+    // Primero verificar si hay solicitudes con este estado
+    const count = await prisma.solicitudCambio.count({
+      where: {
+        estado_sol: 'PLANES_PENDIENTES_APROBACION'
+      }
+    });
+
+    console.log('Número de solicitudes con estado PLANES_PENDIENTES_APROBACION:', count);
+
+    // Si no hay solicitudes con ese estado, devolver array vacío
+    if (count === 0) {
+      console.log('No hay solicitudes con planes pendientes de aprobación');
+      return res.json({
+        success: true,
+        data: [],
+        total: 0,
+        message: 'No hay solicitudes con planes técnicos pendientes de revisión'
+      });
+    }
+
+    const solicitudes = await prisma.solicitudCambio.findMany({
+      where: {
+        estado_sol: 'PLANES_PENDIENTES_APROBACION',
+        planes_enviados_revision: true
+      },
+      include: {
+        usuario: {
+          select: {
+            nom_usu1: true,
+            nom_usu2: true,
+            ape_usu1: true,
+            ape_usu2: true,
+            cuentas: {
+              select: {
+                cor_cue: true
+              }
+            }
+          }
+        },
+        desarrolladorAsignado: {
+          select: {
+            nom_usu1: true,
+            nom_usu2: true,
+            ape_usu1: true,
+            ape_usu2: true
+          }
+        }
+      },
+      orderBy: [
+        { fecha_envio_planes: 'asc' },
+        { prioridad_sol: 'desc' }
+      ]
+    });
+
+    console.log('Solicitudes encontradas:', solicitudes.length);
+
+    const solicitudesFormateadas = solicitudes.map(solicitud => ({
+      ...solicitud,
+      solicitante: `${solicitud.usuario.nom_usu1} ${solicitud.usuario.ape_usu1}`,
+      email_solicitante: solicitud.usuario.cuentas[0]?.cor_cue,
+      desarrollador_asignado: solicitud.desarrolladorAsignado ? 
+        `${solicitud.desarrolladorAsignado.nom_usu1} ${solicitud.desarrolladorAsignado.ape_usu1}` : null
+    }));
+
+    console.log('Solicitudes con planes pendientes:', solicitudesFormateadas.length);
+
+    res.json({
+      success: true,
+      data: solicitudesFormateadas,
+      total: solicitudesFormateadas.length
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo solicitudes con planes pendientes:', error);
+    console.error('Stack trace:', error.stack);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+// Aprobar o rechazar planes técnicos (solo MASTER) - IDEMPOTENTE
+const aprobarRechazarPlanes = async (req, res) => {
+  try {
+    const { id } = req.params;
+    // CAMBIO: Leer datos desde query parameters en lugar del body para evitar OPTIONS
+    const { accion, comentarios } = req.query; // accion: 'aprobar' | 'rechazar'
+    const id_admin = req.usuario?.id_usu || req.user?.id_usu;
+
+    console.log('=== APROBAR/RECHAZAR PLANES (IDEMPOTENTE) ===');
+    console.log('Solicitud ID:', id);
+    console.log('Acción:', accion);
+    console.log('Admin ID:', id_admin);
+
+    // Validar parámetros
+    if (!['aprobar', 'rechazar'].includes(accion)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Acción inválida. Use "aprobar" o "rechazar"'
+      });
+    }
+
+    // Obtener la solicitud actual sin filtro de estado
+    const solicitudActual = await prisma.solicitudCambio.findFirst({
+      where: { id_sol: id }
+    });
+
+    if (!solicitudActual) {
+      return res.status(404).json({
+        success: false,
+        message: 'Solicitud no encontrada'
+      });
+    }
+
+    console.log('Estado actual:', solicitudActual.estado_sol);
+    console.log('Acción solicitada:', accion);
+
+    // ==========================================
+    // LÓGICA IDEMPOTENTE - VERIFICAR ESTADO ACTUAL
+    // ==========================================
+
+    // Si la acción es APROBAR
+    if (accion === 'aprobar') {
+      // Si ya está aprobada, devolver éxito (idempotente)
+      if (solicitudActual.estado_sol === 'LISTO_PARA_IMPLEMENTAR') {
+        console.log('✅ Solicitud ya aprobada, devolviendo éxito (idempotente)');
+        return res.status(200).json({
+          success: true,
+          message: 'Planes técnicos ya fueron aprobados anteriormente',
+          data: solicitudActual,
+          accionRealizada: 'ninguna', // No se hizo cambio
+          estadoFinal: 'LISTO_PARA_IMPLEMENTAR'
+        });
+      }
+      
+      // Si está en desarrollo (rechazada), es conflicto
+      if (solicitudActual.estado_sol === 'EN_DESARROLLO') {
+        return res.status(409).json({
+          success: false,
+          message: 'No se puede aprobar: los planes fueron rechazados anteriormente',
+          estadoActual: 'EN_DESARROLLO'
+        });
+      }
+    }
+
+    // Si la acción es RECHAZAR
+    if (accion === 'rechazar') {
+      // Si ya está rechazada (EN_DESARROLLO), devolver éxito (idempotente)
+      if (solicitudActual.estado_sol === 'EN_DESARROLLO') {
+        console.log('✅ Solicitud ya rechazada, devolviendo éxito (idempotente)');
+        return res.status(200).json({
+          success: true,
+          message: 'Planes técnicos ya fueron rechazados anteriormente',
+          data: solicitudActual,
+          accionRealizada: 'ninguna', // No se hizo cambio
+          estadoFinal: 'EN_DESARROLLO'
+        });
+      }
+      
+      // Si está aprobada, es conflicto
+      if (solicitudActual.estado_sol === 'LISTO_PARA_IMPLEMENTAR') {
+        return res.status(409).json({
+          success: false,
+          message: 'No se puede rechazar: los planes ya fueron aprobados',
+          estadoActual: 'LISTO_PARA_IMPLEMENTAR'
+        });
+      }
+    }
+
+    // Si no está en estado pendiente, no se puede procesar
+    if (solicitudActual.estado_sol !== 'PLANES_PENDIENTES_APROBACION') {
+      return res.status(400).json({
+        success: false,
+        message: `No se puede ${accion}: la solicitud no está pendiente de aprobación`,
+        estadoActual: solicitudActual.estado_sol,
+        estadoEsperado: 'PLANES_PENDIENTES_APROBACION'
+      });
+    }
+
+    // ==========================================
+    // PROCESAR LA ACCIÓN (SOLO SI ESTÁ PENDIENTE)
+    // ==========================================
+    
+    console.log('🔄 Procesando acción:', accion);
+
+    let datosActualizacion;
+    let mensaje;
+
+    if (accion === 'aprobar') {
+      datosActualizacion = {
+        estado_sol: 'LISTO_PARA_IMPLEMENTAR',
+        planes_aprobados: true,
+        fecha_aprobacion_planes: new Date(),
+        comentarios_aprobacion_planes: comentarios || 'Planes técnicos aprobados',
+        fec_ultima_actualizacion: new Date()
+      };
+      mensaje = 'Planes técnicos aprobados exitosamente';
+    } else {
+      datosActualizacion = {
+        estado_sol: 'EN_DESARROLLO',
+        planes_enviados_revision: false,
+        planes_aprobados: false,
+        comentarios_aprobacion_planes: comentarios || 'Planes técnicos requieren modificaciones',
+        fec_ultima_actualizacion: new Date()
+      };
+      mensaje = 'Planes técnicos rechazados. La solicitud regresa a desarrollo';
+    }
+
+    // Actualizar la solicitud con verificación adicional de estado
+    const solicitudActualizada = await prisma.solicitudCambio.updateMany({
+      where: { 
+        id_sol: id,
+        estado_sol: 'PLANES_PENDIENTES_APROBACION' // Solo actualizar si aún está pendiente
+      },
+      data: datosActualizacion
+    });
+
+    // Si no se actualizó ningún registro, significa que cambió entre la verificación y la actualización
+    if (solicitudActualizada.count === 0) {
+      // Verificar el estado actual nuevamente
+      const estadoActual = await prisma.solicitudCambio.findFirst({
+        where: { id_sol: id },
+        select: { estado_sol: true }
+      });
+
+      console.log('⚠️ No se pudo actualizar, estado actual:', estadoActual?.estado_sol);
+
+      // Verificar si ya está en el estado deseado (idempotencia)
+      const estadoDeseado = accion === 'aprobar' ? 'LISTO_PARA_IMPLEMENTAR' : 'EN_DESARROLLO';
+      if (estadoActual?.estado_sol === estadoDeseado) {
+        console.log('✅ Ya está en el estado deseado, devolviendo éxito');
+        return res.status(200).json({
+          success: true,
+          message: `Planes técnicos ya fueron ${accion === 'aprobar' ? 'aprobados' : 'rechazados'} anteriormente`,
+          data: await prisma.solicitudCambio.findFirst({ where: { id_sol: id } }),
+          accionRealizada: 'ninguna'
+        });
+      }
+
+      return res.status(409).json({
+        success: false,
+        message: 'La solicitud fue modificada por otro usuario. Por favor, recargue la página.',
+        estadoActual: estadoActual?.estado_sol
+      });
+    }
+
+    // Obtener la solicitud actualizada
+    const solicitudFinal = await prisma.solicitudCambio.findFirst({
+      where: { id_sol: id }
+    });
+
+    console.log('✅ Acción completada exitosamente');
+
+    res.status(200).json({
+      success: true,
+      message,
+      data: solicitudFinal,
+      accionRealizada: accion
+    });
+
+  } catch (error) {
+    console.error('Error aprobando/rechazando planes:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   crearSolicitud,
   obtenerSolicitudesUsuario,
@@ -1520,5 +1799,7 @@ module.exports = {
   obtenerDesarrolladoresDisponibles,
   enviarSolicitud,
   validarPermisosEdicion,
-  validarTransicionEstado
+  validarTransicionEstado,
+  obtenerSolicitudesPlanesPendientes,
+  aprobarRechazarPlanes
 }; 
