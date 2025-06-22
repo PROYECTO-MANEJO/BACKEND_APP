@@ -69,6 +69,7 @@ model Usuario {
   solicitudesCreadas SolicitudCambio[] @relation("SolicitudesUsuario")
   solicitudesResponsables SolicitudCambio[] @relation("SolicitudesAdmin")
   solicitudesImplementadas SolicitudCambio[] @relation("SolicitudesImplementador")
+  solicitudesAsignadas SolicitudCambio[] @relation("SolicitudesDesarrollador")
   
   @@map("USUARIOS")
 }
@@ -89,6 +90,7 @@ enum RolCuenta {
   USUARIO
   MASTER
   ADMINISTRADOR
+  DESARROLLADOR
 }
 
 model Organizador {
@@ -375,7 +377,7 @@ model SolicitudCambio {
   tipo_cambio_sol TipoCambio @map("TIPO_CAMBIO_SOL")
   prioridad_sol PrioridadSolicitud @map("PRIORIDAD_SOL") @default(MEDIA)
   urgencia_sol UrgenciaSolicitud @map("URGENCIA_SOL") @default(NORMAL)
-  estado_sol EstadoSolicitud @map("ESTADO_SOL") @default(PENDIENTE)
+  estado_sol EstadoSolicitud @map("ESTADO_SOL") @default(BORRADOR)
   
   // =========================================
   // ANÁLISIS DE IMPACTO Y RIESGO
@@ -457,10 +459,12 @@ model SolicitudCambio {
   id_usuario_sol String @map("ID_USUARIO_SOL") @db.Uuid
   id_admin_resp_sol String? @map("ID_ADMIN_RESP_SOL") @db.Uuid
   id_implementador String? @map("ID_IMPLEMENTADOR") @db.Uuid
+  id_desarrollador_asignado String? @map("ID_DESARROLLADOR_ASIGNADO") @db.Uuid
   
   usuario Usuario @relation("SolicitudesUsuario", fields: [id_usuario_sol], references: [id_usu])
   adminResponsable Usuario? @relation("SolicitudesAdmin", fields: [id_admin_resp_sol], references: [id_usu])
   implementador Usuario? @relation("SolicitudesImplementador", fields: [id_implementador], references: [id_usu])
+  desarrolladorAsignado Usuario? @relation("SolicitudesDesarrollador", fields: [id_desarrollador_asignado], references: [id_usu])
   
   @@map("SOLICITUDES_CAMBIO")
 }
@@ -510,7 +514,8 @@ enum CategoriaCambio {
 
 enum EstadoSolicitud {
   // Estados iniciales
-  PENDIENTE           // Recién creada, esperando revisión inicial
+  BORRADOR            // Creada pero no enviada, editable por usuario
+  PENDIENTE           // Enviada, esperando revisión inicial
   EN_REVISION         // Siendo evaluada por el equipo técnico
   
   // Estados de aprobación

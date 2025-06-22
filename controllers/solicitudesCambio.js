@@ -61,9 +61,12 @@ const crearSolicitud = async (req, res) => {
       }
     }
 
-    // Crear la solicitud
+    // Crear la solicitud en estado BORRADOR por defecto
     const nuevaSolicitud = await prisma.solicitudCambio.create({
-      data: datosCreacion,
+      data: {
+        ...datosCreacion,
+        estado_sol: 'BORRADOR' // Siempre inicia en BORRADOR
+      },
       include: {
         usuario: {
           select: {
@@ -1244,6 +1247,264 @@ const obtenerSolicitudAdmin = async (req, res) => {
   }
 };
 
+// Asignar desarrollador a una solicitud (solo para administradores)
+const asignarDesarrollador = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { desarrolladorId } = req.body;
+
+    console.log('=== ASIGNAR DESARROLLADOR ===');
+    console.log('Solicitud ID:', id);
+    console.log('Desarrollador ID:', desarrolladorId);
+
+    // Verificar que la solicitud existe
+    const solicitud = await prisma.solicitudCambio.findUnique({
+      where: { id_sol: id }
+    });
+
+    if (!solicitud) {
+      return res.status(404).json({
+        success: false,
+        message: 'Solicitud no encontrada'
+      });
+    }
+
+    // Verificar que el desarrollador existe y tiene el rol correcto
+    const desarrollador = await prisma.usuario.findFirst({
+      where: {
+        id_usu: desarrolladorId,
+        cuentas: {
+          some: {
+            rol_cue: 'DESARROLLADOR'
+          }
+        }
+      },
+      include: {
+        cuentas: true
+      }
+    });
+
+    if (!desarrollador) {
+      return res.status(404).json({
+        success: false,
+        message: 'Desarrollador no encontrado o no tiene el rol adecuado'
+      });
+    }
+
+    // Asignar el desarrollador
+    const solicitudActualizada = await prisma.solicitudCambio.update({
+      where: { id_sol: id },
+      data: {
+        id_desarrollador_asignado: desarrolladorId,
+        fec_ultima_actualizacion: new Date()
+      },
+      include: {
+        usuario: {
+          select: {
+            nom_usu1: true,
+            nom_usu2: true,
+            ape_usu1: true,
+            ape_usu2: true
+          }
+        },
+        desarrolladorAsignado: {
+          select: {
+            nom_usu1: true,
+            nom_usu2: true,
+            ape_usu1: true,
+            ape_usu2: true
+          }
+        }
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Desarrollador asignado exitosamente',
+      data: solicitudActualizada
+    });
+
+  } catch (error) {
+    console.error('Error asignando desarrollador:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+// Obtener lista de desarrolladores disponibles
+const obtenerDesarrolladoresDisponibles = async (req, res) => {
+  try {
+    const desarrolladores = await prisma.usuario.findMany({
+      where: {
+        cuentas: {
+          some: {
+            rol_cue: 'DESARROLLADOR'
+          }
+        }
+      },
+      select: {
+        id_usu: true,
+        nom_usu1: true,
+        nom_usu2: true,
+        ape_usu1: true,
+        ape_usu2: true,
+        cuentas: {
+          select: {
+            cor_cue: true
+          }
+        }
+      }
+    });
+
+    const desarrolladoresFormateados = desarrolladores.map(dev => ({
+      id: dev.id_usu,
+      nombre: `${dev.nom_usu1} ${dev.nom_usu2 || ''} ${dev.ape_usu1} ${dev.ape_usu2 || ''}`.trim(),
+      email: dev.cuentas[0]?.cor_cue
+    }));
+
+    res.json({
+      success: true,
+      data: desarrolladoresFormateados
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo desarrolladores:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+// Enviar solicitud (BORRADOR → PENDIENTE)
+const enviarSolicitud = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const id_usuario = req.usuario.id_usu;
+
+    // Verificar que la solicitud existe y pertenece al usuario
+    const solicitud = await prisma.solicitudCambio.findFirst({
+      where: {
+        id_sol: id,
+        id_usuario_sol: id_usuario,
+        estado_sol: 'BORRADOR'
+      }
+    });
+
+    if (!solicitud) {
+      return res.status(404).json({
+        success: false,
+        message: 'Solicitud no encontrada o no está en estado borrador'
+      });
+    }
+
+    // Validar campos obligatorios antes de enviar
+    const camposObligatorios = [
+      'titulo_sol',
+      'descripcion_sol', 
+      'justificacion_sol',
+      'tipo_cambio_sol'
+    ];
+
+    const camposFaltantes = camposObligatorios.filter(campo => !solicitud[campo]);
+    
+    if (camposFaltantes.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Faltan campos obligatorios',
+        campos_faltantes: camposFaltantes
+      });
+    }
+
+    // Actualizar a estado PENDIENTE
+    const solicitudEnviada = await prisma.solicitudCambio.update({
+      where: { id_sol: id },
+      data: { 
+        estado_sol: 'PENDIENTE',
+        fec_ultima_actualizacion: new Date()
+      },
+      include: {
+        usuario: {
+          select: {
+            nom_usu1: true,
+            nom_usu2: true,
+            ape_usu1: true,
+            ape_usu2: true
+          }
+        }
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Solicitud enviada exitosamente',
+      data: solicitudEnviada
+    });
+
+  } catch (error) {
+    console.error('Error enviando solicitud:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+// Validar permisos de edición según estado y rol
+const validarPermisosEdicion = (solicitud, usuario) => {
+  const { estado_sol } = solicitud;
+  const rol = usuario.cuentas?.[0]?.rol_cue;
+
+  // Definir qué roles pueden editar en qué estados
+  const permisosEdicion = {
+    'BORRADOR': ['USUARIO'], // Solo el usuario puede editar borradores
+    'RECHAZADA': ['USUARIO'], // Usuario puede corregir solicitudes rechazadas
+    'PENDIENTE': ['MASTER'], // Solo MASTER puede modificar pendientes
+    'EN_REVISION': ['MASTER'],
+    'APROBADA': ['MASTER'], // MASTER puede reasignar o modificar
+    'EN_DESARROLLO': ['DESARROLLADOR', 'MASTER'], // Desarrollador y MASTER
+    'EN_TESTING': ['DESARROLLADOR', 'MASTER'],
+    'EN_PAUSA': ['DESARROLLADOR', 'MASTER']
+  };
+
+  const rolesPermitidos = permisosEdicion[estado_sol] || [];
+  return rolesPermitidos.includes(rol);
+};
+
+// Validar transiciones de estado según rol
+const validarTransicionEstado = (estadoActual, nuevoEstado, rol) => {
+  const transicionesPorRol = {
+    'USUARIO': {
+      'BORRADOR': ['PENDIENTE'], // Usuario puede enviar borrador
+      'RECHAZADA': ['PENDIENTE'] // Usuario puede reenviar rechazada
+    },
+    'MASTER': {
+      'PENDIENTE': ['EN_REVISION', 'RECHAZADA'],
+      'EN_REVISION': ['APROBADA', 'RECHAZADA', 'ESPERANDO_INFORMACION'],
+      'APROBADA': ['EN_DESARROLLO', 'CANCELADA'],
+      'ESPERANDO_INFORMACION': ['EN_REVISION'],
+      'EN_DESARROLLO': ['EN_TESTING', 'EN_PAUSA', 'CANCELADA'],
+      'EN_TESTING': ['COMPLETADA', 'EN_DESARROLLO'],
+      'EN_PAUSA': ['EN_DESARROLLO', 'CANCELADA'],
+      'COMPLETADA': ['CERRADA']
+    },
+    'DESARROLLADOR': {
+      'APROBADA': ['EN_DESARROLLO'],
+      'EN_DESARROLLO': ['EN_TESTING', 'EN_PAUSA'],
+      'EN_PAUSA': ['EN_DESARROLLO'],
+      'EN_TESTING': ['EN_DESARROLLO'] // Para reportar bugs
+    }
+  };
+
+  const transicionesPermitidas = transicionesPorRol[rol]?.[estadoActual] || [];
+  return transicionesPermitidas.includes(nuevoEstado);
+};
+
 module.exports = {
   crearSolicitud,
   obtenerSolicitudesUsuario,
@@ -1254,5 +1515,10 @@ module.exports = {
   actualizarEstadoSolicitud,
   obtenerEstadisticas,
   gestionarSolicitudTecnica,
-  obtenerSolicitudAdmin
+  obtenerSolicitudAdmin,
+  asignarDesarrollador,
+  obtenerDesarrolladoresDisponibles,
+  enviarSolicitud,
+  validarPermisosEdicion,
+  validarTransicionEstado
 }; 

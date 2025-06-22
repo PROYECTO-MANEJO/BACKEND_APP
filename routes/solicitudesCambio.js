@@ -11,8 +11,14 @@ const {
   actualizarEstadoSolicitud,
   obtenerEstadisticas,
   gestionarSolicitudTecnica,
-  obtenerSolicitudAdmin
+  obtenerSolicitudAdmin,
+  asignarDesarrollador,
+  obtenerDesarrolladoresDisponibles,
+  enviarSolicitud
 } = require('../controllers/solicitudesCambio');
+
+// Importar controlador de desarrolladores
+const desarrolladorController = require('../controllers/desarrolladorController');
 
 // Importar middlewares
 const { validateJWT, validateAdmin, validateRoles } = require('../middlewares/validateJWT');
@@ -53,6 +59,14 @@ router.get(
   '/mis-solicitudes/:id',
   [validateJWT, ...validarIdSolicitud],
   obtenerSolicitudPorId
+);
+
+// Enviar solicitud (BORRADOR → PENDIENTE)
+// PUT /api/solicitudes-cambio/:id/enviar
+router.put(
+  '/:id/enviar',
+  validateJWT,
+  enviarSolicitud
 );
 
 // ========================
@@ -117,6 +131,58 @@ router.get(
   '/admin/:id',
   [validateJWT, validateAdmin, ...validarIdSolicitud],
   obtenerSolicitudAdmin
+);
+
+// Asignar desarrollador a una solicitud (admin)
+// POST /api/solicitudes-cambio/:id/asignar-desarrollador
+router.post(
+  '/:id/asignar-desarrollador',
+  [validateJWT, validateAdmin],
+  asignarDesarrollador
+);
+
+// Obtener lista de desarrolladores disponibles (admin)
+// GET /api/solicitudes-cambio/admin/desarrolladores/disponibles
+router.get(
+  '/admin/desarrolladores/disponibles',
+  [validateJWT, validateAdmin],
+  obtenerDesarrolladoresDisponibles
+);
+
+// ========================
+// RUTAS PARA DESARROLLADORES
+// ========================
+
+// Obtener solicitudes asignadas a un desarrollador
+// GET /api/solicitudes-cambio/desarrollador/:desarrolladorId
+router.get(
+  '/desarrollador/:desarrolladorId',
+  validateJWT,
+  desarrolladorController.getSolicitudesAsignadas
+);
+
+// Obtener una solicitud específica para desarrollador
+// GET /api/solicitudes-cambio/desarrollador/solicitud/:id
+router.get(
+  '/desarrollador/solicitud/:id',
+  validateJWT,
+  desarrolladorController.getSolicitudEspecifica
+);
+
+// Actualizar estado de una solicitud (desarrolladores)
+// POST /api/solicitudes-cambio/:id/estado
+router.post(
+  '/:id/estado',
+  validateJWT,
+  desarrolladorController.actualizarEstadoSolicitud
+);
+
+// Agregar comentario de desarrollo
+// POST /api/solicitudes-cambio/:id/comentario-desarrollo
+router.post(
+  '/:id/comentario-desarrollo',
+  validateJWT,
+  desarrolladorController.agregarComentarioDesarrollo
 );
 
 module.exports = router; 

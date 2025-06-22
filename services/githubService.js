@@ -7,12 +7,10 @@ class GitHubService {
     this.defaultOwner = process.env.GITHUB_DEFAULT_OWNER || 'tu-organizacion';
     this.defaultRepo = process.env.GITHUB_DEFAULT_REPO || 'tu-repositorio';
     
-    // Repositorios múltiples
+    // Solo 2 repositorios: Frontend y Backend
     this.repositories = {
-      frontend: process.env.GITHUB_REPO_FRONTEND || this.defaultRepo,
-      backend: process.env.GITHUB_REPO_BACKEND || this.defaultRepo,
-      mobile: process.env.GITHUB_REPO_MOBILE || this.defaultRepo,
-      main: this.defaultRepo
+      frontend: process.env.GITHUB_REPO_FRONTEND,
+      backend: process.env.GITHUB_REPO_BACKEND
     };
     
     this.client = axios.create({
@@ -203,9 +201,9 @@ class GitHubService {
   }
 
   // Método para sincronizar solo un repositorio específico
-  async sincronizarSolicitudEnRepo(solicitudId, repoType = 'main') {
+  async sincronizarSolicitudEnRepo(solicitudId, repoType = 'frontend') {
     try {
-      const repoName = this.repositories[repoType] || this.defaultRepo;
+      const repoName = this.repositories[repoType];
       
       const resultado = {
         branches: [],
@@ -300,13 +298,13 @@ ${solicitud.justificacion_sol}
   }
 
   // Crear un nuevo branch en un repositorio específico
-  async crearBranch(solicitud, repoType = 'main', baseBranch = 'main') {
+  async crearBranch(solicitud, repoType = 'frontend', baseBranch = 'main') {
     try {
       if (!this.isConfigured()) {
         throw new Error('GitHub no está configurado');
       }
 
-      const repoName = this.repositories[repoType] || this.defaultRepo;
+      const repoName = this.repositories[repoType];
       const branchName = this.generarNombreBranch(solicitud);
 
       // 1. Obtener el SHA del branch base
@@ -335,7 +333,7 @@ ${solicitud.justificacion_sol}
       // Si el branch ya existe, devolver información del branch existente
       if (error.response?.status === 422 && error.response.data.message.includes('already exists')) {
         const branchName = this.generarNombreBranch(solicitud);
-        const repoName = this.repositories[repoType] || this.defaultRepo;
+        const repoName = this.repositories[repoType];
         
         return {
           success: true,
@@ -352,13 +350,13 @@ ${solicitud.justificacion_sol}
   }
 
   // Crear Pull Request desde un branch
-  async crearPullRequest(solicitud, branchName, repoType = 'main', baseBranch = 'main') {
+  async crearPullRequest(solicitud, branchName, repoType = 'frontend', baseBranch = 'main') {
     try {
       if (!this.isConfigured()) {
         throw new Error('GitHub no está configurado');
       }
 
-      const repoName = this.repositories[repoType] || this.defaultRepo;
+      const repoName = this.repositories[repoType];
       
       const titulo = `SOL-${solicitud.id_sol.substring(0, 8)}: ${solicitud.titulo_sol}`;
       const cuerpo = `## Solicitud de Cambio: ${solicitud.titulo_sol}
@@ -405,13 +403,13 @@ ${solicitud.plan_implementacion_sol || 'Por definir'}
   }
 
   // Obtener información detallada de un branch específico
-  async obtenerInfoBranch(branchName, repoType = 'main') {
+  async obtenerInfoBranch(branchName, repoType = 'frontend') {
     try {
       if (!this.isConfigured()) {
         throw new Error('GitHub no está configurado');
       }
 
-      const repoName = this.repositories[repoType] || this.defaultRepo;
+      const repoName = this.repositories[repoType];
 
       // Obtener información del branch
       const branchResponse = await this.client.get(`/repos/${this.defaultOwner}/${repoName}/branches/${branchName}`);
