@@ -1784,6 +1784,153 @@ const aprobarRechazarPlanes = async (req, res) => {
   }
 };
 
+// Editar solicitud por usuario (solo BORRADOR y RECHAZADA)
+const editarSolicitudUsuario = async (req, res) => {
+  try {
+    console.log('=== EDITAR SOLICITUD USUARIO ===');
+    console.log('ID:', req.params.id);
+    console.log('Body:', req.body);
+    console.log('Usuario:', req.usuario?.id_usu);
+
+    const { id } = req.params;
+    const id_usuario = req.usuario.id_usu;
+    const {
+      titulo_sol,
+      descripcion_sol,
+      justificacion_sol,
+      tipo_cambio_sol,
+      prioridad_sol
+    } = req.body;
+
+    // Verificar que la solicitud existe y pertenece al usuario
+    const solicitudExistente = await prisma.solicitudCambio.findFirst({
+      where: {
+        id_sol: id,
+        id_usuario_sol: id_usuario
+      }
+    });
+
+    if (!solicitudExistente) {
+      return res.status(404).json({
+        success: false,
+        message: 'Solicitud no encontrada'
+      });
+    }
+
+    // Solo permitir editar borradores y rechazadas
+    if (!['BORRADOR', 'RECHAZADA'].includes(solicitudExistente.estado_sol)) {
+      return res.status(400).json({
+        success: false,
+        message: `Solo se pueden editar solicitudes en estado BORRADOR o RECHAZADA. Estado actual: ${solicitudExistente.estado_sol}`
+      });
+    }
+
+    // Preparar datos para actualizar
+    const datosActualizacion = {
+      fec_ultima_actualizacion: new Date()
+    };
+
+    // Solo actualizar campos que se envían
+    if (titulo_sol !== undefined) datosActualizacion.titulo_sol = titulo_sol;
+    if (descripcion_sol !== undefined) datosActualizacion.descripcion_sol = descripcion_sol;
+    if (justificacion_sol !== undefined) datosActualizacion.justificacion_sol = justificacion_sol;
+    if (tipo_cambio_sol !== undefined) datosActualizacion.tipo_cambio_sol = tipo_cambio_sol;
+    if (prioridad_sol !== undefined) datosActualizacion.prioridad_sol = prioridad_sol;
+
+    // Si la solicitud estaba rechazada, cambiar a borrador para permitir reenvío
+    if (solicitudExistente.estado_sol === 'RECHAZADA') {
+      datosActualizacion.estado_sol = 'BORRADOR';
+      datosActualizacion.comentarios_admin_sol = null; // Limpiar comentarios anteriores
+    }
+
+    // Actualizar la solicitud
+    const solicitudActualizada = await prisma.solicitudCambio.update({
+      where: { id_sol: id },
+      data: datosActualizacion,
+      include: {
+        usuario: {
+          select: {
+            nom_usu1: true,
+            nom_usu2: true,
+            ape_usu1: true,
+            ape_usu2: true
+          }
+        }
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Solicitud editada exitosamente',
+      data: solicitudActualizada
+    });
+
+  } catch (error) {
+    console.error('Error al editar solicitud de usuario:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+// Cancelar/Eliminar solicitud (solo BORRADOR)
+const cancelarSolicitud = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const id_usuario = req.usuario.id_usu;
+    const { motivo = 'Cancelada por el usuario' } = req.body;
+
+    // Verificar que la solicitud existe y pertenece al usuario
+    const solicitud = await prisma.solicitudCambio.findFirst({
+      where: {
+        id_sol: id,
+        id_usuario_sol: id_usuario
+      }
+    });
+
+    if (!solicitud) {
+      return res.status(404).json({
+        success: false,
+        message: 'Solicitud no encontrada'
+      });
+    }
+
+    // Solo permitir cancelar borradores
+    if (solicitud.estado_sol !== 'BORRADOR') {
+      return res.status(400).json({
+        success: false,
+        message: `Solo se pueden cancelar solicitudes en estado BORRADOR. Estado actual: ${solicitud.estado_sol}`
+      });
+    }
+
+    // Actualizar estado a CANCELADA
+    const solicitudCancelada = await prisma.solicitudCambio.update({
+      where: { id_sol: id },
+      data: {
+        estado_sol: 'CANCELADA',
+        comentarios_admin_sol: motivo,
+        fec_ultima_actualizacion: new Date()
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Solicitud cancelada exitosamente',
+      data: solicitudCancelada
+    });
+
+  } catch (error) {
+    console.error('Error cancelando solicitud:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   crearSolicitud,
   obtenerSolicitudesUsuario,
@@ -1791,6 +1938,7 @@ module.exports = {
   obtenerTodasLasSolicitudes,
   responderSolicitud,
   editarSolicitud,
+  editarSolicitudUsuario,
   actualizarEstadoSolicitud,
   obtenerEstadisticas,
   gestionarSolicitudTecnica,
@@ -1798,6 +1946,7 @@ module.exports = {
   asignarDesarrollador,
   obtenerDesarrolladoresDisponibles,
   enviarSolicitud,
+  cancelarSolicitud,
   validarPermisosEdicion,
   validarTransicionEstado,
   obtenerSolicitudesPlanesPendientes,

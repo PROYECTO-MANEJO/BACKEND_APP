@@ -68,7 +68,6 @@ model Usuario {
   // ✅ RELACIONES DE SOLICITUDES
   solicitudesCreadas SolicitudCambio[] @relation("SolicitudesUsuario")
   solicitudesResponsables SolicitudCambio[] @relation("SolicitudesAdmin")
-  solicitudesImplementadas SolicitudCambio[] @relation("SolicitudesImplementador")
   solicitudesAsignadas SolicitudCambio[] @relation("SolicitudesDesarrollador")
   
   @@map("USUARIOS")
@@ -366,113 +365,75 @@ enum EstadoPago {
 // =====================================================
 
 model SolicitudCambio {
-  id_sol String @id @default(uuid()) @map("ID_SOL") @db.Uuid
-  
-  // =========================================
-  // CAMPOS BÁSICOS DE LA SOLICITUD
-  // =========================================
-  titulo_sol String @map("TITULO_SOL") @db.VarChar(200)
-  descripcion_sol String @map("DESCRIPCION_SOL") @db.Text
-  justificacion_sol String @map("JUSTIFICACION_SOL") @db.Text
-  tipo_cambio_sol TipoCambio @map("TIPO_CAMBIO_SOL")
-  prioridad_sol PrioridadSolicitud @map("PRIORIDAD_SOL") @default(MEDIA)
-  urgencia_sol UrgenciaSolicitud @map("URGENCIA_SOL") @default(NORMAL)
-  estado_sol EstadoSolicitud @map("ESTADO_SOL") @default(BORRADOR)
-  
-  // =========================================
-  // ANÁLISIS DE IMPACTO Y RIESGO
-  // =========================================
-  impacto_negocio_sol String? @map("IMPACTO_NEGOCIO_SOL") @db.Text
-  impacto_tecnico_sol String? @map("IMPACTO_TECNICO_SOL") @db.Text
-  riesgo_cambio_sol RiesgoCambio @map("RIESGO_CAMBIO_SOL") @default(BAJO)
-  categoria_cambio_sol CategoriaCambio @map("CATEGORIA_CAMBIO_SOL") @default(NORMAL)
-  tiempo_inactividad_estimado_sol String? @map("TIEMPO_INACTIVIDAD_ESTIMADO_SOL") @db.VarChar(100)
-  usuarios_afectados_sol String? @map("USUARIOS_AFECTADOS_SOL") @db.Text
-  
-  // =========================================
-  // PLANES DE IMPLEMENTACIÓN
-  // =========================================
-  plan_implementacion_sol String? @map("PLAN_IMPLEMENTACION_SOL") @db.Text
-  plan_rollout_sol String? @map("PLAN_ROLLOUT_SOL") @db.Text
-  plan_backout_sol String? @map("PLAN_BACKOUT_SOL") @db.Text
-  plan_rollback_sol String? @map("PLAN_ROLLBACK_SOL") @db.Text
-  plan_testing_sol String? @map("PLAN_TESTING_SOL") @db.Text
-  observaciones_implementacion_sol String? @map("OBSERVACIONES_IMPLEMENTACION_SOL") @db.Text
-  
-  // Control de aprobación de planes técnicos
-  planes_enviados_revision Boolean @map("PLANES_ENVIADOS_REVISION") @default(false)
-  fecha_envio_planes DateTime? @map("FECHA_ENVIO_PLANES") @db.Timestamp
-  planes_aprobados Boolean? @map("PLANES_APROBADOS") @default(false)
-  fecha_aprobacion_planes DateTime? @map("FECHA_APROBACION_PLANES") @db.Timestamp
-  comentarios_aprobacion_planes String? @map("COMENTARIOS_APROBACION_PLANES") @db.Text
-  
-  // =========================================
-  // PLANIFICACIÓN TEMPORAL
-  // =========================================
-  fecha_planificada_inicio_sol DateTime? @map("FECHA_PLANIFICADA_INICIO_SOL") @db.Date
-  fecha_planificada_fin_sol DateTime? @map("FECHA_PLANIFICADA_FIN_SOL") @db.Date
-  hora_planificada_inicio_sol String? @map("HORA_PLANIFICADA_INICIO_SOL") @db.VarChar(10)
-  hora_planificada_fin_sol String? @map("HORA_PLANIFICADA_FIN_SOL") @db.VarChar(10)
-  
-  fecha_real_inicio_sol DateTime? @map("FECHA_REAL_INICIO_SOL") @db.Date
-  fecha_real_fin_sol DateTime? @map("FECHA_REAL_FIN_SOL") @db.Date
-  hora_real_inicio_sol String? @map("HORA_REAL_INICIO_SOL") @db.VarChar(10)
-  hora_real_fin_sol String? @map("HORA_REAL_FIN_SOL") @db.VarChar(10)
-  
-  tiempo_estimado_horas_sol Int? @map("TIEMPO_ESTIMADO_HORAS_SOL")
-  tiempo_real_horas_sol Int? @map("TIEMPO_REAL_HORAS_SOL")
-  
-  // =========================================
-  // RECURSOS Y COMUNICACIÓN
-  // =========================================
-  recursos_necesarios_sol String? @map("RECURSOS_NECESARIOS_SOL") @db.Text
-  beneficios_esperados_sol String? @map("BENEFICIOS_ESPERADOS_SOL") @db.Text
-  fecha_limite_deseada DateTime? @map("FECHA_LIMITE_DESEADA") @db.Date
-  
-  // =========================================
-  // COMENTARIOS Y SEGUIMIENTO
-  // =========================================
-  comentarios_admin_sol String? @map("COMENTARIOS_ADMIN_SOL") @db.Text
-  comentarios_internos_sol String? @map("COMENTARIOS_INTERNOS_SOL") @db.Text
-  comentarios_tecnicos_sol String? @map("COMENTARIOS_TECNICOS_SOL") @db.Text
-  
-  // =========================================
-  // RESULTADOS Y MÉTRICAS
-  // =========================================
-  exito_implementacion Boolean? @map("EXITO_IMPLEMENTACION")
-  problemas_encontrados String? @map("PROBLEMAS_ENCONTRADOS") @db.Text
-  satisfaccion_usuario Int? @map("SATISFACCION_USUARIO") @db.SmallInt
-  
-  // =========================================
-  // INTEGRACIÓN CON GITHUB
-  // =========================================
-  github_repo_url String? @map("GITHUB_REPO_URL") @db.VarChar(500)
-  github_branch_name String? @map("GITHUB_BRANCH_NAME") @db.VarChar(200)
-  github_pr_number Int? @map("GITHUB_PR_NUMBER")
-  github_pr_url String? @map("GITHUB_PR_URL") @db.VarChar(500)
-  github_commits Json? @map("GITHUB_COMMITS")
-  github_last_sync DateTime? @map("GITHUB_LAST_SYNC") @db.Timestamp
-  
-  // =========================================
-  // METADATOS DEL SISTEMA
-  // =========================================
-  fec_creacion_sol DateTime @map("FEC_CREACION_SOL") @default(now()) @db.Timestamp
-  fec_respuesta_sol DateTime? @map("FEC_RESPUESTA_SOL") @db.Timestamp
-  fec_ultima_actualizacion DateTime @map("FEC_ULTIMA_ACTUALIZACION") @default(now()) @db.Timestamp
-  
-  // =========================================
-  // RELACIONES
-  // =========================================
-  id_usuario_sol String @map("ID_USUARIO_SOL") @db.Uuid
-  id_admin_resp_sol String? @map("ID_ADMIN_RESP_SOL") @db.Uuid
-  id_implementador String? @map("ID_IMPLEMENTADOR") @db.Uuid
-  id_desarrollador_asignado String? @map("ID_DESARROLLADOR_ASIGNADO") @db.Uuid
-  
-  usuario Usuario @relation("SolicitudesUsuario", fields: [id_usuario_sol], references: [id_usu])
-  adminResponsable Usuario? @relation("SolicitudesAdmin", fields: [id_admin_resp_sol], references: [id_usu])
-  implementador Usuario? @relation("SolicitudesImplementador", fields: [id_implementador], references: [id_usu])
-  desarrolladorAsignado Usuario? @relation("SolicitudesDesarrollador", fields: [id_desarrollador_asignado], references: [id_usu])
-  
+  id_sol                       String        @id @default(uuid()) @map("ID_SOL") @db.Uuid
+
+  // --- DATOS INICIALES DEL USUARIO ---
+  titulo_sol                  String        @map("TITULO_SOL") @db.VarChar(200)
+  descripcion_sol             String        @map("DESCRIPCION_SOL") @db.Text
+  justificacion_sol           String        @map("JUSTIFICACION_SOL") @db.Text
+  tipo_cambio_sol             TipoCambio    @map("TIPO_CAMBIO_SOL")
+  prioridad_sol               PrioridadSolicitud @map("PRIORIDAD_SOL") @default(MEDIA)
+  urgencia_sol                UrgenciaSolicitud  @map("URGENCIA_SOL") @default(NORMAL)
+  estado_sol                  EstadoSolicitud    @map("ESTADO_SOL") @default(BORRADOR)
+
+  // --- ANÁLISIS DEL MASTER ---
+  impacto_negocio_sol         String?       @map("IMPACTO_NEGOCIO_SOL") @db.Text
+  impacto_tecnico_sol         String?       @map("IMPACTO_TECNICO_SOL") @db.Text
+  riesgo_cambio_sol           RiesgoCambio  @map("RIESGO_CAMBIO_SOL") @default(BAJO)
+  categoria_cambio_sol        CategoriaCambio @map("CATEGORIA_CAMBIO_SOL") @default(NORMAL)
+
+  // --- PLANES TÉCNICOS (Desarrollador) ---
+  plan_implementacion_sol     String?       @map("PLAN_IMPLEMENTACION_SOL") @db.Text
+  plan_rollback_sol           String?       @map("PLAN_ROLLBACK_SOL") @db.Text
+  plan_testing_sol            String?       @map("PLAN_TESTING_SOL") @db.Text
+
+  planes_enviados_revision    Boolean       @map("PLANES_ENVIADOS_REVISION") @default(false)
+  fecha_envio_planes          DateTime?     @map("FECHA_ENVIO_PLANES") @db.Timestamp
+  planes_aprobados            Boolean?      @map("PLANES_APROBADOS") @default(false)
+  fecha_aprobacion_planes     DateTime?     @map("FECHA_APROBACION_PLANES") @db.Timestamp
+  comentarios_aprobacion_planes String?     @map("COMENTARIOS_APROBACION_PLANES") @db.Text
+
+  // --- PLANIFICACIÓN TEMPORAL ---
+  fecha_planificada_inicio_sol DateTime?    @map("FECHA_PLANIFICADA_INICIO_SOL") @db.Date
+  fecha_planificada_fin_sol   DateTime?     @map("FECHA_PLANIFICADA_FIN_SOL") @db.Date
+  hora_planificada_inicio_sol String?       @map("HORA_PLANIFICADA_INICIO_SOL") @db.VarChar(10)
+  hora_planificada_fin_sol    String?       @map("HORA_PLANIFICADA_FIN_SOL") @db.VarChar(10)
+  tiempo_estimado_horas_sol   Int?          @map("TIEMPO_ESTIMADO_HORAS_SOL")
+
+  fecha_real_inicio_sol       DateTime?     @map("FECHA_REAL_INICIO_SOL") @db.Date
+  fecha_real_fin_sol          DateTime?     @map("FECHA_REAL_FIN_SOL") @db.Date
+  hora_real_inicio_sol        String?       @map("HORA_REAL_INICIO_SOL") @db.VarChar(10)
+  hora_real_fin_sol           String?       @map("HORA_REAL_FIN_SOL") @db.VarChar(10)
+  tiempo_real_horas_sol       Int?          @map("TIEMPO_REAL_HORAS_SOL")
+
+  // --- COMENTARIOS Y RESULTADOS ---
+  comentarios_admin_sol       String?       @map("COMENTARIOS_ADMIN_SOL") @db.Text
+  comentarios_internos_sol    String?       @map("COMENTARIOS_INTERNOS_SOL") @db.Text
+  comentarios_tecnicos_sol    String?       @map("COMENTARIOS_TECNICOS_SOL") @db.Text
+  exito_implementacion        Boolean?      @map("EXITO_IMPLEMENTACION")
+
+  // --- GitHub ---
+  github_repo_url             String?       @map("GITHUB_REPO_URL") @db.VarChar(500)
+  github_branch_name          String?       @map("GITHUB_BRANCH_NAME") @db.VarChar(200)
+  github_pr_number            Int?          @map("GITHUB_PR_NUMBER")
+  github_pr_url               String?       @map("GITHUB_PR_URL") @db.VarChar(500)
+  github_commits              Json?         @map("GITHUB_COMMITS")
+  github_last_sync            DateTime?     @map("GITHUB_LAST_SYNC") @db.Timestamp
+
+  // --- METADATOS ---
+  fec_creacion_sol            DateTime      @map("FEC_CREACION_SOL") @default(now()) @db.Timestamp
+  fec_respuesta_sol           DateTime?     @map("FEC_RESPUESTA_SOL") @db.Timestamp
+  fec_ultima_actualizacion    DateTime      @map("FEC_ULTIMA_ACTUALIZACION") @default(now()) @db.Timestamp
+
+  // --- RELACIONES ---
+  id_usuario_sol              String        @map("ID_USUARIO_SOL") @db.Uuid
+  id_admin_resp_sol           String?       @map("ID_ADMIN_RESP_SOL") @db.Uuid
+  id_desarrollador_asignado   String?       @map("ID_DESARROLLADOR_ASIGNADO") @db.Uuid
+
+  usuario                     Usuario       @relation("SolicitudesUsuario", fields: [id_usuario_sol], references: [id_usu])
+  adminResponsable            Usuario?      @relation("SolicitudesAdmin", fields: [id_admin_resp_sol], references: [id_usu])
+  desarrolladorAsignado       Usuario?      @relation("SolicitudesDesarrollador", fields: [id_desarrollador_asignado], references: [id_usu])
+
   @@map("SOLICITUDES_CAMBIO")
 }
 
@@ -498,57 +459,41 @@ enum PrioridadSolicitud {
 }
 
 enum UrgenciaSolicitud {
-  BAJA      // Puede esperar más de 30 días
-  NORMAL    // Necesario en 2-4 semanas
-  ALTA      // Necesario en 1-2 semanas
-  URGENTE   // Necesario esta semana
-  CRITICA   // Necesario inmediatamente
+  BAJA
+  NORMAL
+  ALTA
+  URGENTE
+  CRITICA
 }
 
 enum RiesgoCambio {
-  BAJO      // Sin impacto significativo, fácil rollback
-  MEDIO     // Impacto limitado, rollback posible
-  ALTO      // Impacto significativo, rollback complejo
-  CRITICO   // Alto impacto, rollback muy difícil
+  BAJO
+  MEDIO
+  ALTO
+  CRITICO
 }
 
 enum CategoriaCambio {
-  NORMAL         // Cambio estándar con proceso normal
-  EXPEDITO       // Cambio urgente con proceso simplificado
-  EMERGENCIA     // Cambio crítico que bypassa algunos controles
-  ESTANDAR       // Cambio pre-aprobado con bajo riesgo
+  NORMAL
+  EXPEDITO
+  EMERGENCIA
+  ESTANDAR
 }
 
 enum EstadoSolicitud {
-  // Estados iniciales
-  BORRADOR            // Creada pero no enviada, editable por usuario
-  PENDIENTE           // Enviada, esperando revisión inicial
-  EN_REVISION         // Siendo evaluada por el equipo técnico
-  
-  // Estados de aprobación
-  PENDIENTE_APROBACION_TECNICA   // Esperando aprobación técnica
-  PENDIENTE_APROBACION_NEGOCIO   // Esperando aprobación de negocio
-  APROBADA                       // Aprobada y lista para implementar
-  
-  // Estados de rechazo
-  RECHAZADA                      // Rechazada con retroalimentación
-  CANCELADA                      // Cancelada por el solicitante
-  
-  // Estados de implementación
-  EN_DESARROLLO                  // En proceso de implementación
-  PLANES_PENDIENTES_APROBACION   // Planes técnicos esperando aprobación del MASTER
-  LISTO_PARA_IMPLEMENTAR         // Planes aprobados, listo para implementar
-  EN_TESTING                     // En fase de pruebas
-  EN_DESPLIEGUE                  // Siendo desplegada
-  
-  // Estados finales
-  COMPLETADA                     // Exitosamente implementada
-  FALLIDA                        // Implementación falló
-  CERRADA                        // Cerrada administrativamente
-  
-  // Estados especiales
-  EN_PAUSA                       // Pausada temporalmente
-  ESPERANDO_INFORMACION          // Necesita más información del solicitante
+  BORRADOR
+  PENDIENTE
+  EN_REVISION
+  APROBADA
+  RECHAZADA
+  CANCELADA
+  EN_DESARROLLO
+  PLANES_PENDIENTES_APROBACION
+  LISTO_PARA_IMPLEMENTAR
+  EN_TESTING
+  EN_DESPLIEGUE
+  COMPLETADA
+  FALLIDA
 }
 
 // =====================================================

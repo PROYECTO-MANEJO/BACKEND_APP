@@ -3,21 +3,13 @@ const { Router } = require('express');
 // Importar controladores
 const {
   crearSolicitud,
-  obtenerSolicitudesUsuario,
-  obtenerSolicitudPorId,
-  obtenerTodasLasSolicitudes,
-  responderSolicitud,
+  obtenerMisSolicitudes,
+  obtenerMiSolicitud,
   editarSolicitud,
-  actualizarEstadoSolicitud,
-  obtenerEstadisticas,
-  gestionarSolicitudTecnica,
-  obtenerSolicitudAdmin,
-  asignarDesarrollador,
-  obtenerDesarrolladoresDisponibles,
   enviarSolicitud,
-  obtenerSolicitudesPlanesPendientes,
-  aprobarRechazarPlanes
-} = require('../controllers/solicitudesCambio');
+  cancelarSolicitud,
+  obtenerEstadisticasUsuario
+} = require('../controllers/solicitudesCambioController');
 
 // Importar controlador de desarrolladores
 const desarrolladorController = require('../controllers/desarrolladorController');
@@ -26,11 +18,8 @@ const desarrolladorController = require('../controllers/desarrolladorController'
 const { validateJWT, validateAdmin, validateRoles } = require('../middlewares/validateJWT');
 const {
   validarCreacionSolicitud,
-  validarRespuestaSolicitud,
   validarEdicionSolicitud,
-  validarActualizacionEstado,
-  validarIdSolicitud,
-  validarGestionTecnica
+  validarIdSolicitud
 } = require('../middlewares/validacionSolicitudes');
 
 const router = Router();
@@ -40,7 +29,7 @@ const router = Router();
 // ===================
 
 // Crear una nueva solicitud de cambio
-// POST /api/solicitudes-cambio
+// POST /api/solicitudes-cambio/solicitud-nueva
 router.post(
   '/solicitud-nueva',
   [validateJWT, ...validarCreacionSolicitud],
@@ -52,7 +41,7 @@ router.post(
 router.get(
   '/mis-solicitudes',
   validateJWT,
-  obtenerSolicitudesUsuario
+  obtenerMisSolicitudes
 );
 
 // Obtener una solicitud específica del usuario autenticado
@@ -60,104 +49,46 @@ router.get(
 router.get(
   '/mis-solicitudes/:id',
   [validateJWT, ...validarIdSolicitud],
-  obtenerSolicitudPorId
+  obtenerMiSolicitud
+);
+
+// Editar solicitud (usuario - solo BORRADOR)
+// PUT /api/solicitudes-cambio/:id/editar
+router.put(
+  '/:id/editar',
+  [validateJWT, ...validarEdicionSolicitud],
+  editarSolicitud
 );
 
 // Enviar solicitud (BORRADOR → PENDIENTE)
 // PUT /api/solicitudes-cambio/:id/enviar
 router.put(
   '/:id/enviar',
-  validateJWT,
+  [validateJWT, ...validarIdSolicitud],
   enviarSolicitud
 );
 
+// Cancelar solicitud (solo BORRADOR)
+// PUT /api/solicitudes-cambio/:id/cancelar
+router.put(
+  '/:id/cancelar',
+  [validateJWT, ...validarIdSolicitud],
+  cancelarSolicitud
+);
+
+// Obtener estadísticas del usuario
+// GET /api/solicitudes-cambio/mis-estadisticas
+router.get(
+  '/mis-estadisticas',
+  validateJWT,
+  obtenerEstadisticasUsuario
+);
+
 // ========================
-// RUTAS PARA ADMINISTRADORES
+// RUTAS SIMPLIFICADAS 
 // ========================
-
-// Obtener todas las solicitudes (solo administradores)
-// GET /api/solicitudes-cambio/admin/todas
-router.get(
-  '/admin/todas',
-  [validateJWT, validateAdmin],
-  obtenerTodasLasSolicitudes
-);
-
-// Responder a una solicitud (aprobar/rechazar) - Solo administradores
-// PUT /api/solicitudes-cambio/admin/:id/responder
-router.put(
-  '/admin/:id/responder',
-  [validateJWT, validateAdmin, ...validarRespuestaSolicitud],
-  responderSolicitud
-);
-
-// Editar una solicitud - Solo administradores
-// PUT /api/solicitudes-cambio/admin/:id/editar
-router.put(
-  '/admin/:id/editar',
-  [validateJWT, validateAdmin, ...validarEdicionSolicitud],
-  editarSolicitud
-);
-
-// Actualizar el estado de una solicitud - Solo administradores
-// PUT /api/solicitudes-cambio/admin/:id/estado
-router.put(
-  '/admin/:id/estado',
-  [validateJWT, validateAdmin, ...validarActualizacionEstado],
-  actualizarEstadoSolicitud
-);
-
-// Gestión técnica de una solicitud - Solo administradores
-// PUT /api/solicitudes-cambio/admin/:id/gestion-tecnica
-router.put(
-  '/admin/:id/gestion-tecnica',
-  [validateJWT, validateAdmin, ...validarGestionTecnica],
-  gestionarSolicitudTecnica
-);
-
-// Obtener estadísticas de solicitudes - Solo administradores
-// GET /api/solicitudes-cambio/admin/estadisticas
-router.get(
-  '/admin/estadisticas',
-  [validateJWT, validateAdmin],
-  obtenerEstadisticas
-);
-
-// Obtener lista de desarrolladores disponibles (admin)
-// GET /api/solicitudes-cambio/admin/desarrolladores/disponibles
-router.get(
-  '/admin/desarrolladores/disponibles',
-  [validateJWT, validateAdmin],
-  obtenerDesarrolladoresDisponibles
-);
-
-// Obtener solicitudes con planes pendientes de aprobación
-// GET /api/solicitudes-cambio/admin/planes-pendientes
-router.get(
-  '/admin/planes-pendientes',
-  [validateJWT, validateAdmin],
-  obtenerSolicitudesPlanesPendientes
-);
-
-// =======================
-// RUTAS ADICIONALES (PARA DESARROLLO)
-// =======================
-
-// Obtener una solicitud específica por ID (para administradores) - INCLUYE TODOS LOS CAMPOS TÉCNICOS
-// GET /api/solicitudes-cambio/admin/:id
-router.get(
-  '/admin/:id',
-  [validateJWT, validateAdmin, ...validarIdSolicitud],
-  obtenerSolicitudAdmin
-);
-
-// Asignar desarrollador a una solicitud (admin)
-// POST /api/solicitudes-cambio/:id/asignar-desarrollador
-router.post(
-  '/:id/asignar-desarrollador',
-  [validateJWT, validateAdmin],
-  asignarDesarrollador
-);
+// Las rutas de comentarios e historial se eliminan ya que 
+// esas funcionalidades no están implementadas actualmente
 
 // ========================
 // RUTAS PARA DESARROLLADORES
@@ -209,18 +140,6 @@ router.post(
   '/:id/enviar-planes-revision',
   validateJWT,
   desarrolladorController.enviarPlanesARevision
-);
-
-// ========================
-// RUTAS PARA REVISIÓN DE PLANES (MASTER)
-// ========================
-
-// Aprobar o rechazar planes técnicos
-// GET /api/solicitudes-cambio/:id/aprobar-rechazar-planes (CAMBIADO A GET PARA EVITAR OPTIONS)
-router.get(
-  '/:id/aprobar-rechazar-planes',
-  [validateJWT, validateAdmin],
-  aprobarRechazarPlanes
 );
 
 module.exports = router; 
