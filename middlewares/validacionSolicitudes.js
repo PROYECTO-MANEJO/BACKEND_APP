@@ -121,9 +121,107 @@ const validarComentario = [
     .trim()
 ];
 
+// Validaciones para actualización de campos de master/admin
+const validarActualizacionMaster = [
+  param('id')
+    .isUUID()
+    .withMessage('ID de solicitud inválido'),
+
+  body('impacto_negocio_sol')
+    .optional()
+    .isIn(['BAJO', 'MEDIO', 'ALTO', 'CRITICO'])
+    .withMessage('Impacto de negocio inválido'),
+
+  body('impacto_tecnico_sol')
+    .optional()
+    .isIn(['BAJO', 'MEDIO', 'ALTO', 'CRITICO'])
+    .withMessage('Impacto técnico inválido'),
+
+  body('riesgo_cambio_sol')
+    .optional()
+    .isIn(['BAJO', 'MEDIO', 'ALTO', 'CRITICO'])
+    .withMessage('Riesgo de cambio inválido'),
+
+  body('categoria_cambio_sol')
+    .optional()
+    .isIn(['NORMAL', 'EXPEDITO', 'EMERGENCIA', 'ESTANDAR'])
+    .withMessage('Categoría de cambio inválida'),
+
+  body('comentarios_admin_sol')
+    .optional()
+    .isLength({ max: 2000 })
+    .withMessage('Los comentarios no pueden exceder 2000 caracteres')
+    .trim(),
+
+  body('fecha_planificada_inicio_sol')
+    .optional()
+    .isISO8601()
+    .withMessage('Fecha de inicio planificada inválida'),
+
+  body('fecha_planificada_fin_sol')
+    .optional()
+    .isISO8601()
+    .withMessage('Fecha de fin planificada inválida'),
+
+  body('hora_planificada_inicio_sol')
+    .optional()
+    .matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/)
+    .withMessage('Hora de inicio inválida. Formato: HH:MM'),
+
+  body('hora_planificada_fin_sol')
+    .optional()
+    .matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/)
+    .withMessage('Hora de fin inválida. Formato: HH:MM'),
+
+  body('tiempo_estimado_horas_sol')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Tiempo estimado debe ser un número entero positivo'),
+
+  body('id_desarrollador_asignado')
+    .optional()
+    .isUUID()
+    .withMessage('ID de desarrollador inválido')
+];
+
+// Validaciones para aprobar solicitud
+const validarAprobacion = [
+  param('id')
+    .isUUID()
+    .withMessage('ID de solicitud inválido'),
+
+  body('comentarios_admin_sol')
+    .optional()
+    .isLength({ max: 2000 })
+    .withMessage('Los comentarios no pueden exceder 2000 caracteres')
+    .trim()
+];
+
+// Validaciones para rechazar solicitud
+const validarRechazo = [
+  param('id')
+    .isUUID()
+    .withMessage('ID de solicitud inválido'),
+
+  body('comentarios_admin_sol')
+    .optional()
+    .isLength({ max: 2000 })
+    .withMessage('Los comentarios no pueden exceder 2000 caracteres')
+    .trim(),
+
+  body('motivo_rechazo')
+    .optional()
+    .isLength({ min: 10, max: 1000 })
+    .withMessage('El motivo de rechazo debe tener entre 10 y 1000 caracteres')
+    .trim()
+];
+
 module.exports = {
   validarCreacionSolicitud,
   validarEdicionSolicitud,
   validarIdSolicitud,
-  validarComentario
+  validarComentario,
+  validarActualizacionMaster,
+  validarAprobacion,
+  validarRechazo
 }; 

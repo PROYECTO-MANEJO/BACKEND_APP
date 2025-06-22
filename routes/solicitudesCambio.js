@@ -8,7 +8,16 @@ const {
   editarSolicitud,
   enviarSolicitud,
   cancelarSolicitud,
-  obtenerEstadisticasUsuario
+  obtenerEstadisticasUsuario,
+  // Funciones de Admin Master
+  obtenerTodasLasSolicitudes,
+  obtenerSolicitudParaAdmin,
+  actualizarSolicitudMaster,
+  ponerEnRevision,
+  aprobarSolicitud,
+  rechazarSolicitud,
+  obtenerEstadisticasAdmin,
+  obtenerDesarrolladores
 } = require('../controllers/solicitudesCambioController');
 
 // Importar controlador de desarrolladores
@@ -19,7 +28,10 @@ const { validateJWT, validateAdmin, validateRoles } = require('../middlewares/va
 const {
   validarCreacionSolicitud,
   validarEdicionSolicitud,
-  validarIdSolicitud
+  validarIdSolicitud,
+  validarActualizacionMaster,
+  validarAprobacion,
+  validarRechazo
 } = require('../middlewares/validacionSolicitudes');
 
 const router = Router();
@@ -89,6 +101,74 @@ router.get(
 // ========================
 // Las rutas de comentarios e historial se eliminan ya que 
 // esas funcionalidades no están implementadas actualmente
+
+// ========================
+// RUTAS PARA ADMIN MASTER
+// ========================
+
+// Obtener todas las solicitudes (para admin/master)
+// GET /api/solicitudes-cambio/admin/todas
+router.get(
+  '/admin/todas',
+  [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER')],
+  obtenerTodasLasSolicitudes
+);
+
+// Obtener una solicitud específica (para admin/master)
+// GET /api/solicitudes-cambio/admin/solicitud/:id
+router.get(
+  '/admin/solicitud/:id',
+  [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER'), ...validarIdSolicitud],
+  obtenerSolicitudParaAdmin
+);
+
+// Actualizar solicitud con campos de admin/master
+// PUT /api/solicitudes-cambio/admin/:id/actualizar
+router.put(
+  '/admin/:id/actualizar',
+  [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER'), ...validarActualizacionMaster],
+  actualizarSolicitudMaster
+);
+
+// Poner solicitud en revisión (PENDIENTE → EN_REVISION)
+// PUT /api/solicitudes-cambio/admin/:id/poner-revision
+router.put(
+  '/admin/:id/poner-revision',
+  [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER'), ...validarIdSolicitud],
+  ponerEnRevision
+);
+
+// Aprobar solicitud (EN_REVISION → APROBADA)
+// PUT /api/solicitudes-cambio/admin/:id/aprobar
+router.put(
+  '/admin/:id/aprobar',
+  [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER'), ...validarAprobacion],
+  aprobarSolicitud
+);
+
+// Rechazar solicitud (EN_REVISION → RECHAZADA)
+// PUT /api/solicitudes-cambio/admin/:id/rechazar
+router.put(
+  '/admin/:id/rechazar',
+  [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER'), ...validarRechazo],
+  rechazarSolicitud
+);
+
+// Obtener estadísticas generales (para admin/master)
+// GET /api/solicitudes-cambio/admin/estadisticas
+router.get(
+  '/admin/estadisticas',
+  [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER')],
+  obtenerEstadisticasAdmin
+);
+
+// Obtener desarrolladores disponibles (para admin/master)
+// GET /api/solicitudes-cambio/admin/desarrolladores
+router.get(
+  '/admin/desarrolladores',
+  [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER')],
+  obtenerDesarrolladores
+);
 
 // ========================
 // RUTAS PARA DESARROLLADORES
