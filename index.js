@@ -51,7 +51,7 @@ const corsOptions = {
       callback(new Error(msg), false);
     }
   },
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Asegúrate de que todos los métodos HTTP que usas estén aquí
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'], // Asegúrate de que todos los métodos HTTP que usas estén aquí
   allowedHeaders: ['Content-Type', 'Authorization', 'x-token'], // Headers permitidos
   credentials: true, // Si usas cookies o tokens de autorización personalizados (como 'x-token')
   optionsSuccessStatus: 200, // Para compatibilidad con navegadores antiguos
@@ -69,6 +69,7 @@ app.use(cors(corsOptions));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/protected', require('./routes/protected'));
 app.use('/api/solicitudes-cambio', require('./routes/solicitudesCambio'));
+app.use('/api/desarrollador', require('./routes/desarrollador'));
 app.use('/api/recovery', require('./routes/passwordRecoveryRoutes'));
 app.use('/api/organizadores', require('./routes/organizadores'));
 app.use('/api/categorias', require('./routes/categorias'));

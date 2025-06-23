@@ -949,7 +949,7 @@ const gestionarSolicitudTecnica = async (req, res) => {
       plan_implementacion_sol,
       plan_rollout_sol,
       plan_backout_sol,
-      plan_rollback_sol,
+
       plan_testing_sol,
       observaciones_implementacion_sol,
       
@@ -1035,7 +1035,7 @@ const gestionarSolicitudTecnica = async (req, res) => {
     if (plan_implementacion_sol !== undefined) datosActualizacion.plan_implementacion_sol = plan_implementacion_sol;
     if (plan_rollout_sol !== undefined) datosActualizacion.plan_rollout_sol = plan_rollout_sol;
     if (plan_backout_sol !== undefined) datosActualizacion.plan_backout_sol = plan_backout_sol;
-    if (plan_rollback_sol !== undefined) datosActualizacion.plan_rollback_sol = plan_rollback_sol;
+
     if (plan_testing_sol !== undefined) datosActualizacion.plan_testing_sol = plan_testing_sol;
     if (observaciones_implementacion_sol !== undefined) datosActualizacion.observaciones_implementacion_sol = observaciones_implementacion_sol;
 

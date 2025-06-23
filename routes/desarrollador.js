@@ -5,13 +5,42 @@ const { validateJWT } = require('../middlewares/validateJWT');
 
 // Middleware para verificar que el usuario es desarrollador
 const verificarRolDesarrollador = (req, res, next) => {
-  if (req.user.rol !== 'DESARROLLADOR') {
-    return res.status(403).json({
+  // Verificar que exista un usuario en la request (validado por validateJWT)
+  if (!req.usuario) {
+    return res.status(500).json({
       success: false,
-      message: 'Acceso denegado: Se requiere rol de DESARROLLADOR'
+      message: 'Se quiere verificar el rol sin validar el token primero'
     });
   }
-  next();
+
+  try {
+    // El usuario ya viene con las cuentas incluidas desde validateJWT
+    const cuentas = req.usuario.cuentas;
+
+    // Verificar si tiene cuenta y si su rol es DESARROLLADOR
+    if (!cuentas || cuentas.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: 'El usuario no tiene cuenta asociada'
+      });
+    }
+
+    const cuenta = cuentas[0]; // Tomar la primera cuenta
+    if (cuenta.rol_cue !== 'DESARROLLADOR') {
+      return res.status(403).json({
+        success: false,
+        message: 'Acceso denegado: Se requiere rol de DESARROLLADOR'
+      });
+    }
+
+    next();
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al verificar el rol de desarrollador'
+    });
+  }
 };
 
 // Obtener solicitudes asignadas a un desarrollador específico
@@ -28,7 +57,7 @@ router.get('/solicitud/:id',
 );
 
 // Actualizar estado de una solicitud
-router.patch('/solicitud/:id/estado', 
+router.post('/solicitud/:id/estado', 
   validateJWT, 
   verificarRolDesarrollador, 
   desarrolladorController.actualizarEstadoSolicitud

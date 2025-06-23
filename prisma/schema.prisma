@@ -3,6 +3,7 @@
 
 generator client {
   provider = "prisma-client-js"
+    binaryTargets = ["native", "windows"]
 }
 
 datasource db {
@@ -384,7 +385,8 @@ model SolicitudCambio {
 
   // --- PLANES TÉCNICOS (Desarrollador) ---
   plan_implementacion_sol     String?       @map("PLAN_IMPLEMENTACION_SOL") @db.Text
-  plan_rollback_sol           String?       @map("PLAN_ROLLBACK_SOL") @db.Text
+  plan_rollout_sol            String?       @map("PLAN_ROLLOUT_SOL") @db.Text
+  plan_backout_sol            String?       @map("PLAN_BACKOUT_SOL") @db.Text
   plan_testing_sol            String?       @map("PLAN_TESTING_SOL") @db.Text
 
   planes_enviados_revision    Boolean       @map("PLANES_ENVIADOS_REVISION") @default(false)
