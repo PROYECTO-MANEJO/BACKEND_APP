@@ -926,7 +926,13 @@ const actualizarSolicitudMaster = async (req, res) => {
       hora_planificada_inicio_sol,
       hora_planificada_fin_sol,
       tiempo_estimado_horas_sol,
-      id_desarrollador_asignado
+      id_desarrollador_asignado,
+      // Nuevos campos para planes técnicos
+      plan_implementacion_sol,
+      plan_rollout_sol,
+      plan_backout_sol,
+      plan_testing_sol,
+      estado_sol
     } = req.body;
 
     // Verificar que la solicitud existe
@@ -942,7 +948,7 @@ const actualizarSolicitudMaster = async (req, res) => {
     }
 
     // Solo permitir actualización en estados específicos
-    const estadosPermitidos = ['PENDIENTE', 'EN_REVISION', 'APROBADA'];
+    const estadosPermitidos = ['PENDIENTE', 'EN_REVISION', 'APROBADA', 'EN_DESARROLLO'];
     if (!estadosPermitidos.includes(solicitudExistente.estado_sol)) {
       return res.status(403).json({
         success: false,
@@ -988,6 +994,34 @@ const actualizarSolicitudMaster = async (req, res) => {
     }
     if (id_desarrollador_asignado !== undefined) {
       datosActualizacion.id_desarrollador_asignado = id_desarrollador_asignado || null;
+    }
+    
+    // Agregar campos de planes técnicos
+    if (plan_implementacion_sol !== undefined) {
+      datosActualizacion.plan_implementacion_sol = plan_implementacion_sol;
+    }
+    if (plan_rollout_sol !== undefined) {
+      datosActualizacion.plan_rollout_sol = plan_rollout_sol;
+    }
+    if (plan_backout_sol !== undefined) {
+      datosActualizacion.plan_backout_sol = plan_backout_sol;
+    }
+    if (plan_testing_sol !== undefined) {
+      datosActualizacion.plan_testing_sol = plan_testing_sol;
+    }
+    
+    // Manejo del cambio de estado
+    if (estado_sol !== undefined) {
+      // Validar transiciones de estado permitidas
+      const transicionesPermitidas = {
+        'APROBADA': ['EN_DESARROLLO'],
+        'EN_DESARROLLO': ['EN_TESTING', 'LISTO_PARA_IMPLEMENTAR']
+      };
+      
+      if (transicionesPermitidas[solicitudExistente.estado_sol]?.includes(estado_sol)) {
+        datosActualizacion.estado_sol = estado_sol;
+        datosActualizacion.fec_respuesta_sol = new Date();
+      }
     }
 
     // Actualizar la solicitud
@@ -1463,106 +1497,7 @@ const obtenerDesarrolladores = async (req, res) => {
   }
 };
 
-// Aprobar o rechazar planes técnicos (solo para MASTER)
-const aprobarPlanesTecnicos = async (req, res) => {
-  try {
-    console.log('=== APROBAR/RECHAZAR PLANES TÉCNICOS (MASTER) ===');
-    console.log('Body:', req.body);
-    console.log('Solicitud ID:', req.params.id);
-    console.log('Admin ID:', req.usuario?.id_usu);
 
-    const { id } = req.params;
-    const { planes_aprobados, comentarios_aprobacion_planes } = req.body;
-
-    // Validar que el usuario sea MASTER
-    const usuario = req.usuario;
-    const esMaster = usuario.cuentas?.some(cuenta => cuenta.rol_cue === 'MASTER');
-    
-    if (!esMaster) {
-      return res.status(403).json({
-        success: false,
-        message: 'Solo los usuarios MASTER pueden aprobar/rechazar planes técnicos'
-      });
-    }
-
-    // Verificar que la solicitud existe y está en estado correcto
-    const solicitud = await prisma.solicitudCambio.findUnique({
-      where: { id_sol: id }
-    });
-
-    if (!solicitud) {
-      return res.status(404).json({
-        success: false,
-        message: 'Solicitud no encontrada'
-      });
-    }
-
-    if (solicitud.estado_sol !== 'PLANES_PENDIENTES_APROBACION') {
-      return res.status(400).json({
-        success: false,
-        message: 'La solicitud no está en estado de planes pendientes de aprobación'
-      });
-    }
-
-    // Validar que existen planes técnicos
-    if (!solicitud.plan_implementacion_sol || !solicitud.plan_rollout_sol || 
-        !solicitud.plan_backout_sol || !solicitud.plan_testing_sol) {
-      return res.status(400).json({
-        success: false,
-        message: 'La solicitud no tiene todos los planes técnicos requeridos'
-      });
-    }
-
-    // Determinar el nuevo estado basado en la aprobación
-    const nuevoEstado = planes_aprobados ? 'LISTO_PARA_IMPLEMENTAR' : 'EN_DESARROLLO';
-
-    // Actualizar la solicitud
-    const solicitudActualizada = await prisma.solicitudCambio.update({
-      where: { id_sol: id },
-      data: {
-        planes_aprobados: planes_aprobados,
-        comentarios_aprobacion_planes: comentarios_aprobacion_planes || null,
-        fecha_aprobacion_planes: new Date(),
-        estado_sol: nuevoEstado,
-        fec_ultima_actualizacion: new Date()
-      },
-      include: {
-        usuario: {
-          select: {
-            nom_usu1: true,
-            nom_usu2: true,
-            ape_usu1: true,
-            ape_usu2: true,
-            ced_usu: true
-          }
-        }
-      }
-    });
-
-    console.log(`✅ Planes ${planes_aprobados ? 'aprobados' : 'rechazados'} para solicitud:`, id);
-    console.log('Nuevo estado:', nuevoEstado);
-
-    res.json({
-      success: true,
-      message: `Planes técnicos ${planes_aprobados ? 'aprobados' : 'rechazados'} exitosamente`,
-      data: {
-        id_sol: solicitudActualizada.id_sol,
-        estado_sol: solicitudActualizada.estado_sol,
-        planes_aprobados: solicitudActualizada.planes_aprobados,
-        comentarios_aprobacion_planes: solicitudActualizada.comentarios_aprobacion_planes,
-        fecha_aprobacion_planes: solicitudActualizada.fecha_aprobacion_planes
-      }
-    });
-
-  } catch (error) {
-    console.error('❌ Error al aprobar/rechazar planes técnicos:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor',
-      error: error.message
-    });
-  }
-};
 
 module.exports = {
   // Funciones de usuario únicamente
@@ -1582,6 +1517,5 @@ module.exports = {
   aprobarSolicitud,
   rechazarSolicitud,
   obtenerEstadisticasAdmin,
-  obtenerDesarrolladores,
-  aprobarPlanesTecnicos
+  obtenerDesarrolladores
 }; 
