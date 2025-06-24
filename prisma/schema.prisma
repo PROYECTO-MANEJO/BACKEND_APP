@@ -52,7 +52,10 @@ model Usuario {
 
   // Campos para recuperación de contraseña
   resetToken String? @map("RESET_TOKEN") @db.VarChar(255)
-  resetTokenExpiry DateTime? @map("RESET_TOKEN_EXPIRY") @db.Timestamp(3) 
+  resetTokenExpiry DateTime? @map("RESET_TOKEN_EXPIRY") @db.Timestamp(3)
+  
+  // Campo para token personal de GitHub
+  github_token String? @map("GITHUB_TOKEN") @db.VarChar(255) 
 
   // ✅ RELACIONES EXISTENTES
   carrera Carrera? @relation(fields: [id_car_per], references: [id_car])
@@ -492,6 +495,7 @@ enum EstadoSolicitud {
   EN_DESARROLLO
   PLANES_PENDIENTES_APROBACION
   LISTO_PARA_IMPLEMENTAR
+  ESPERANDO_APROBACION
   EN_TESTING
   EN_DESPLIEGUE
   COMPLETADA

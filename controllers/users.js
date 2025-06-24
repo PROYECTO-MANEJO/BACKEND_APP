@@ -15,7 +15,8 @@ const updateUserProfile = async (req, res) => {
       ape_usu2,
       fec_nac_usu,
       num_tel_usu,
-      id_car_per
+      id_car_per,
+      github_token
     } = req.body;
 
     // Verificar que el usuario existe
@@ -66,7 +67,8 @@ const updateUserProfile = async (req, res) => {
         ape_usu2: ape_usu2 || '',
         fec_nac_usu: new Date(fec_nac_usu),
         num_tel_usu: num_tel_usu || null,
-        id_car_per: carreraToUpdate || null
+        id_car_per: carreraToUpdate || null,
+        github_token: github_token || null
       },
       include: {
         cuentas: {
@@ -95,6 +97,7 @@ const updateUserProfile = async (req, res) => {
       fec_nac_usu: updatedUser.fec_nac_usu,
       num_tel_usu: updatedUser.num_tel_usu,
       id_car_per: updatedUser.id_car_per,
+      github_token: updatedUser.github_token,
       email: updatedUser.cuentas[0]?.cor_cue,
       rol: updatedUser.cuentas[0]?.rol_cue,
       carrera: updatedUser.carrera ? {
@@ -610,6 +613,7 @@ const getUserProfile = async (req, res) => {
       fec_nac_usu: user.fec_nac_usu,
       num_tel_usu: user.num_tel_usu,
       id_car_per: user.id_car_per,
+      github_token: user.github_token,
       email: user.cuentas[0]?.cor_cue,
       rol: user.cuentas[0]?.rol_cue,
       carrera: user.carrera ? {

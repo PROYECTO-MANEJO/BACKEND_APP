@@ -21,6 +21,14 @@ class GitHubService {
         'User-Agent': 'SolicitudesCambio-App'
       }
     });
+
+    // GitFlow branch types
+    this.gitFlowTypes = {
+      'feature': { prefix: 'feature/', defaultBase: 'develop' },
+      'hotfix': { prefix: 'hotfix/', defaultBase: 'main' },
+      'bugfix': { prefix: 'bugfix/', defaultBase: 'develop' },
+      'release': { prefix: 'release/', defaultBase: 'develop' }
+    };
   }
 
   // Verificar si el servicio está configurado correctamente
@@ -446,6 +454,352 @@ ${solicitud.plan_implementacion_sol || 'Por definir'}
     } catch (error) {
       console.error('Error obteniendo información del branch:', error.message);
       throw error;
+    }
+  }
+
+  // ===================================
+  // NUEVAS FUNCIONALIDADES PARA DESARROLLADORES
+  // ===================================
+
+  // Crear cliente con token personalizado (si el desarrollador tiene uno)
+  createClientWithToken(userToken = null) {
+    const token = userToken || this.token;
+    return axios.create({
+      baseURL: this.baseURL,
+      headers: {
+        'Authorization': `token ${token}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'SolicitudesCambio-App'
+      }
+    });
+  }
+
+  // Generar nombre de branch según GitFlow
+  generarNombreBranchGitFlow(solicitud, branchType = 'feature') {
+    const gitFlowConfig = this.gitFlowTypes[branchType];
+    if (!gitFlowConfig) {
+      throw new Error(`Tipo de branch no soportado: ${branchType}`);
+    }
+
+    // Tomar máximo 5 caracteres del ID
+    const shortId = solicitud.id_sol.substring(0, 5);
+    
+    // Limpiar y acortar título (reemplazar espacios con guiones bajos, solo caracteres alfanuméricos)
+    const cleanTitle = solicitud.titulo_sol
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, '_')
+      .substring(0, 30);
+
+    return `${gitFlowConfig.prefix}${shortId}_${cleanTitle}`;
+  }
+
+  // Crear branch con GitFlow y token personalizado
+  async crearBranchGitFlow(solicitud, branchType = 'feature', baseBranch = null, repoType = 'frontend', userToken = null) {
+    try {
+      const client = this.createClientWithToken(userToken);
+      const repoName = this.repositories[repoType];
+      const gitFlowConfig = this.gitFlowTypes[branchType];
+      
+      if (!gitFlowConfig) {
+        throw new Error(`Tipo de branch no soportado: ${branchType}`);
+      }
+
+      const branchName = this.generarNombreBranchGitFlow(solicitud, branchType);
+      const finalBaseBranch = baseBranch || gitFlowConfig.defaultBase;
+
+      // 1. Verificar que el branch base existe
+      try {
+        await client.get(`/repos/${this.defaultOwner}/${repoName}/git/refs/heads/${finalBaseBranch}`);
+      } catch (error) {
+        if (error.response?.status === 404) {
+          throw new Error(`El branch base '${finalBaseBranch}' no existe en el repositorio ${repoName}`);
+        }
+        throw error;
+      }
+
+      // 2. Obtener el SHA del branch base
+      const baseBranchResponse = await client.get(`/repos/${this.defaultOwner}/${repoName}/git/refs/heads/${finalBaseBranch}`);
+      const baseSha = baseBranchResponse.data.object.sha;
+
+      // 3. Crear el nuevo branch
+      const newBranchResponse = await client.post(`/repos/${this.defaultOwner}/${repoName}/git/refs`, {
+        ref: `refs/heads/${branchName}`,
+        sha: baseSha
+      });
+
+      return {
+        success: true,
+        branchName,
+        branchType,
+        repository: repoName,
+        repoType,
+        baseBranch: finalBaseBranch,
+        url: `https://github.com/${this.defaultOwner}/${repoName}/tree/${branchName}`,
+        sha: newBranchResponse.data.object.sha,
+        createdWithPersonalToken: !!userToken
+      };
+
+    } catch (error) {
+      console.error('Error creando branch GitFlow:', error.message);
+      
+      // Si el branch ya existe, devolver información del branch existente
+      if (error.response?.status === 422 && error.response.data.message.includes('already exists')) {
+        const branchName = this.generarNombreBranchGitFlow(solicitud, branchType);
+        const repoName = this.repositories[repoType];
+        
+        return {
+          success: true,
+          branchName,
+          branchType,
+          repository: repoName,
+          repoType,
+          url: `https://github.com/${this.defaultOwner}/${repoName}/tree/${branchName}`,
+          alreadyExists: true,
+          createdWithPersonalToken: !!userToken
+        };
+      }
+      
+      throw error;
+    }
+  }
+
+  // Crear Pull Request con token personalizado
+  async crearPullRequestPersonalizado(solicitud, branchName, repoType = 'frontend', baseBranch = 'main', userToken = null) {
+    try {
+      const client = this.createClientWithToken(userToken);
+      const repoName = this.repositories[repoType];
+      
+      const titulo = `SOL-${solicitud.id_sol.substring(0, 8)}: ${solicitud.titulo_sol}`;
+      const cuerpo = `## Solicitud de Cambio: ${solicitud.titulo_sol}
+
+**ID de Solicitud:** ${solicitud.id_sol}
+**Tipo:** ${solicitud.tipo_cambio_sol}
+**Prioridad:** ${solicitud.prioridad_sol}
+
+### Descripción
+${solicitud.descripcion_sol}
+
+### Justificación
+${solicitud.justificacion_sol}
+
+### Plan de Implementación
+${solicitud.plan_implementacion_sol || 'Por definir'}
+
+### Plan de Testing
+${solicitud.plan_testing_sol || 'Por definir'}
+
+### Plan de Roll-out
+${solicitud.plan_rollout_sol || 'Por definir'}
+
+### Plan de Back-out
+${solicitud.plan_backout_sol || 'Por definir'}
+
+---
+*Este PR está vinculado automáticamente con la solicitud de cambio ${solicitud.id_sol}*
+      `;
+
+      const prResponse = await client.post(`/repos/${this.defaultOwner}/${repoName}/pulls`, {
+        title: titulo,
+        head: branchName,
+        base: baseBranch,
+        body: cuerpo,
+        draft: false
+      });
+
+      return {
+        success: true,
+        number: prResponse.data.number,
+        url: prResponse.data.html_url,
+        title: prResponse.data.title,
+        branchName,
+        repository: repoName,
+        repoType,
+        baseBranch,
+        createdWithPersonalToken: !!userToken
+      };
+
+    } catch (error) {
+      console.error('Error creando Pull Request personalizado:', error.message);
+      throw error;
+    }
+  }
+
+  // Obtener tipos de GitFlow disponibles
+  getGitFlowTypes() {
+    return Object.keys(this.gitFlowTypes).map(type => ({
+      type,
+      prefix: this.gitFlowTypes[type].prefix,
+      defaultBase: this.gitFlowTypes[type].defaultBase,
+      description: this.getGitFlowDescription(type)
+    }));
+  }
+
+  // Obtener descripción de tipos GitFlow
+  getGitFlowDescription(type) {
+    const descriptions = {
+      'feature': 'Nueva funcionalidad o mejora',
+      'hotfix': 'Corrección urgente en producción',
+      'bugfix': 'Corrección de errores',
+      'release': 'Preparación de nueva versión'
+    };
+    return descriptions[type] || 'Tipo de branch personalizado';
+  }
+
+  // Detectar PRs automáticamente para solicitudes específicas
+  async detectarPullRequestsAutomaticamente(solicitudIds = []) {
+    try {
+      const resultados = [];
+
+      for (const solicitudId of solicitudIds) {
+        const prsEncontrados = [];
+        
+        // Buscar en ambos repositorios
+        for (const [repoType, repoName] of Object.entries(this.repositories)) {
+          try {
+            const prs = await this.buscarPullRequestsPorSolicitud(solicitudId, this.defaultOwner, repoName);
+            prsEncontrados.push(...prs.map(pr => ({ ...pr, repository: repoName, repoType })));
+          } catch (error) {
+            console.warn(`Error buscando PRs en ${repoName} para solicitud ${solicitudId}:`, error.message);
+          }
+        }
+
+        if (prsEncontrados.length > 0) {
+          resultados.push({
+            solicitudId,
+            pullRequests: prsEncontrados,
+            lastChecked: new Date()
+          });
+        }
+      }
+
+      return resultados;
+    } catch (error) {
+      console.error('Error detectando PRs automáticamente:', error.message);
+      return [];
+    }
+  }
+
+  // Verificar estado de merge de un PR
+  async verificarEstadoMerge(prNumber, repoType = 'frontend') {
+    try {
+      const repoName = this.repositories[repoType];
+      const pr = await this.obtenerDetallesPullRequest(prNumber, this.defaultOwner, repoName);
+      
+      return {
+        prNumber,
+        repository: repoName,
+        repoType,
+        merged: pr?.merged || false,
+        state: pr?.state || 'unknown',
+        mergedAt: pr?.merged_at,
+        url: pr?.url
+      };
+    } catch (error) {
+      console.error('Error verificando estado de merge:', error.message);
+      return {
+        prNumber,
+        merged: false,
+        state: 'error',
+        error: error.message
+      };
+    }
+  }
+
+  // Obtener branches disponibles en un repositorio
+  async obtenerBranchesDisponibles(repoType = 'frontend') {
+    try {
+      const repoName = this.repositories[repoType];
+      const response = await this.client.get(`/repos/${this.defaultOwner}/${repoName}/branches`);
+      
+      return response.data.map(branch => ({
+        name: branch.name,
+        protected: branch.protected,
+        lastCommit: {
+          sha: branch.commit.sha,
+          url: branch.commit.url
+        }
+      }));
+    } catch (error) {
+      console.error('Error obteniendo branches disponibles:', error.message);
+      return [];
+    }
+  }
+
+  // Validar un token de GitHub personal
+  async validarTokenPersonal(token) {
+    try {
+      if (!token) {
+        return { valid: false, error: 'Token no proporcionado' };
+      }
+
+      // Crear cliente temporal con el token a validar
+      const tempClient = axios.create({
+        baseURL: this.baseURL,
+        headers: {
+          'Authorization': `token ${token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'SolicitudesCambio-App'
+        }
+      });
+
+      // Intentar obtener información del usuario autenticado
+      const response = await tempClient.get('/user');
+      
+      // También verificar permisos en los repositorios principales
+      const permissions = {};
+      for (const [repoType, repoName] of Object.entries(this.repositories)) {
+        try {
+          const repoResponse = await tempClient.get(`/repos/${this.defaultOwner}/${repoName}`);
+          permissions[repoType] = {
+            push: repoResponse.data.permissions?.push || false,
+            pull: repoResponse.data.permissions?.pull || false,
+            admin: repoResponse.data.permissions?.admin || false
+          };
+        } catch (error) {
+          permissions[repoType] = {
+            push: false,
+            pull: false,
+            admin: false,
+            error: error.response?.status === 404 ? 'Repository not found' : 'Access denied'
+          };
+        }
+      }
+
+      return {
+        valid: true,
+        user: {
+          login: response.data.login,
+          name: response.data.name,
+          email: response.data.email,
+          avatar_url: response.data.avatar_url
+        },
+        permissions,
+        scopes: response.headers['x-oauth-scopes']?.split(', ') || [],
+        rateLimit: {
+          limit: response.headers['x-ratelimit-limit'],
+          remaining: response.headers['x-ratelimit-remaining'],
+          reset: new Date(response.headers['x-ratelimit-reset'] * 1000)
+        }
+      };
+
+    } catch (error) {
+      console.error('Error validando token personal:', error.message);
+      
+      let errorMessage = 'Token inválido';
+      if (error.response?.status === 401) {
+        errorMessage = 'Token no autorizado o expirado';
+      } else if (error.response?.status === 403) {
+        errorMessage = 'Token válido pero sin permisos suficientes';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Usuario no encontrado';
+      }
+
+      return {
+        valid: false,
+        error: errorMessage,
+        statusCode: error.response?.status
+      };
     }
   }
 }

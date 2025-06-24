@@ -85,25 +85,56 @@ const sincronizarSolicitudConGitHub = async (req, res) => {
 const obtenerInfoGitHub = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.userId; // ID del usuario autenticado
+    const userRole = req.userRole; // Rol del usuario (viene del middleware)
 
-    const solicitud = await prisma.solicitudCambio.findUnique({
-      where: { id_sol: id },
-      select: {
-        id_sol: true,
-        titulo_sol: true,
-        github_repo_url: true,
-        github_branch_name: true,
-        github_pr_number: true,
-        github_pr_url: true,
-        github_commits: true,
-        github_last_sync: true
-      }
-    });
+    // Construir la consulta base según el rol
+    let whereClause = { id_sol: id };
+
+    // Si es desarrollador, solo puede ver solicitudes asignadas a él
+    if (userRole === 'DESARROLLADOR') {
+      whereClause.id_desarrollador_asignado = userId;
+    }
+
+    // Para desarrolladores usamos findFirst, para otros roles findUnique
+    const solicitud = userRole === 'DESARROLLADOR' 
+      ? await prisma.solicitudCambio.findFirst({
+          where: whereClause,
+          select: {
+            id_sol: true,
+            titulo_sol: true,
+            estado_sol: true,
+            id_desarrollador_asignado: true,
+            github_repo_url: true,
+            github_branch_name: true,
+            github_pr_number: true,
+            github_pr_url: true,
+            github_commits: true,
+            github_last_sync: true
+          }
+        })
+      : await prisma.solicitudCambio.findUnique({
+          where: { id_sol: id },
+          select: {
+            id_sol: true,
+            titulo_sol: true,
+            estado_sol: true,
+            id_desarrollador_asignado: true,
+            github_repo_url: true,
+            github_branch_name: true,
+            github_pr_number: true,
+            github_pr_url: true,
+            github_commits: true,
+            github_last_sync: true
+          }
+        });
 
     if (!solicitud) {
       return res.status(404).json({
         success: false,
-        message: 'Solicitud no encontrada'
+        message: userRole === 'DESARROLLADOR' 
+          ? 'Solicitud no encontrada o no tienes acceso a ella'
+          : 'Solicitud no encontrada'
       });
     }
 
@@ -510,7 +541,492 @@ const obtenerInfoBranch = async (req, res) => {
   }
 };
 
+// ===================================
+// NUEVOS CONTROLADORES PARA DESARROLLADORES
+// ===================================
+
+// Obtener token GitHub del usuario
+const obtenerTokenUsuario = async (userId) => {
+  try {
+    const usuario = await prisma.usuario.findUnique({
+      where: { id_usu: userId },
+      select: { github_token: true }
+    });
+    return usuario?.github_token || null;
+  } catch (error) {
+    console.error('Error obteniendo token de usuario:', error);
+    return null;
+  }
+};
+
+// Crear branch con GitFlow para desarrolladores
+const crearBranchGitFlow = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { branchType, baseBranch, repoType } = req.body;
+    const userId = req.userId; // Viene del middleware de autenticación
+
+    // Validar datos requeridos
+    if (!branchType || !repoType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tipo de branch y repositorio son requeridos'
+      });
+    }
+
+    // Verificar que la solicitud existe y está asignada al desarrollador
+    const solicitud = await prisma.solicitudCambio.findUnique({
+      where: { id_sol: id },
+      include: {
+        desarrolladorAsignado: {
+          select: {
+            id_usu: true,
+            github_token: true
+          }
+        }
+      }
+    });
+
+    if (!solicitud) {
+      return res.status(404).json({
+        success: false,
+        message: 'Solicitud no encontrada'
+      });
+    }
+
+    // Verificar que el usuario es el desarrollador asignado
+    if (solicitud.desarrolladorAsignado?.id_usu !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para trabajar en esta solicitud'
+      });
+    }
+
+    // Obtener token personal del desarrollador
+    const userToken = await obtenerTokenUsuario(userId);
+
+    // Crear el branch con GitFlow
+    const resultado = await githubService.crearBranchGitFlow(
+      solicitud, 
+      branchType, 
+      baseBranch, 
+      repoType, 
+      userToken
+    );
+
+    // Actualizar la solicitud con información del branch
+    const solicitudActualizada = await prisma.solicitudCambio.update({
+      where: { id_sol: id },
+      data: {
+        github_branch_name: resultado.branchName,
+        github_repo_url: `https://github.com/${githubService.defaultOwner}/${resultado.repository}`,
+        github_last_sync: new Date()
+      }
+    });
+
+    res.json({
+      success: true,
+      message: resultado.alreadyExists ? 'Branch ya existía' : 'Branch creado exitosamente',
+      data: {
+        branch: resultado,
+        solicitud: solicitudActualizada
+      }
+    });
+
+  } catch (error) {
+    console.error('Error creando branch GitFlow:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+// Crear Pull Request personalizado para desarrolladores
+const crearPullRequestDesarrollador = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { branchName, repoType, baseBranch } = req.body;
+    const userId = req.userId;
+
+    // Validar datos requeridos
+    if (!branchName || !repoType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Nombre del branch y repositorio son requeridos'
+      });
+    }
+
+    // Verificar que la solicitud existe y está asignada al desarrollador
+    const solicitud = await prisma.solicitudCambio.findUnique({
+      where: { id_sol: id }
+    });
+
+    if (!solicitud) {
+      return res.status(404).json({
+        success: false,
+        message: 'Solicitud no encontrada'
+      });
+    }
+
+    if (solicitud.id_desarrollador_asignado !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para trabajar en esta solicitud'
+      });
+    }
+
+    // Obtener token personal del desarrollador
+    const userToken = await obtenerTokenUsuario(userId);
+
+    // Crear el Pull Request
+    const resultado = await githubService.crearPullRequestPersonalizado(
+      solicitud, 
+      branchName, 
+      repoType, 
+      baseBranch || 'main', 
+      userToken
+    );
+
+    // Actualizar la solicitud con información del PR
+    const solicitudActualizada = await prisma.solicitudCambio.update({
+      where: { id_sol: id },
+      data: {
+        github_pr_number: resultado.number,
+        github_pr_url: resultado.url,
+        github_branch_name: resultado.branchName,
+        github_repo_url: `https://github.com/${githubService.defaultOwner}/${resultado.repository}`,
+        github_last_sync: new Date()
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Pull Request creado exitosamente',
+      data: {
+        pullRequest: resultado,
+        solicitud: solicitudActualizada
+      }
+    });
+
+  } catch (error) {
+    console.error('Error creando Pull Request:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+// Cambiar estado de solicitud a ESPERANDO_APROBACION
+const cambiarAEsperandoAprobacion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.userId;
+
+    // Verificar que la solicitud existe y está asignada al desarrollador
+    const solicitud = await prisma.solicitudCambio.findUnique({
+      where: { id_sol: id }
+    });
+
+    if (!solicitud) {
+      return res.status(404).json({
+        success: false,
+        message: 'Solicitud no encontrada'
+      });
+    }
+
+    if (solicitud.id_desarrollador_asignado !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para modificar esta solicitud'
+      });
+    }
+
+    // Verificar que el estado actual permite el cambio
+    if (solicitud.estado_sol !== 'EN_DESARROLLO') {
+      return res.status(400).json({
+        success: false,
+        message: 'Solo se puede cambiar a ESPERANDO_APROBACION desde EN_DESARROLLO'
+      });
+    }
+
+    // Actualizar el estado
+    const solicitudActualizada = await prisma.solicitudCambio.update({
+      where: { id_sol: id },
+      data: {
+        estado_sol: 'ESPERANDO_APROBACION',
+        fec_ultima_actualizacion: new Date()
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Estado actualizado a ESPERANDO_APROBACION',
+      data: solicitudActualizada
+    });
+
+  } catch (error) {
+    console.error('Error cambiando estado:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+// Obtener tipos GitFlow disponibles
+const obtenerTiposGitFlow = async (req, res) => {
+  try {
+    // Verificar si GitHub está configurado
+    if (!githubService.isConfigured()) {
+      return res.status(503).json({
+        success: false,
+        message: 'GitHub no está configurado en el servidor',
+        error: 'GITHUB_NOT_CONFIGURED',
+        suggestion: 'Configure las variables de entorno GITHUB_TOKEN, GITHUB_DEFAULT_OWNER, etc.'
+      });
+    }
+
+    const tipos = githubService.getGitFlowTypes();
+    
+    res.json({
+      success: true,
+      data: tipos
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo tipos GitFlow:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+// Obtener branches disponibles en un repositorio
+const obtenerBranchesRepositorio = async (req, res) => {
+  try {
+    const { repoType } = req.params;
+
+    // Verificar si GitHub está configurado
+    if (!githubService.isConfigured()) {
+      return res.status(503).json({
+        success: false,
+        message: 'GitHub no está configurado en el servidor',
+        error: 'GITHUB_NOT_CONFIGURED',
+        suggestion: 'Configure las variables de entorno GITHUB_TOKEN, GITHUB_DEFAULT_OWNER, etc.'
+      });
+    }
+
+    const branches = await githubService.obtenerBranchesDisponibles(repoType);
+    
+    res.json({
+      success: true,
+      data: branches
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo branches:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+// Detectar PRs automáticamente y actualizar estados
+const detectarPullRequests = async (req, res) => {
+  try {
+    // Obtener solicitudes en estado EN_DESARROLLO o ESPERANDO_APROBACION
+    const solicitudesActivas = await prisma.solicitudCambio.findMany({
+      where: {
+        estado_sol: {
+          in: ['EN_DESARROLLO', 'ESPERANDO_APROBACION']
+        }
+      },
+      select: { id_sol: true, github_pr_number: true }
+    });
+
+    const solicitudIds = solicitudesActivas.map(s => s.id_sol);
+    
+    if (solicitudIds.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No hay solicitudes activas para verificar',
+        data: []
+      });
+    }
+
+    // Detectar PRs automáticamente
+    const resultados = await githubService.detectarPullRequestsAutomaticamente(solicitudIds);
+    
+    // Actualizar solicitudes que tienen PRs nuevos
+    const actualizaciones = [];
+    for (const resultado of resultados) {
+      const solicitud = solicitudesActivas.find(s => s.id_sol === resultado.solicitudId);
+      const primerPR = resultado.pullRequests[0];
+      
+      if (primerPR && !solicitud.github_pr_number) {
+        // Actualizar solicitud con información del PR encontrado
+        const solicitudActualizada = await prisma.solicitudCambio.update({
+          where: { id_sol: resultado.solicitudId },
+          data: {
+            github_pr_number: primerPR.number,
+            github_pr_url: primerPR.url,
+            github_branch_name: primerPR.branch,
+            github_last_sync: new Date()
+          }
+        });
+        
+        actualizaciones.push({
+          solicitudId: resultado.solicitudId,
+          prNumber: primerPR.number,
+          actualizada: true
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Detectados ${resultados.length} PRs, ${actualizaciones.length} solicitudes actualizadas`,
+      data: {
+        prsDetectados: resultados,
+        solicitudesActualizadas: actualizaciones
+      }
+    });
+
+  } catch (error) {
+    console.error('Error detectando PRs:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+// Verificar merge de PRs y actualizar estados a COMPLETADA
+const verificarMerges = async (req, res) => {
+  try {
+    // Obtener solicitudes en estado ESPERANDO_APROBACION con PR asignado
+    const solicitudesConPR = await prisma.solicitudCambio.findMany({
+      where: {
+        estado_sol: 'ESPERANDO_APROBACION',
+        github_pr_number: {
+          not: null
+        }
+      },
+      select: { 
+        id_sol: true, 
+        github_pr_number: true, 
+        github_repo_url: true 
+      }
+    });
+
+    const verificaciones = [];
+    
+    for (const solicitud of solicitudesConPR) {
+      try {
+        // Determinar tipo de repositorio desde la URL
+        const repoType = solicitud.github_repo_url?.includes('FRONTEND') ? 'frontend' : 'backend';
+        
+        // Verificar estado del merge
+        const estadoMerge = await githubService.verificarEstadoMerge(
+          solicitud.github_pr_number, 
+          repoType
+        );
+        
+        if (estadoMerge.merged) {
+          // Actualizar estado a COMPLETADA
+          const solicitudActualizada = await prisma.solicitudCambio.update({
+            where: { id_sol: solicitud.id_sol },
+            data: {
+              estado_sol: 'COMPLETADA',
+              fecha_real_fin_sol: new Date(),
+              exito_implementacion: true,
+              fec_ultima_actualizacion: new Date()
+            }
+          });
+          
+          verificaciones.push({
+            solicitudId: solicitud.id_sol,
+            prNumber: solicitud.github_pr_number,
+            merged: true,
+            estadoActualizado: 'COMPLETADA'
+          });
+        } else {
+          verificaciones.push({
+            solicitudId: solicitud.id_sol,
+            prNumber: solicitud.github_pr_number,
+            merged: false,
+            estado: estadoMerge.state
+          });
+        }
+      } catch (error) {
+        console.warn(`Error verificando PR ${solicitud.github_pr_number}:`, error.message);
+        verificaciones.push({
+          solicitudId: solicitud.id_sol,
+          prNumber: solicitud.github_pr_number,
+          error: error.message
+        });
+      }
+    }
+
+    const mergeados = verificaciones.filter(v => v.merged).length;
+
+    res.json({
+      success: true,
+      message: `Verificados ${verificaciones.length} PRs, ${mergeados} fueron mergeados`,
+      data: verificaciones
+    });
+
+  } catch (error) {
+    console.error('Error verificando merges:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+// Validar token personal de GitHub
+const validarTokenPersonal = async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token es requerido'
+      });
+    }
+
+    const validacion = await githubService.validarTokenPersonal(token);
+
+    res.json({
+      success: true,
+      data: validacion
+    });
+
+  } catch (error) {
+    console.error('Error validando token personal:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
+  // Controladores existentes
   sincronizarSolicitudConGitHub,
   obtenerInfoGitHub,
   asociarBranch,
@@ -520,5 +1036,15 @@ module.exports = {
   sincronizarSolicitudEnRepo,
   crearBranch,
   crearPullRequest,
-  obtenerInfoBranch
+  obtenerInfoBranch,
+  
+  // Nuevos controladores para desarrolladores
+  crearBranchGitFlow,
+  crearPullRequestDesarrollador,
+  cambiarAEsperandoAprobacion,
+  obtenerTiposGitFlow,
+  obtenerBranchesRepositorio,
+  detectarPullRequests,
+  verificarMerges,
+  validarTokenPersonal
 }; 

@@ -11,11 +11,20 @@ const {
   sincronizarSolicitudEnRepo,
   crearBranch,
   crearPullRequest,
-  obtenerInfoBranch
+  obtenerInfoBranch,
+  // Nuevos controladores para desarrolladores
+  crearBranchGitFlow,
+  crearPullRequestDesarrollador,
+  cambiarAEsperandoAprobacion,
+  obtenerTiposGitFlow,
+  obtenerBranchesRepositorio,
+  detectarPullRequests,
+  verificarMerges,
+  validarTokenPersonal
 } = require('../controllers/githubController');
 
 // Importar middlewares
-const { validateJWT, validateAdmin } = require('../middlewares/validateJWT');
+const { validateJWT, validateAdmin, validateDeveloper, validateMaster } = require('../middlewares/validateJWT');
 
 const router = Router();
 
@@ -101,6 +110,86 @@ router.get(
   '/branch/:repoType/:branchName',
   [validateJWT, validateAdmin],
   obtenerInfoBranch
+);
+
+// ===================
+// RUTAS PARA DESARROLLADORES
+// ===================
+
+// Crear branch con GitFlow para desarrolladores
+// POST /api/github/dev/solicitud/:id/crear-branch-gitflow
+router.post(
+  '/dev/solicitud/:id/crear-branch-gitflow',
+  [validateJWT, validateDeveloper],
+  crearBranchGitFlow
+);
+
+// Crear Pull Request para desarrolladores
+// POST /api/github/dev/solicitud/:id/crear-pull-request
+router.post(
+  '/dev/solicitud/:id/crear-pull-request',
+  [validateJWT, validateDeveloper],
+  crearPullRequestDesarrollador
+);
+
+// Cambiar estado a ESPERANDO_APROBACION
+// PUT /api/github/dev/solicitud/:id/esperando-aprobacion
+router.put(
+  '/dev/solicitud/:id/esperando-aprobacion',
+  [validateJWT, validateDeveloper],
+  cambiarAEsperandoAprobacion
+);
+
+// Obtener tipos GitFlow disponibles
+// GET /api/github/dev/gitflow-types
+router.get(
+  '/dev/gitflow-types',
+  [validateJWT],
+  obtenerTiposGitFlow
+);
+
+// Obtener branches disponibles en un repositorio
+// GET /api/github/dev/branches/:repoType
+router.get(
+  '/dev/branches/:repoType',
+  [validateJWT],
+  obtenerBranchesRepositorio
+);
+
+// Obtener información de GitHub para desarrolladores (solo solicitudes asignadas a ellos)
+// GET /api/github/dev/solicitud/:id
+router.get(
+  '/dev/solicitud/:id',
+  [validateJWT, validateDeveloper],
+  obtenerInfoGitHub
+);
+
+// ===================
+// RUTAS PARA POLLING/AUTOMATIZACIÓN
+// ===================
+
+// Detectar PRs automáticamente (para polling)
+// POST /api/github/detectar-prs
+router.post(
+  '/detectar-prs',
+  [validateJWT, validateMaster],
+  detectarPullRequests
+);
+
+// Verificar merges y actualizar estados (para polling)
+// POST /api/github/verificar-merges
+router.post(
+  '/verificar-merges',
+  [validateJWT, validateMaster],
+  verificarMerges
+);
+
+// Validar token personal de GitHub
+// POST /api/github/dev/validate-token
+router.post(
+  '/dev/validate-token',
+  [validateJWT, validateDeveloper],
+  validarTokenPersonal
 );
 
 module.exports = router; 
