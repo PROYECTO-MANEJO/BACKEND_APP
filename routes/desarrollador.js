@@ -83,4 +83,39 @@ router.put('/solicitud/:id/planes-tecnicos',
   desarrolladorController.actualizarPlanesTecnicos
 );
 
+// Enviar planes a revisión del MASTER
+router.post('/solicitud/:id/enviar-planes', 
+  validateJWT, 
+  verificarRolDesarrollador, 
+  desarrolladorController.enviarPlanesARevision
+);
+
+// Iniciar desarrollo (LISTO_PARA_IMPLEMENTAR → EN_DESARROLLO)
+router.post('/solicitud/:id/iniciar-desarrollo', 
+  validateJWT, 
+  verificarRolDesarrollador, 
+  desarrolladorController.iniciarDesarrollo
+);
+
+// Pasar a testing (EN_DESARROLLO → EN_TESTING)
+router.post('/solicitud/:id/pasar-testing', 
+  validateJWT, 
+  verificarRolDesarrollador, 
+  desarrolladorController.pasarATesting
+);
+
+// Pasar a despliegue (EN_TESTING → EN_DESPLIEGUE)
+router.post('/solicitud/:id/pasar-despliegue', 
+  validateJWT, 
+  verificarRolDesarrollador, 
+  desarrolladorController.pasarADespliegue
+);
+
+// Completar solicitud (EN_DESPLIEGUE → COMPLETADA/FALLIDA)
+router.post('/solicitud/:id/completar', 
+  validateJWT, 
+  verificarRolDesarrollador, 
+  desarrolladorController.completarSolicitud
+);
+
 module.exports = router; 

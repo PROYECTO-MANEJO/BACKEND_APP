@@ -69,7 +69,6 @@ app.use(cors(corsOptions));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/protected', require('./routes/protected'));
 app.use('/api/solicitudes-cambio', require('./routes/solicitudesCambio'));
-app.use('/api/desarrollador', require('./routes/desarrollador'));
 app.use('/api/recovery', require('./routes/passwordRecoveryRoutes'));
 app.use('/api/organizadores', require('./routes/organizadores'));
 app.use('/api/categorias', require('./routes/categorias'));
@@ -82,6 +81,7 @@ app.use('/api/eventosPorCarrera', require('./routes/eventosPorCarrera'));
 app.use('/api/cursosPorCarrera', require('./routes/cursoPorCarrera'));
 app.use('/api/inscripcionesCursos', require('./routes/inscripcionesCursos'));
 
+app.use('/api/desarrollador', require('./routes/desarrollador'));
 
 app.use('/api/admin/inscripciones', require('./routes/inscripciones'));
 app.use('/api/admin/inscripciones', require('./routes/inscripcionesCursos'));

@@ -17,7 +17,8 @@ const {
   aprobarSolicitud,
   rechazarSolicitud,
   obtenerEstadisticasAdmin,
-  obtenerDesarrolladores
+  obtenerDesarrolladores,
+  aprobarPlanesTecnicos
 } = require('../controllers/solicitudesCambioController');
 
 // Importar controlador de desarrolladores
@@ -168,6 +169,14 @@ router.get(
   '/admin/desarrolladores',
   [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER')],
   obtenerDesarrolladores
+);
+
+// Aprobar o rechazar planes técnicos (solo MASTER)
+// POST /api/solicitudes-cambio/admin/:id/aprobar-planes
+router.post(
+  '/admin/:id/aprobar-planes',
+  [validateJWT, validateRoles('MASTER'), ...validarIdSolicitud],
+  aprobarPlanesTecnicos
 );
 
 // ========================

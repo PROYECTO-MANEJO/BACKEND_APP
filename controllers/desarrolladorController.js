@@ -456,11 +456,10 @@ const actualizarPlanesTecnicos = async (req, res) => {
   try {
     const { id } = req.params;
     const { 
-      plan_implementacion_sol,  // CAMPO FALTANTE AGREGADO
+      plan_implementacion_sol,
       plan_rollout_sol, 
       plan_backout_sol, 
-      plan_testing_sol,
-      observaciones_implementacion_sol 
+      plan_testing_sol
     } = req.body;
     const userId = req.uid; // Usar req.uid que viene del validateJWT
 
@@ -492,11 +491,10 @@ const actualizarPlanesTecnicos = async (req, res) => {
     const solicitudActualizada = await prisma.solicitudCambio.update({
       where: { id_sol: id },
       data: {
-        plan_implementacion_sol,  // CAMPO FALTANTE AGREGADO
+        plan_implementacion_sol,
         plan_rollout_sol,
         plan_backout_sol,
         plan_testing_sol,
-        observaciones_implementacion_sol,
         fec_ultima_actualizacion: new Date()
       }
     });
@@ -532,19 +530,21 @@ const enviarPlanesARevision = async (req, res) => {
       where: {
         id_sol: id,
         id_desarrollador_asignado: userId,
-        estado_sol: 'APROBADA'
+        estado_sol: {
+          in: ['APROBADA', 'EN_DESARROLLO']
+        }
       }
     });
 
     if (!solicitud) {
       return res.status(404).json({
         success: false,
-        message: 'Solicitud no encontrada o no está aprobada para crear planes'
+        message: 'Solicitud no encontrada o no está en estado válido para enviar planes'
       });
     }
 
     // Validar que los planes técnicos estén completos (TODOS LOS 4 PLANES)
-    const planesCompletos = solicitud.plan_implementacion_sol && // VALIDACIÓN FALTANTE AGREGADA
+    const planesCompletos = solicitud.plan_implementacion_sol && 
                            solicitud.plan_rollout_sol && 
                            solicitud.plan_backout_sol && 
                            solicitud.plan_testing_sol;
