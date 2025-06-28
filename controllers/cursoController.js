@@ -261,6 +261,7 @@ const obtenerCursos = async (req, res) => {
     // Formatear respuesta
     const cursosFormateados = cursos.map(curso => ({
       ...curso,
+      carta_motivacion: curso.carta_motivacion, // <-- Añadir explícitamente
       organizador_nombre: `${curso.organizador.nom_org1} ${curso.organizador.ape_org1}`,
       categoria_nombre: curso.categoria.nom_cat,
       carreras: curso.cursosPorCarrera.map(cpc => ({
@@ -349,6 +350,7 @@ const obtenerCursoPorId = async (req, res) => {
       success: true, 
       curso: {
         ...curso,
+        carta_motivacion: curso.carta_motivacion, // <-- Añadir explícitamente
         organizador_nombre: `${curso.organizador.nom_org1} ${curso.organizador.ape_org1}`,
         categoria_nombre: curso.categoria.nom_cat,
         carreras: curso.cursosPorCarrera.map(cpc => ({
@@ -745,6 +747,7 @@ const obtenerCursosDisponibles = async (req, res) => {
 
       return {
         ...curso,
+        carta_motivacion: curso.carta_motivacion, // <-- Añadir explícitamente
         categoria_nombre: curso.categoria?.nom_cat || 'Sin categoría',
         organizador_nombre: nombreCompleto,
         carreras: curso.cursosPorCarrera.map(cc => ({
@@ -837,6 +840,7 @@ const obtenerMisCursos = async (req, res) => {
 
       return {
         ...curso,
+        carta_motivacion: curso.carta_motivacion, // <-- Añadir explícitamente
         categoria_nombre: curso.categoria?.nom_cat || 'Sin categoría',
         organizador_nombre: nombreCompleto,
         carreras: curso.cursosPorCarrera.map(cc => ({
