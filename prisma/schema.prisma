@@ -232,6 +232,7 @@ model Curso {
   fec_fin_cur   DateTime @map("FEC_FIN_CUR") @db.Date
   id_cat_cur    String   @map("ID_CAT_CUR") @db.Uuid
   ced_org_cur   String   @map("CED_ORG_CUR") @db.VarChar(10)
+  carta_motivacion String? @map("CARTA_MOTIVACION") @db.VarChar(500)
   
   // Control de capacidad y audiencia
   capacidad_max_cur Int @map("CAPACIDAD_MAX_CUR") @db.Integer

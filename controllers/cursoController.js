@@ -149,7 +149,8 @@ const crearCurso = async (req, res) => {
           tipo_audiencia_cur: tipo_audiencia_cur || 'PUBLICO_GENERAL',
           requiere_verificacion_docs: requiere_verificacion_docs !== undefined ? requiere_verificacion_docs : true,
           es_gratuito: esGratuito,
-          precio: precioCurso
+          precio: precioCurso,
+          carta_motivacion: req.body.carta_motivacion?.trim() || null
         }
       });
 
@@ -387,6 +388,10 @@ const actualizarCurso = async (req, res) => {
 
     // Preparar datos para actualización
     const datosActualizacion = {};
+
+    if (data.carta_motivacion !== undefined) {
+  datosActualizacion.carta_motivacion = data.carta_motivacion?.trim() || null;
+}
 
     // Campos de texto
     if (data.nom_cur) datosActualizacion.nom_cur = data.nom_cur.trim();
