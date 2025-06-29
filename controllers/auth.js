@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 // Controlador para registrar un nuevo usuario
 const register = async (req, res) => {
-    const { email, password, nombre, nombre2, apellido, apellido2, ced_usu, fec_nac_usu } = req.body;
+    const { email, password, nombre, nombre2, apellido, apellido2, ced_usu, fec_nac_usu, carrera_id } = req.body;
 
     try {
         // Verificar si ya existe un usuario con ese correo o cédula
@@ -41,6 +41,23 @@ const register = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'La cédula es obligatoria'
+            });
+        }
+
+        // Validar que si es email @uta.edu.ec, debe tener carrera
+        if (email && email.endsWith('@uta.edu.ec') && !carrera_id) {
+            return res.status(400).json({
+                success: false,
+                message: 'La carrera es obligatoria para estudiantes UTA'
+            });
+        }
+
+        // Validar fortaleza de la contraseña
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
+        if (!passwordRegex.test(password)) {
+            return res.status(400).json({
+                success: false,
+                message: 'La contraseña debe contener al menos 6 caracteres, una mayúscula, un número y un carácter especial (@$!%*?&)'
             });
         }
 
@@ -88,7 +105,8 @@ const register = async (req, res) => {
                     ape_usu1: apellido,
                     ape_usu2: apellido2 || '',
                     pas_usu: hashedPassword,
-                    fec_nac_usu: fechaNacimiento
+                    fec_nac_usu: fechaNacimiento,
+                    id_car_per: carrera_id || null // Asociar carrera si es proporcionada
                 }
             });
 
@@ -176,6 +194,15 @@ const adminCreateUser = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'El formato de fecha de nacimiento es inválido. Use YYYY-MM-DD'
+            });
+        }
+
+        // Validar fortaleza de la contraseña para administrador
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
+        if (!passwordRegex.test(pas_usu)) {
+            return res.status(400).json({
+                success: false,
+                message: 'La contraseña debe contener al menos 6 caracteres, una mayúscula, un número y un carácter especial (@$!%*?&)'
             });
         }
 
