@@ -11,7 +11,7 @@ const register = async (req, res) => {
     const { email, password, nombre, nombre2, apellido, apellido2, ced_usu, fec_nac_usu } = req.body;
 
     try {
-        // Verificar si ya existe un usuario con ese correo o cédula
+        // Verificar si ya existe una cuenta con ese correo
         const existingAccount = await prisma.cuenta.findFirst({
             where: {
                 cor_cue: email
@@ -25,10 +25,9 @@ const register = async (req, res) => {
             });
         }
 
+        // Verificar si ya existe un usuario con esa cédula
         const existingUserByCedula = await prisma.usuario.findFirst({
-            where: {
-                ced_usu
-            }
+            where: { ced_usu }
         });
 
         if (existingUserByCedula) {
@@ -38,7 +37,6 @@ const register = async (req, res) => {
             });
         }
 
-        // Verificar que la cédula está presente
         if (!ced_usu) {
             return res.status(400).json({
                 success: false,
@@ -46,42 +44,29 @@ const register = async (req, res) => {
             });
         }
 
-        // Encriptar la contraseña
+        // Encriptar contraseña
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        let rolAsignado = '';
-        if (email && email.endsWith('@uta.edu.ec')) {
-            rolAsignado = 'ESTUDIANTE'; // estudiante
-        } else {
-            rolAsignado = 'USUARIO'; // externo
-        }
+        // Rol automático
+        let rolAsignado = email.endsWith('@uta.edu.ec') ? 'ESTUDIANTE' : 'USUARIO';
 
-        // Validar y convertir fecha de nacimiento (OPCIONAL)
+        // Validar fecha de nacimiento
         let fechaNacimiento = null;
         if (fec_nac_usu) {
-            try {
-                fechaNacimiento = new Date(fec_nac_usu);
-                if (isNaN(fechaNacimiento.getTime())) {
-                    return res.status(400).json({
-                        success: false,
-                        message: 'La fecha de nacimiento es inválida. Usa formato YYYY-MM-DD'
-                    });
-                }
-            } catch {
+            fechaNacimiento = new Date(fec_nac_usu);
+            if (isNaN(fechaNacimiento.getTime())) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Fecha de nacimiento inválida'
+                    message: 'La fecha de nacimiento es inválida. Usa formato YYYY-MM-DD'
                 });
             }
         } else {
-            // Si no se proporciona fecha, usar una fecha por defecto
             fechaNacimiento = new Date('2000-01-01');
         }
 
-        // Crear el usuario y la cuenta en una transacción
+        // Crear usuario y cuenta en transacción
         const result = await prisma.$transaction(async (prisma) => {
-            // Crear el usuario
             const newUser = await prisma.usuario.create({
                 data: {
                     ced_usu,
@@ -94,41 +79,29 @@ const register = async (req, res) => {
                 }
             });
 
-            // Crear la cuenta asociada al usuario
             const newAccount = await prisma.cuenta.create({
                 data: {
                     cor_cue: email,
                     rol_cue: rolAsignado,
                     id_usu_per: newUser.id_usu,
-                    isVerified: false // Inicialmente no verificada
+                    isVerified: false
                 }
             });
 
             return { user: newUser, account: newAccount };
         });
 
-         await sendVerificationToken(email, result.user.id_usu);
+        // Enviar token de verificación
+        await sendVerificationToken(email, result.user.id_usu);
 
-        // Generar el token JWT para el nuevo usuario
-        const token = await generateJWT(result.user.id_usu);
-
-        // Respuesta exitosa
+        // NO devolvemos token de sesión, solo mensaje
         res.status(201).json({
             success: true,
-            user: {
-                id: result.user.id_usu,
-                nombre1: result.user.nom_usu1,
-                nombre2: result.user.nom_usu2,
-                apellido1: result.user.ape_usu1,
-                apellido2: result.user.ape_usu2,
-                rol: rolAsignado
-            },
-            token,
-            message: 'Se ha enviado un correo de verificación a tu dirección de correo electrónico. Por favor, verifica tu cuenta.'
+            message: 'Se ha enviado un correo de verificación a tu dirección de correo electrónico. Por favor, verifica tu cuenta antes de iniciar sesión.'
         });
 
     } catch (error) {
-        console.log(error);
+        console.error(error);
         res.status(500).json({
             success: false,
             message: 'Error en el servidor, contacte al administrador'
