@@ -3,7 +3,7 @@ const prisma = new PrismaClient();
 const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcrypt');
-const GitHubService = require('../services/githubService');
+const { GitHubService } = require('../services/githubService');
 
 // Actualizar perfil del usuario actual
 const updateUserProfile = async (req, res) => {

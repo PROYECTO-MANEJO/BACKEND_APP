@@ -1102,6 +1102,9 @@ ${solicitud.plan_backout_sol || 'Por definir'}
   }
 }
 
-// Este archivo es un enlace para mantener la compatibilidad con las importaciones en mayúsculas
-const githubService = new GitHubService();
-module.exports = githubService; 
+// Crear una instancia única
+const githubServiceInstance = new GitHubService();
+
+// Exportar tanto la clase como la instancia
+module.exports = githubServiceInstance;
+module.exports.GitHubService = GitHubService; 

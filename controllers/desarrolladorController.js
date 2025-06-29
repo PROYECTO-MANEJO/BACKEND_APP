@@ -1,6 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const GitHubService = require('../services/githubService');
+const { GitHubService } = require('../services/githubService');
 
 // Obtener solicitudes asignadas a un desarrollador específico
 const getSolicitudesAsignadas = async (req, res) => {

@@ -1,7 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const { validationResult } = require('express-validator');
-const githubService = require('../services/githubService');
-const GitHubService = require('../services/GitHubService');
+const { GitHubService } = require('../services/githubService');
 
 const prisma = new PrismaClient();
 
@@ -1521,7 +1520,7 @@ const obtenerInformacionPR = async (req, res) => {
     }
 
     // Obtener información del PR usando la API de GitHub
-    const prInfo = await githubService.obtenerInformacionPR(solicitud.github_pr_number);
+    const prInfo = await GitHubService.obtenerInformacionPR(solicitud.github_pr_number);
 
     res.json({
       success: true,
