@@ -20,7 +20,9 @@ const {
   obtenerBranchesRepositorio,
   detectarPullRequests,
   verificarMerges,
-  validarTokenPersonal
+  validarTokenPersonal,
+  rechazarPR,
+  aprobarPR
 } = require('../controllers/githubController');
 
 // Importar middlewares
@@ -190,6 +192,20 @@ router.post(
   '/dev/validate-token',
   [validateJWT, validateDeveloper],
   validarTokenPersonal
+);
+
+// Rechazar un PR
+router.post('/solicitud/:id/rechazar-pr',
+  validateJWT,
+  validateMaster,
+  rechazarPR
+);
+
+// Aprobar y mergear un PR
+router.post('/solicitud/:id/aprobar-pr',
+  validateJWT,
+  validateMaster,
+  aprobarPR
 );
 
 module.exports = router; 

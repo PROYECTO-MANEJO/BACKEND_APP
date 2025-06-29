@@ -1008,11 +1008,20 @@ ${solicitud.plan_backout_sol || 'Por definir'}
   }
 
   // Aprobar un PR
-  async aprobarPR(prNumber) {
+  async aprobarPR(prNumber, repoType = 'frontend') {
     try {
-      const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
-      const owner = process.env.GITHUB_OWNER;
-      const repo = process.env.GITHUB_REPO;
+      if (!this.isConfigured()) {
+        throw new Error('GitHub no está configurado');
+      }
+
+      const owner = this.defaultOwner;
+      const repo = this.repositories[repoType];
+
+      if (!repo) {
+        throw new Error(`Repositorio ${repoType} no configurado`);
+      }
+
+      const octokit = new Octokit({ auth: this.token });
 
       // Aprobar el PR
       await octokit.rest.pulls.createReview({
@@ -1031,24 +1040,88 @@ ${solicitud.plan_backout_sol || 'Por definir'}
   }
 
   // Rechazar un PR con comentarios
-  async rechazarPR(prNumber, comentarios) {
+  async rechazarPR(prNumber, comentarios, repoType = 'frontend') {
     try {
-      const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
-      const owner = process.env.GITHUB_OWNER;
-      const repo = process.env.GITHUB_REPO;
+      if (!this.isConfigured()) {
+        throw new Error('GitHub no está configurado');
+      }
 
-      // Rechazar el PR con comentarios
-      await octokit.rest.pulls.createReview({
-        owner,
-        repo,
-        pull_number: prNumber,
-        event: 'REQUEST_CHANGES',
-        body: `❌ Cambios solicitados por MASTER:\n\n${comentarios}`
-      });
+      const owner = this.defaultOwner;
+      const repo = this.repositories[repoType];
+
+      if (!repo) {
+        throw new Error(`Repositorio ${repoType} no configurado`);
+      }
+
+      const octokit = new Octokit({ auth: this.token });
+
+      // Primero intentamos solicitar cambios
+      try {
+        await octokit.rest.pulls.createReview({
+          owner,
+          repo,
+          pull_number: prNumber,
+          event: 'REQUEST_CHANGES',
+          body: `❌ Cambios solicitados por MASTER:\n\n${comentarios}`
+        });
+      } catch (reviewError) {
+        // Si falla la solicitud de cambios, creamos un comentario normal
+        if (reviewError.status === 422) {
+          await octokit.rest.issues.createComment({
+            owner,
+            repo,
+            issue_number: prNumber,
+            body: `❌ PR Rechazado por MASTER:\n\n${comentarios}\n\n_Este PR ha sido rechazado y debe ser revisado._`
+          });
+        } else {
+          throw reviewError;
+        }
+      }
 
       return true;
     } catch (error) {
       console.error('Error al rechazar PR:', error);
+      throw error;
+    }
+  }
+
+  // Aprobar y mergear un PR automáticamente
+  async aprobarYMergearPR(prNumber, comentarios, repoType = 'frontend') {
+    try {
+      if (!this.isConfigured()) {
+        throw new Error('GitHub no está configurado');
+      }
+
+      const owner = this.defaultOwner;
+      const repo = this.repositories[repoType];
+
+      if (!repo) {
+        throw new Error(`Repositorio ${repoType} no configurado`);
+      }
+
+      const octokit = new Octokit({ auth: this.token });
+
+      // Primero agregamos un comentario indicando la aprobación
+      await octokit.rest.issues.createComment({
+        owner,
+        repo,
+        issue_number: prNumber,
+        body: `✅ PR aprobado por MASTER:\n\n${comentarios}`
+      });
+
+      // Luego hacemos el merge directamente
+      await octokit.rest.pulls.merge({
+        owner,
+        repo,
+        pull_number: prNumber,
+        merge_method: 'squash',
+        commit_title: `Merge PR #${prNumber}`,
+        commit_message: `PR aprobado y mergeado por MASTER:\n\n${comentarios}\n\nMerge automático via Sistema de Solicitudes de Cambio`
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error al aprobar y mergear PR:', error);
       throw error;
     }
   }

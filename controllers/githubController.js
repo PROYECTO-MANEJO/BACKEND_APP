@@ -1071,6 +1071,133 @@ const validarTokenPersonal = async (req, res) => {
   }
 };
 
+// Rechazar un PR con comentarios
+const rechazarPR = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { comentarios } = req.body;
+
+    // Obtener la solicitud
+    const solicitud = await prisma.solicitudCambio.findUnique({
+      where: { id_sol: id },
+      select: {
+        id_sol: true,
+        github_pr_number: true,
+        github_repo_url: true
+      }
+    });
+
+    if (!solicitud) {
+      return res.status(404).json({
+        success: false,
+        message: 'Solicitud no encontrada'
+      });
+    }
+
+    if (!solicitud.github_pr_number) {
+      return res.status(400).json({
+        success: false,
+        message: 'La solicitud no tiene un PR asociado'
+      });
+    }
+
+    // Determinar tipo de repositorio desde la URL
+    const repoType = solicitud.github_repo_url?.toLowerCase().includes('backend') ? 'backend' : 'frontend';
+
+    // Rechazar el PR en GitHub
+    await githubService.rechazarPR(solicitud.github_pr_number, comentarios, repoType);
+
+    // Actualizar estado de la solicitud
+    await prisma.solicitudCambio.update({
+      where: { id_sol: id },
+      data: {
+        estado_sol: 'EN_DESARROLLO',
+        fec_ultima_actualizacion: new Date()
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'PR rechazado exitosamente'
+    });
+
+  } catch (error) {
+    console.error('Error rechazando PR:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+// Aprobar un PR con comentarios y hacer merge automático
+const aprobarPR = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { comentarios } = req.body;
+
+    // Obtener la solicitud
+    const solicitud = await prisma.solicitudCambio.findUnique({
+      where: { id_sol: id },
+      select: {
+        id_sol: true,
+        github_pr_number: true,
+        github_repo_url: true,
+        estado_sol: true
+      }
+    });
+
+    if (!solicitud) {
+      return res.status(404).json({
+        success: false,
+        message: 'Solicitud no encontrada'
+      });
+    }
+
+    if (!solicitud.github_pr_number) {
+      return res.status(400).json({
+        success: false,
+        message: 'La solicitud no tiene un PR asociado'
+      });
+    }
+
+    // Determinar tipo de repositorio desde la URL
+    const repoType = solicitud.github_repo_url?.includes('backend') ? 'backend' : 'frontend';
+
+    // Aprobar y mergear el PR
+    await githubService.aprobarYMergearPR(
+      solicitud.github_pr_number,
+      comentarios || 'PR aprobado por MASTER',
+      repoType
+    );
+
+    // Actualizar estado de la solicitud
+    await prisma.solicitudCambio.update({
+      where: { id_sol: id },
+      data: {
+        estado_sol: 'COMPLETADA',
+        github_pr_state: 'merged',
+        github_merged_at: new Date(),
+        comentarios_internos_sol: `PR aprobado y mergeado por MASTER el ${new Date().toLocaleString()}:\n\n${comentarios || 'Sin comentarios adicionales'}`
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'PR aprobado y mergeado correctamente'
+    });
+
+  } catch (error) {
+    console.error('Error al aprobar PR:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al aprobar PR',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   // Controladores existentes
   sincronizarSolicitudConGitHub,
@@ -1092,5 +1219,7 @@ module.exports = {
   obtenerBranchesRepositorio,
   detectarPullRequests,
   verificarMerges,
-  validarTokenPersonal
+  validarTokenPersonal,
+  rechazarPR,
+  aprobarPR
 }; 
