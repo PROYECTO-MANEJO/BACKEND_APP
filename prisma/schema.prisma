@@ -480,6 +480,7 @@ enum RepositoryType {
 enum PRStatus {
   PENDING     // Rama creada, sin PR
   OPEN        // PR abierto, esperando revisión
+  IN_REVIEW   // PR en revisión por el Master
   APPROVED    // PR aprobado por el Master
   REJECTED    // PR rechazado por el Master
   MERGED      // PR mergeado exitosamente
@@ -531,6 +532,7 @@ enum CategoriaCambio {
 enum EstadoSolicitud {
   BORRADOR
   PENDIENTE
+  EN_REVISION
   APROBADA
   RECHAZADA
   CANCELADA

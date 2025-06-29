@@ -49,11 +49,8 @@ const getSolicitudesAsignadas = async (req, res) => {
         estado_sol: {
           in: [
             'APROBADA', 
-            'PLANES_PENDIENTES_APROBACION', 
-            'LISTO_PARA_IMPLEMENTAR', 
             'EN_DESARROLLO', 
             'EN_TESTING', 
-            'EN_DESPLIEGUE',
             'COMPLETADA',
             'FALLIDA'
           ]
@@ -268,7 +265,7 @@ const actualizarEstadoSolicitud = async (req, res) => {
 
     // Obtener el token de GitHub del desarrollador si es necesario
     let githubToken = null;
-    if (['EN_DESARROLLO', 'EN_TESTING', 'EN_DESPLIEGUE'].includes(estado)) {
+    if (['EN_DESARROLLO', 'EN_TESTING'].includes(estado)) {
       try {
         githubToken = await obtenerTokenGitHubDesarrollador(userId);
       } catch (error) {
@@ -429,11 +426,8 @@ const getEstadisticasDesarrollador = async (req, res) => {
     const estadisticas = {
       total: 0,
       aprobadas: 0,
-      planes_pendientes: 0,
-      listo_implementar: 0,
       en_desarrollo: 0,
       en_testing: 0,
-      en_despliegue: 0,
       completadas: 0,
       fallidas: 0
     };
@@ -445,20 +439,11 @@ const getEstadisticasDesarrollador = async (req, res) => {
         case 'APROBADA':
           estadisticas.aprobadas = stat._count.estado_sol;
           break;
-        case 'PLANES_PENDIENTES_APROBACION':
-          estadisticas.planes_pendientes = stat._count.estado_sol;
-          break;
-        case 'LISTO_PARA_IMPLEMENTAR':
-          estadisticas.listo_implementar = stat._count.estado_sol;
-          break;
         case 'EN_DESARROLLO':
           estadisticas.en_desarrollo = stat._count.estado_sol;
           break;
         case 'EN_TESTING':
           estadisticas.en_testing = stat._count.estado_sol;
-          break;
-        case 'EN_DESPLIEGUE':
-          estadisticas.en_despliegue = stat._count.estado_sol;
           break;
         case 'COMPLETADA':
           estadisticas.completadas = stat._count.estado_sol;
@@ -548,200 +533,9 @@ const actualizarPlanesTecnicos = async (req, res) => {
   }
 };
 
-// Enviar planes técnicos a revisión del MASTER
-const enviarPlanesARevision = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const userId = req.uid; // Usar req.uid que viene del validateJWT
+// Esta función ya no es necesaria con el nuevo flujo simplificado
 
-    console.log('=== ENVIAR PLANES A REVISIÓN ===');
-    console.log('Solicitud ID:', id);
-    console.log('Desarrollador ID:', userId);
-
-    // Verificar que la solicitud existe y está asignada al desarrollador
-    const solicitud = await prisma.solicitudCambio.findFirst({
-      where: {
-        id_sol: id,
-        id_desarrollador_asignado: userId,
-        estado_sol: {
-          in: ['APROBADA', 'EN_DESARROLLO']
-        }
-      }
-    });
-
-    if (!solicitud) {
-      return res.status(404).json({
-        success: false,
-        message: 'Solicitud no encontrada o no está en estado válido para enviar planes'
-      });
-    }
-
-    // Validar que los planes técnicos estén completos (TODOS LOS 4 PLANES)
-    const planesCompletos = solicitud.plan_implementacion_sol && 
-                           solicitud.plan_rollout_sol && 
-                           solicitud.plan_backout_sol && 
-                           solicitud.plan_testing_sol;
-
-    if (!planesCompletos) {
-      return res.status(400).json({
-        success: false,
-        message: 'Debe completar todos los planes técnicos (Implementación, Roll-out, Back-out y Testing) antes de enviar a revisión'
-      });
-    }
-
-    // Actualizar el estado y marcar como enviado a revisión
-    const solicitudActualizada = await prisma.solicitudCambio.update({
-      where: { id_sol: id },
-      data: {
-        estado_sol: 'PLANES_PENDIENTES_APROBACION',
-        planes_enviados_revision: true,
-        fecha_envio_planes: new Date(),
-        fec_ultima_actualizacion: new Date()
-      }
-    });
-
-    res.json({
-      success: true,
-      message: 'Planes técnicos enviados a revisión del MASTER exitosamente',
-      data: solicitudActualizada
-    });
-
-  } catch (error) {
-    console.error('Error enviando planes a revisión:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor',
-      error: error.message
-    });
-  }
-};
-
-// Iniciar desarrollo de una solicitud
-const iniciarDesarrollo = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const desarrolladorId = req.uid;
-
-    console.log('=== INICIAR DESARROLLO ===');
-    console.log('Solicitud ID:', id);
-    console.log('Desarrollador ID:', desarrolladorId);
-
-    // Obtener el token de GitHub del desarrollador
-    let githubToken;
-    try {
-      githubToken = await obtenerTokenGitHubDesarrollador(desarrolladorId);
-    } catch (error) {
-      return res.status(400).json({
-        success: false,
-        message: error.message
-      });
-    }
-
-    // Verificar que la solicitud existe y está en estado correcto
-    const solicitud = await prisma.solicitudCambio.findFirst({
-      where: {
-        id_sol: id,
-        estado_sol: 'LISTO_PARA_IMPLEMENTAR',
-        id_desarrollador_asignado: desarrolladorId
-      }
-    });
-
-    if (!solicitud) {
-      return res.status(404).json({
-        success: false,
-        message: 'Solicitud no encontrada o no está lista para iniciar desarrollo'
-      });
-    }
-
-    // Crear branch en GitHub usando el token del desarrollador
-    const githubService = new GitHubService();
-    
-    // Crear branch en frontend
-    console.log('Creando branch en frontend...');
-    const frontendBranch = await githubService.crearBranchGitFlow(
-      solicitud,
-      'feature',
-      'develop',
-      'frontend',
-      githubToken
-    );
-
-    // Crear branch en backend si es necesario
-    let backendBranch = null;
-    if (solicitud.requiere_cambios_backend) {
-      console.log('Creando branch en backend...');
-      backendBranch = await githubService.crearBranchGitFlow(
-        solicitud,
-        'feature',
-        'develop',
-        'backend',
-        githubToken
-      );
-    }
-
-    // Crear Pull Request en frontend
-    console.log('Creando PR en frontend...');
-    const frontendPR = await githubService.crearPullRequestPersonalizado(
-      solicitud,
-      frontendBranch.branchName,
-      'frontend',
-      'develop',
-      githubToken
-    );
-
-    // Crear Pull Request en backend si es necesario
-    let backendPR = null;
-    if (backendBranch) {
-      console.log('Creando PR en backend...');
-      backendPR = await githubService.crearPullRequestPersonalizado(
-        solicitud,
-        backendBranch.branchName,
-        'backend',
-        'develop',
-        githubToken
-      );
-    }
-
-    // Actualizar solicitud con información de GitHub
-    const solicitudActualizada = await prisma.solicitudCambio.update({
-      where: { id_sol: id },
-      data: {
-        estado_sol: 'EN_DESARROLLO',
-        frontend_branch: frontendBranch.branchName,
-        backend_branch: backendBranch?.branchName || null,
-        frontend_pr_url: frontendPR.html_url,
-        backend_pr_url: backendPR?.html_url || null,
-        frontend_pr_number: frontendPR.number,
-        backend_pr_number: backendPR?.number || null,
-        fec_inicio_desarrollo_sol: new Date()
-      }
-    });
-
-    res.json({
-      success: true,
-      message: 'Desarrollo iniciado correctamente',
-      data: {
-        solicitud: solicitudActualizada,
-        frontend: {
-          branch: frontendBranch,
-          pullRequest: frontendPR
-        },
-        backend: backendBranch ? {
-          branch: backendBranch,
-          pullRequest: backendPR
-        } : null
-      }
-    });
-
-  } catch (error) {
-    console.error('Error iniciando desarrollo:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error iniciando desarrollo',
-      error: error.message
-    });
-  }
-};
+// Esta función ya no es necesaria con el nuevo flujo de ramas múltiples
 
 // Pasar solicitud a testing
 const pasarATesting = async (req, res) => {
@@ -928,7 +722,7 @@ const pasarADespliegue = async (req, res) => {
     const solicitudActualizada = await prisma.solicitudCambio.update({
       where: { id_sol: id },
       data: {
-        estado_sol: 'EN_DESPLIEGUE',
+        estado_sol: 'EN_TESTING',
         fec_ultima_actualizacion: new Date()
       }
     });
@@ -949,67 +743,7 @@ const pasarADespliegue = async (req, res) => {
   }
 };
 
-// Completar solicitud (EN_DESPLIEGUE → COMPLETADA/FALLIDA)
-const completarSolicitud = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { 
-      exito_implementacion, 
-      comentarios_tecnicos_sol,
-      tiempo_real_horas_sol 
-    } = req.body;
-    const userId = req.uid; // Usar req.uid que viene del validateJWT
-
-    const solicitud = await prisma.solicitudCambio.findFirst({
-      where: {
-        id_sol: id,
-        id_desarrollador_asignado: userId,
-        estado_sol: 'EN_DESPLIEGUE'
-      }
-    });
-
-    if (!solicitud) {
-      return res.status(404).json({
-        success: false,
-        message: 'Solicitud no encontrada o no está en despliegue'
-      });
-    }
-
-    const datosActualizacion = {
-      estado_sol: exito_implementacion ? 'COMPLETADA' : 'FALLIDA',
-      exito_implementacion: exito_implementacion,
-      fecha_real_fin_sol: new Date(),
-      fec_ultima_actualizacion: new Date()
-    };
-
-    if (comentarios_tecnicos_sol) {
-      datosActualizacion.comentarios_tecnicos_sol = comentarios_tecnicos_sol;
-    }
-
-    if (tiempo_real_horas_sol) {
-      datosActualizacion.tiempo_real_horas_sol = parseInt(tiempo_real_horas_sol);
-    }
-
-    const solicitudActualizada = await prisma.solicitudCambio.update({
-      where: { id_sol: id },
-      data: datosActualizacion
-    });
-
-    res.json({
-      success: true,
-      message: `Solicitud ${exito_implementacion ? 'completada' : 'marcada como fallida'} exitosamente`,
-      data: solicitudActualizada
-    });
-
-  } catch (error) {
-    console.error('Error completando solicitud:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor',
-      error: error.message
-    });
-  }
-};
+// Esta función ya no es necesaria - la completación se maneja automáticamente
 
 // =====================================================
 // NUEVAS FUNCIONES PARA MÚLTIPLES RAMAS
@@ -1019,7 +753,7 @@ const completarSolicitud = async (req, res) => {
 const crearRamaEspecifica = async (req, res) => {
   try {
     const { id } = req.params;
-    const { repository_type } = req.body;
+    const { repository_type, base_branch = 'develop' } = req.body;
     const desarrolladorId = req.uid;
 
     console.log('=== CREAR RAMA ESPECÍFICA ===');
@@ -1050,7 +784,9 @@ const crearRamaEspecifica = async (req, res) => {
     const solicitud = await prisma.solicitudCambio.findFirst({
       where: {
         id_sol: id,
-        estado_sol: 'APROBADA',
+        estado_sol: {
+          in: ['APROBADA', 'EN_DESARROLLO']
+        },
         id_desarrollador_asignado: desarrolladorId
       },
       include: {
@@ -1061,7 +797,7 @@ const crearRamaEspecifica = async (req, res) => {
     if (!solicitud) {
       return res.status(404).json({
         success: false,
-        message: 'Solicitud no encontrada o no está aprobada'
+        message: 'Solicitud no encontrada o no está en estado válido para crear ramas'
       });
     }
 
@@ -1082,10 +818,10 @@ const crearRamaEspecifica = async (req, res) => {
     const githubService = new GitHubService();
     const repoType = repository_type.toLowerCase();
     
-    console.log(`Creando branch en ${repoType}...`);
+    console.log(`Creando branch en ${repoType} desde ${base_branch}...`);
     const branchResult = await githubService.crearBranchEspecifico(
       branchName,
-      'develop',
+      base_branch,
       repoType,
       githubToken
     );
@@ -1126,7 +862,7 @@ const crearRamaEspecifica = async (req, res) => {
 const crearPRSpecifico = async (req, res) => {
   try {
     const { id } = req.params;
-    const { repository_type } = req.body;
+    const { repository_type, target_branch = 'develop' } = req.body;
     const desarrolladorId = req.uid;
 
     console.log('=== CREAR PR ESPECÍFICO ===');
@@ -1194,10 +930,11 @@ const crearPRSpecifico = async (req, res) => {
     const repoType = repository_type.toLowerCase();
     
     console.log(`Creando PR en ${repoType}...`);
+    console.log(`Creando PR para ${repoType} hacia ${target_branch}...`);
     const prResult = await githubService.crearPullRequestEspecifico(
       solicitud,
       rama.branch_name,
-      'develop',
+      target_branch,
       repoType,
       githubToken
     );
@@ -1288,8 +1025,6 @@ const actualizarEstadoSolicitudPorRamas = async (solicitudId) => {
 
     if (todasMergeadas) {
       nuevoEstado = 'COMPLETADA';
-    } else if (todasAprobadas) {
-      nuevoEstado = 'LISTO_PARA_IMPLEMENTAR';
     } else if (algunaRechazada) {
       nuevoEstado = 'EN_DESARROLLO';
     } else if (todasTienenPR) {
@@ -1313,6 +1048,54 @@ const actualizarEstadoSolicitudPorRamas = async (solicitudId) => {
   }
 };
 
+// Obtener ramas disponibles de un repositorio
+const obtenerRamasDisponibles = async (req, res) => {
+  try {
+    const { repository_type } = req.params;
+    const desarrolladorId = req.uid;
+
+    console.log('=== OBTENER RAMAS DISPONIBLES ===');
+    console.log('Repository Type:', repository_type);
+    console.log('Desarrollador ID:', desarrolladorId);
+
+    // Validar repository_type
+    if (!['frontend', 'backend'].includes(repository_type.toLowerCase())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tipo de repositorio inválido. Debe ser frontend o backend'
+      });
+    }
+
+    // Obtener el token de GitHub del desarrollador
+    let githubToken;
+    try {
+      githubToken = await obtenerTokenGitHubDesarrollador(desarrolladorId);
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    // Obtener ramas del repositorio
+    const githubService = new GitHubService();
+    const ramas = await githubService.obtenerBranchesDisponibles(repository_type.toLowerCase());
+
+    res.json({
+      success: true,
+      data: ramas
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo ramas disponibles:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error obteniendo ramas disponibles',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getSolicitudesAsignadas,
   getSolicitudEspecifica,
@@ -1320,13 +1103,10 @@ module.exports = {
   agregarComentarioDesarrollo,
   getEstadisticasDesarrollador,
   actualizarPlanesTecnicos,
-  enviarPlanesARevision,
-  iniciarDesarrollo,
   pasarATesting,
-  pasarADespliegue,
-  completarSolicitud,
   crearRamaEspecifica,
   crearPRSpecifico,
   obtenerRamasSolicitud,
-  actualizarEstadoSolicitudPorRamas
+  actualizarEstadoSolicitudPorRamas,
+  obtenerRamasDisponibles
 }; 

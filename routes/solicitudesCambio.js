@@ -226,13 +226,7 @@ router.put(
   desarrolladorController.actualizarPlanesTecnicos
 );
 
-// Enviar planes técnicos a revisión (desarrolladores)
-// POST /api/solicitudes-cambio/:id/enviar-planes-revision
-router.post(
-  '/:id/enviar-planes-revision',
-  validateJWT,
-  desarrolladorController.enviarPlanesARevision
-);
+// Esta ruta ya no es necesaria con el nuevo flujo
 
 // Ruta para crear rama para una solicitud
 router.post(
@@ -244,6 +238,70 @@ router.post(
     validateFields
   ],
   solicitudesCambioController.crearRamaParaSolicitud
+);
+
+// Ruta para obtener ramas de una solicitud
+router.get(
+  '/:id_solicitud/ramas',
+  [
+    validateJWT,
+    validateRoles('DESARROLLADOR', 'ADMINISTRADOR', 'MASTER')
+  ],
+  solicitudesCambioController.obtenerRamasPorSolicitud
+);
+
+// Ruta para validar estado de solicitud para creación de ramas
+router.get(
+  '/:id_solicitud/ramas/validar-estado',
+  [
+    validateJWT,
+    validateRoles('DESARROLLADOR')
+  ],
+  solicitudesCambioController.validarEstadoSolicitudParaRamas
+);
+
+// === RUTAS PARA GESTIÓN DE PULL REQUESTS ===
+
+// Ruta para crear PR para una rama específica
+router.post(
+  '/:id_solicitud/pull-requests',
+  [
+    validateJWT,
+    validateRoles('DESARROLLADOR'),
+    check('repository_type').isIn(['FRONTEND', 'BACKEND']),
+    validateFields
+  ],
+  solicitudesCambioController.crearPRParaSolicitud
+);
+
+// Ruta para obtener estado de PRs de una solicitud
+router.get(
+  '/:id_solicitud/pull-requests/estado',
+  [
+    validateJWT,
+    validateRoles('DESARROLLADOR', 'ADMINISTRADOR', 'MASTER')
+  ],
+  solicitudesCambioController.obtenerEstadoPRsParaSolicitud
+);
+
+// Ruta para verificar si puede enviar a testing
+router.get(
+  '/:id_solicitud/testing/verificar',
+  [
+    validateJWT,
+    validateRoles('DESARROLLADOR')
+  ],
+  solicitudesCambioController.verificarEstadoParaTesting
+);
+
+// Ruta para enviar solicitud a testing
+router.post(
+  '/:id_solicitud/testing/enviar',
+  [
+    validateJWT,
+    validateRoles('DESARROLLADOR')
+  ],
+  solicitudesCambioController.enviarSolicitudATesting
 );
 
 module.exports = router; 

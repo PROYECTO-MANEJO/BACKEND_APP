@@ -1815,7 +1815,7 @@ const crearRamaParaSolicitud = async (req, res) => {
       });
     }
 
-    const rama = await githubService.crearRama(id_solicitud, repository_type);
+    const rama = await GitHubService.crearRama(id_solicitud, repository_type);
 
     res.status(201).json({
       success: true,
@@ -1826,6 +1826,236 @@ const crearRamaParaSolicitud = async (req, res) => {
   } catch (error) {
     console.error('Error al crear rama:', error);
     res.status(error.message.includes('Ya existe') ? 400 : 500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+const obtenerRamasPorSolicitud = async (req, res) => {
+  try {
+    const { id_solicitud } = req.params;
+
+    // Verificar que la solicitud existe
+    const solicitud = await prisma.solicitudCambio.findUnique({
+      where: { id_sol: id_solicitud }
+    });
+
+    if (!solicitud) {
+      return res.status(404).json({
+        success: false,
+        message: 'Solicitud no encontrada'
+      });
+    }
+
+    const ramas = await GitHubService.obtenerRamasPorSolicitud(id_solicitud);
+
+    res.json({
+      success: true,
+      message: 'Ramas obtenidas exitosamente',
+      data: ramas
+    });
+
+  } catch (error) {
+    console.error('Error al obtener ramas:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+const validarEstadoSolicitudParaRamas = async (req, res) => {
+  try {
+    const { id_solicitud } = req.params;
+
+    const solicitud = await prisma.solicitudCambio.findUnique({
+      where: { id_sol: id_solicitud },
+      include: {
+        ramas: true
+      }
+    });
+
+    if (!solicitud) {
+      return res.status(404).json({
+        success: false,
+        message: 'Solicitud no encontrada'
+      });
+    }
+
+    // Verificar qué ramas se pueden crear
+    const puedeCrearFrontend = !solicitud.ramas.some(rama => rama.repository_type === 'FRONTEND');
+    const puedeCrearBackend = !solicitud.ramas.some(rama => rama.repository_type === 'BACKEND');
+    
+    // Verificar estado válido para crear ramas
+    const estadosValidosParaRamas = ['APROBADA', 'EN_DESARROLLO'];
+    const puedeCrearRamas = estadosValidosParaRamas.includes(solicitud.estado_sol);
+
+    res.json({
+      success: true,
+      data: {
+        solicitud: {
+          id_sol: solicitud.id_sol,
+          estado_sol: solicitud.estado_sol,
+          titulo_sol: solicitud.titulo_sol
+        },
+        permisos: {
+          puede_crear_ramas: puedeCrearRamas,
+          puede_crear_frontend: puedeCrearFrontend && puedeCrearRamas,
+          puede_crear_backend: puedeCrearBackend && puedeCrearRamas
+        },
+        ramas_existentes: solicitud.ramas
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al validar estado:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+const crearPRParaSolicitud = async (req, res) => {
+  try {
+    const { id_solicitud } = req.params;
+    const { repository_type } = req.body;
+
+    if (!['FRONTEND', 'BACKEND'].includes(repository_type)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tipo de repositorio inválido'
+      });
+    }
+
+    const pr = await GitHubService.crearPR(id_solicitud, repository_type);
+
+    res.status(201).json({
+      success: true,
+      message: 'Pull Request creado exitosamente',
+      data: pr
+    });
+
+  } catch (error) {
+    console.error('Error al crear PR:', error);
+    
+    let statusCode = 500;
+    if (error.message.includes('No existe una rama')) {
+      statusCode = 400;
+    } else if (error.message.includes('Ya existe un PR')) {
+      statusCode = 409;
+    } else if (error.message.includes('No hay commits')) {
+      statusCode = 422;
+    }
+
+    res.status(statusCode).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+const verificarEstadoParaTesting = async (req, res) => {
+  try {
+    const { id_solicitud } = req.params;
+
+    const resultado = await GitHubService.verificarEstadoParaEnviarATesting(id_solicitud);
+
+    res.json({
+      success: true,
+      message: 'Estado verificado exitosamente',
+      data: resultado
+    });
+
+  } catch (error) {
+    console.error('Error al verificar estado:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+const enviarSolicitudATesting = async (req, res) => {
+  try {
+    const { id_solicitud } = req.params;
+
+    const solicitud = await GitHubService.enviarATesting(id_solicitud);
+
+    res.json({
+      success: true,
+      message: 'Solicitud enviada a testing exitosamente',
+      data: solicitud
+    });
+
+  } catch (error) {
+    console.error('Error al enviar a testing:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+const obtenerEstadoPRsParaSolicitud = async (req, res) => {
+  try {
+    const { id_solicitud } = req.params;
+
+    const solicitud = await prisma.solicitudCambio.findUnique({
+      where: { id_sol: id_solicitud },
+      include: {
+        ramas: true
+      }
+    });
+
+    if (!solicitud) {
+      return res.status(404).json({
+        success: false,
+        message: 'Solicitud no encontrada'
+      });
+    }
+
+    // Calcular estadísticas de PRs
+    const totalRamas = solicitud.ramas.length;
+    const prsCreados = solicitud.ramas.filter(rama => rama.pr_status !== 'PENDING').length;
+    const prsEnReview = solicitud.ramas.filter(rama => rama.pr_status === 'IN_REVIEW').length;
+    const prsAprobados = solicitud.ramas.filter(rama => rama.pr_status === 'APPROVED').length;
+    const prsRechazados = solicitud.ramas.filter(rama => rama.pr_status === 'REJECTED').length;
+    const prsMergeados = solicitud.ramas.filter(rama => rama.pr_status === 'MERGED').length;
+
+    // Determinar si puede enviar a testing
+    const puedeEnviarATesting = totalRamas > 0 && 
+                               prsCreados === totalRamas && 
+                               solicitud.estado_sol === 'EN_DESARROLLO';
+
+    res.json({
+      success: true,
+      data: {
+        solicitud: {
+          id_sol: solicitud.id_sol,
+          estado_sol: solicitud.estado_sol,
+          titulo_sol: solicitud.titulo_sol
+        },
+        estadisticas_prs: {
+          total_ramas: totalRamas,
+          prs_creados: prsCreados,
+          prs_pendientes: totalRamas - prsCreados,
+          prs_en_review: prsEnReview,
+          prs_aprobados: prsAprobados,
+          prs_rechazados: prsRechazados,
+          prs_mergeados: prsMergeados
+        },
+        permisos: {
+          puede_enviar_a_testing: puedeEnviarATesting
+        },
+        ramas: solicitud.ramas
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al obtener estado de PRs:', error);
+    res.status(500).json({
       success: false,
       message: error.message
     });
@@ -1854,5 +2084,11 @@ module.exports = {
   obtenerInformacionPR,
   aprobarPRSpecifico,
   rechazarPRSpecifico,
-  crearRamaParaSolicitud
+  crearRamaParaSolicitud,
+  obtenerRamasPorSolicitud,
+  validarEstadoSolicitudParaRamas,
+  crearPRParaSolicitud,
+  verificarEstadoParaTesting,
+  enviarSolicitudATesting,
+  obtenerEstadoPRsParaSolicitud
 }; 
