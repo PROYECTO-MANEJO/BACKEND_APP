@@ -261,7 +261,6 @@ const obtenerCursos = async (req, res) => {
     // Formatear respuesta
     const cursosFormateados = cursos.map(curso => ({
       ...curso,
-      carta_motivacion: curso.carta_motivacion, // <-- Añadir explícitamente
       organizador_nombre: `${curso.organizador.nom_org1} ${curso.organizador.ape_org1}`,
       categoria_nombre: curso.categoria.nom_cat,
       carreras: curso.cursosPorCarrera.map(cpc => ({
@@ -350,7 +349,6 @@ const obtenerCursoPorId = async (req, res) => {
       success: true, 
       curso: {
         ...curso,
-        carta_motivacion: curso.carta_motivacion, // <-- Añadir explícitamente
         organizador_nombre: `${curso.organizador.nom_org1} ${curso.organizador.ape_org1}`,
         categoria_nombre: curso.categoria.nom_cat,
         carreras: curso.cursosPorCarrera.map(cpc => ({
@@ -375,193 +373,72 @@ const obtenerCursoPorId = async (req, res) => {
 const actualizarCurso = async (req, res) => {
   const { id } = req.params;
   const data = req.body;
-  
+
   try {
-    const curso = await prisma.curso.findUnique({ 
-      where: { id_cur: id } 
+    const curso = await prisma.curso.findUnique({
+      where: { id_cur: id }
     });
-    
+
     if (!curso) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Curso no encontrado' 
+      return res.status(404).json({
+        success: false,
+        message: 'Curso no encontrado'
       });
     }
 
-    // Preparar datos para actualización
     const datosActualizacion = {};
 
-    if (data.carta_motivacion !== undefined) {
-  datosActualizacion.carta_motivacion = data.carta_motivacion?.trim() || null;
-}
-
-    // Campos de texto
     if (data.nom_cur) datosActualizacion.nom_cur = data.nom_cur.trim();
     if (data.des_cur) datosActualizacion.des_cur = data.des_cur.trim();
-    
-    // Campos numéricos
-    if (data.dur_cur) {
-      const duracion = parseInt(data.dur_cur);
-      if (isNaN(duracion) || duracion <= 0) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'La duración debe ser un número positivo' 
-        });
-      }
-      datosActualizacion.dur_cur = duracion;
-    }
-    
-    if (data.capacidad_max_cur) {
-      const capacidad = parseInt(data.capacidad_max_cur);
-      if (isNaN(capacidad) || capacidad <= 0) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'La capacidad máxima debe ser un número positivo' 
-        });
-      }
-      datosActualizacion.capacidad_max_cur = capacidad;
-    }
+    if (data.dur_cur) datosActualizacion.dur_cur = parseInt(data.dur_cur);
+    if (data.fec_ini_cur) datosActualizacion.fec_ini_cur = new Date(data.fec_ini_cur);
+    if (data.fec_fin_cur) datosActualizacion.fec_fin_cur = new Date(data.fec_fin_cur);
+    if (data.id_cat_cur) datosActualizacion.id_cat_cur = data.id_cat_cur;
+    if (data.ced_org_cur) datosActualizacion.ced_org_cur = data.ced_org_cur;
+    if (data.capacidad_max_cur) datosActualizacion.capacidad_max_cur = parseInt(data.capacidad_max_cur);
+    if (data.tipo_audiencia_cur) datosActualizacion.tipo_audiencia_cur = data.tipo_audiencia_cur;
+    if (data.requiere_verificacion_docs !== undefined) datosActualizacion.requiere_verificacion_docs = Boolean(data.requiere_verificacion_docs);
+    if (data.es_gratuito !== undefined) datosActualizacion.es_gratuito = Boolean(data.es_gratuito);
+    if (data.precio !== undefined) datosActualizacion.precio = data.precio === null ? null : parseFloat(data.precio);
+    if (data.requiere_carta_motivacion !== undefined) datosActualizacion.requiere_carta_motivacion = data.requiere_carta_motivacion === true;
 
-    // Campos booleanos
-    if (data.requiere_verificacion_docs !== undefined) {
-      datosActualizacion.requiere_verificacion_docs = Boolean(data.requiere_verificacion_docs);
-    }
-
-    // 🎯 VALIDAR CONFIGURACIÓN DE PRECIO
-    if (data.es_gratuito !== undefined) {
-      const esGratuito = Boolean(data.es_gratuito);
-      datosActualizacion.es_gratuito = esGratuito;
-      
-      if (!esGratuito) {
-        // Si se cambia a pagado, debe tener precio
-        if (data.precio === undefined || data.precio === null) {
-          return res.status(400).json({ 
-            success: false, 
-            message: 'Para cursos pagados, el precio es obligatorio' 
-          });
-        }
-        
-        const precio = parseFloat(data.precio);
-        if (isNaN(precio) || precio <= 0) {
-          return res.status(400).json({ 
-            success: false, 
-            message: 'El precio debe ser un número positivo' 
-          });
-        }
-        datosActualizacion.precio = precio;
-      } else {
-        // Si se cambia a gratuito, quitar el precio
-        datosActualizacion.precio = null;
-      }
-    } else if (data.precio !== undefined) {
-      // Solo se actualiza el precio si el curso ya es pagado
-      if (curso.es_gratuito) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'No se puede establecer precio en un curso gratuito. Primero cambie es_gratuito a false' 
-        });
-      }
-      
-      const precio = parseFloat(data.precio);
-      if (isNaN(precio) || precio <= 0) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'El precio debe ser un número positivo' 
-        });
-      }
-      datosActualizacion.precio = precio;
-    }
-
-    // Validar y convertir fechas
-    if (data.fec_ini_cur) {
-      const fechaInicio = new Date(data.fec_ini_cur);
-      if (isNaN(fechaInicio.getTime())) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Fecha de inicio inválida' 
-        });
-      }
-      datosActualizacion.fec_ini_cur = fechaInicio;
-    }
-    
-    if (data.fec_fin_cur) {
-      const fechaFin = new Date(data.fec_fin_cur);
-      if (isNaN(fechaFin.getTime())) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Fecha de fin inválida' 
-        });
-      }
-      datosActualizacion.fec_fin_cur = fechaFin;
-    }
-
-    // Validar enum tipo audiencia
-    if (data.tipo_audiencia_cur) {
-      const audienciasValidas = ['CARRERA_ESPECIFICA', 'TODAS_CARRERAS', 'PUBLICO_GENERAL'];
-      if (!audienciasValidas.includes(data.tipo_audiencia_cur)) {
-        return res.status(400).json({ 
-          success: false, 
-          message: `Tipo de audiencia inválido. Valores permitidos: ${audienciasValidas.join(', ')}` 
-        });
-      }
-      datosActualizacion.tipo_audiencia_cur = data.tipo_audiencia_cur;
-    }
-
-    // Validar referencias
-    if (data.id_cat_cur) {
-      const categoria = await prisma.categoriaEvento.findUnique({ 
-        where: { id_cat: data.id_cat_cur } 
-      });
-      if (!categoria) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Categoría inválida' 
-        });
-      }
-      datosActualizacion.id_cat_cur = data.id_cat_cur;
-    }
-
-    if (data.ced_org_cur) {
-      const organizador = await prisma.organizador.findUnique({ 
-        where: { ced_org: data.ced_org_cur } 
-      });
-      if (!organizador) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Organizador inválido' 
-        });
-      }
-      datosActualizacion.ced_org_cur = data.ced_org_cur;
-    }
-
-    // Actualizar curso
-    const cursoActualizado = await prisma.curso.update({ 
-      where: { id_cur: id }, 
-      data: datosActualizacion,
+    const cursoActualizado = await prisma.curso.update({
+      where: { id_cur: id },
+      data: {
+        nom_cur: data.nom_cur,
+        des_cur: data.des_cur,
+        dur_cur: parseInt(data.dur_cur),
+        fec_ini_cur: new Date(data.fec_ini_cur),
+        fec_fin_cur: new Date(data.fec_fin_cur),
+        capacidad_max_cur: parseInt(data.capacidad_max_cur),
+        tipo_audiencia_cur: data.tipo_audiencia_cur,
+        requiere_verificacion_docs: Boolean(data.requiere_verificacion_docs),
+        es_gratuito: Boolean(data.es_gratuito),
+        precio: data.precio === null ? null : parseFloat(data.precio),
+        requiere_carta_motivacion: data.requiere_carta_motivacion === true,
+        ...(data.id_cat_cur && {
+          categoria: { connect: { id_cat: data.id_cat_cur } }
+        }),
+        ...(data.ced_org_cur && {
+          organizador: { connect: { ced_org: data.ced_org_cur } }
+        }),
+      },
       include: {
         categoria: true,
         organizador: true
       }
     });
-    
-    res.json({ 
-      success: true, 
-      message: 'Curso actualizado correctamente', 
-      curso: cursoActualizado 
+
+    res.json({
+      success: true,
+      message: 'Curso actualizado correctamente',
+      curso: cursoActualizado
     });
   } catch (error) {
     console.error('Error al actualizar curso:', error);
-    
-    if (error.code === 'P2002') {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Ya existe un curso con estos datos únicos' 
-      });
-    }
-    
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error del servidor' 
+    res.status(500).json({
+      success: false,
+      message: 'Error del servidor'
     });
   }
 };
@@ -747,7 +624,6 @@ const obtenerCursosDisponibles = async (req, res) => {
 
       return {
         ...curso,
-        carta_motivacion: curso.carta_motivacion, // <-- Añadir explícitamente
         categoria_nombre: curso.categoria?.nom_cat || 'Sin categoría',
         organizador_nombre: nombreCompleto,
         carreras: curso.cursosPorCarrera.map(cc => ({
@@ -840,7 +716,6 @@ const obtenerMisCursos = async (req, res) => {
 
       return {
         ...curso,
-        carta_motivacion: curso.carta_motivacion, // <-- Añadir explícitamente
         categoria_nombre: curso.categoria?.nom_cat || 'Sin categoría',
         organizador_nombre: nombreCompleto,
         carreras: curso.cursosPorCarrera.map(cc => ({
