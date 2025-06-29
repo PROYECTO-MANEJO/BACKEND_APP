@@ -247,6 +247,9 @@ model Curso {
   es_gratuito Boolean @map("ES_GRATUITO") @default(true)
   precio Decimal? @map("PRECIO") @db.Decimal(6,2) // Solo si no es gratuito
 
+  // NUEVO CAMPO:
+  requiere_carta_motivacion   Boolean  @default(false) @map("REQUIERE_CARTA_MOTIVACION")
+
   // Relaciones
   categoria     CategoriaEvento @relation(fields: [id_cat_cur], references: [id_cat])
   organizador   Organizador      @relation(fields: [ced_org_cur], references: [ced_org])
