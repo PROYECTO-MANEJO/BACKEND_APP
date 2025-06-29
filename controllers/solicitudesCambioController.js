@@ -1803,6 +1803,35 @@ const rechazarPRSpecifico = async (req, res) => {
   }
 };
 
+const crearRamaParaSolicitud = async (req, res) => {
+  try {
+    const { id_solicitud } = req.params;
+    const { repository_type } = req.body;
+
+    if (!['FRONTEND', 'BACKEND'].includes(repository_type)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tipo de repositorio inválido'
+      });
+    }
+
+    const rama = await githubService.crearRama(id_solicitud, repository_type);
+
+    res.status(201).json({
+      success: true,
+      message: 'Rama creada exitosamente',
+      data: rama
+    });
+
+  } catch (error) {
+    console.error('Error al crear rama:', error);
+    res.status(error.message.includes('Ya existe') ? 400 : 500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 module.exports = {
   // Funciones de usuario únicamente
   crearSolicitud,
@@ -1824,5 +1853,6 @@ module.exports = {
   obtenerDesarrolladores,
   obtenerInformacionPR,
   aprobarPRSpecifico,
-  rechazarPRSpecifico
+  rechazarPRSpecifico,
+  crearRamaParaSolicitud
 }; 

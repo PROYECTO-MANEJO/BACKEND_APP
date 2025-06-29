@@ -1,34 +1,13 @@
 const { Router } = require('express');
+const { check } = require('express-validator');
 
 // Importar controladores
-const {
-  crearSolicitud,
-  obtenerMisSolicitudes,
-  obtenerMiSolicitud,
-  editarSolicitud,
-  enviarSolicitud,
-  cancelarSolicitud,
-  obtenerEstadisticasUsuario,
-  // Funciones de Admin Master
-  obtenerTodasLasSolicitudes,
-  obtenerSolicitudParaAdmin,
-  actualizarSolicitudMaster,
-  ponerEnRevision,
-  aprobarSolicitud,
-  rechazarSolicitud,
-  obtenerEstadisticasAdmin,
-  obtenerDesarrolladores,
-  // Nuevas funciones para múltiples PRs
-  obtenerInformacionPR,
-  aprobarPRSpecifico,
-  rechazarPRSpecifico
-} = require('../controllers/solicitudesCambioController');
-
-// Importar controlador de desarrolladores
+const solicitudesCambioController = require('../controllers/solicitudesCambioController');
 const desarrolladorController = require('../controllers/desarrolladorController');
 
 // Importar middlewares
-const { validateJWT, validateAdmin, validateRoles } = require('../middlewares/validateJWT');
+const { validateJWT } = require('../middlewares/validateJWT');
+const { validateRoles } = require('../middlewares/validateJWT');
 const {
   validarCreacionSolicitud,
   validarEdicionSolicitud,
@@ -37,6 +16,7 @@ const {
   validarAprobacion,
   validarRechazo
 } = require('../middlewares/validacionSolicitudes');
+const { validateFields } = require('../middlewares/validateFields');
 
 const router = Router();
 
@@ -49,7 +29,7 @@ const router = Router();
 router.post(
   '/solicitud-nueva',
   [validateJWT, ...validarCreacionSolicitud],
-  crearSolicitud
+  solicitudesCambioController.crearSolicitud
 );
 
 // Obtener todas las solicitudes del usuario autenticado
@@ -57,7 +37,7 @@ router.post(
 router.get(
   '/mis-solicitudes',
   validateJWT,
-  obtenerMisSolicitudes
+  solicitudesCambioController.obtenerMisSolicitudes
 );
 
 // Obtener una solicitud específica del usuario autenticado
@@ -65,7 +45,7 @@ router.get(
 router.get(
   '/mis-solicitudes/:id',
   [validateJWT, ...validarIdSolicitud],
-  obtenerMiSolicitud
+  solicitudesCambioController.obtenerMiSolicitud
 );
 
 // Editar solicitud (usuario - solo BORRADOR)
@@ -73,7 +53,7 @@ router.get(
 router.put(
   '/:id/editar',
   [validateJWT, ...validarEdicionSolicitud],
-  editarSolicitud
+  solicitudesCambioController.editarSolicitud
 );
 
 // Enviar solicitud (BORRADOR → PENDIENTE)
@@ -81,7 +61,7 @@ router.put(
 router.put(
   '/:id/enviar',
   [validateJWT, ...validarIdSolicitud],
-  enviarSolicitud
+  solicitudesCambioController.enviarSolicitud
 );
 
 // Cancelar solicitud (solo BORRADOR)
@@ -89,7 +69,7 @@ router.put(
 router.put(
   '/:id/cancelar',
   [validateJWT, ...validarIdSolicitud],
-  cancelarSolicitud
+  solicitudesCambioController.cancelarSolicitud
 );
 
 // Obtener estadísticas del usuario
@@ -97,7 +77,7 @@ router.put(
 router.get(
   '/mis-estadisticas',
   validateJWT,
-  obtenerEstadisticasUsuario
+  solicitudesCambioController.obtenerEstadisticasUsuario
 );
 
 // ========================
@@ -115,7 +95,7 @@ router.get(
 router.get(
   '/admin/todas',
   [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER')],
-  obtenerTodasLasSolicitudes
+  solicitudesCambioController.obtenerTodasLasSolicitudes
 );
 
 // Obtener una solicitud específica (para admin/master)
@@ -123,7 +103,7 @@ router.get(
 router.get(
   '/admin/solicitud/:id',
   [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER'), ...validarIdSolicitud],
-  obtenerSolicitudParaAdmin
+  solicitudesCambioController.obtenerSolicitudParaAdmin
 );
 
 // Actualizar solicitud con campos de admin/master
@@ -131,7 +111,7 @@ router.get(
 router.put(
   '/admin/:id/actualizar',
   [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER'), ...validarActualizacionMaster],
-  actualizarSolicitudMaster
+  solicitudesCambioController.actualizarSolicitudMaster
 );
 
 // Poner solicitud en revisión (PENDIENTE → EN_REVISION)
@@ -139,7 +119,7 @@ router.put(
 router.put(
   '/admin/:id/poner-revision',
   [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER'), ...validarIdSolicitud],
-  ponerEnRevision
+  solicitudesCambioController.ponerEnRevision
 );
 
 // Aprobar solicitud (EN_REVISION → APROBADA)
@@ -147,7 +127,7 @@ router.put(
 router.put(
   '/admin/:id/aprobar',
   [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER'), ...validarAprobacion],
-  aprobarSolicitud
+  solicitudesCambioController.aprobarSolicitud
 );
 
 // Rechazar solicitud (EN_REVISION → RECHAZADA)
@@ -155,7 +135,7 @@ router.put(
 router.put(
   '/admin/:id/rechazar',
   [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER'), ...validarRechazo],
-  rechazarSolicitud
+  solicitudesCambioController.rechazarSolicitud
 );
 
 // Obtener estadísticas generales (para admin/master)
@@ -163,7 +143,7 @@ router.put(
 router.get(
   '/admin/estadisticas',
   [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER')],
-  obtenerEstadisticasAdmin
+  solicitudesCambioController.obtenerEstadisticasAdmin
 );
 
 // Obtener desarrolladores disponibles (para admin/master)
@@ -171,7 +151,7 @@ router.get(
 router.get(
   '/admin/desarrolladores',
   [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER')],
-  obtenerDesarrolladores
+  solicitudesCambioController.obtenerDesarrolladores
 );
 
 // ========================
@@ -183,7 +163,7 @@ router.get(
 router.get(
   '/admin/:id_sol/pr-info',
   [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER')],
-  obtenerInformacionPR
+  solicitudesCambioController.obtenerInformacionPR
 );
 
 // Aprobar PR específico
@@ -191,7 +171,7 @@ router.get(
 router.post(
   '/admin/:id_sol/aprobar-pr',
   [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER')],
-  aprobarPRSpecifico
+  solicitudesCambioController.aprobarPRSpecifico
 );
 
 // Rechazar PR específico
@@ -199,7 +179,7 @@ router.post(
 router.post(
   '/admin/:id_sol/rechazar-pr',
   [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER')],
-  rechazarPRSpecifico
+  solicitudesCambioController.rechazarPRSpecifico
 );
 
 // ========================
@@ -252,6 +232,18 @@ router.post(
   '/:id/enviar-planes-revision',
   validateJWT,
   desarrolladorController.enviarPlanesARevision
+);
+
+// Ruta para crear rama para una solicitud
+router.post(
+  '/:id_solicitud/ramas',
+  [
+    validateJWT,
+    validateRoles('DESARROLLADOR'),
+    check('repository_type').isIn(['FRONTEND', 'BACKEND']),
+    validateFields
+  ],
+  solicitudesCambioController.crearRamaParaSolicitud
 );
 
 module.exports = router; 

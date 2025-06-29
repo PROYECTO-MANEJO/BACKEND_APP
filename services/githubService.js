@@ -38,6 +38,9 @@ class GitHubService {
     if (!this.repositories.frontend || !this.repositories.backend) {
       console.error('❌ GITHUB_REPO_FRONTEND o GITHUB_REPO_BACKEND no están configurados en el .env');
     }
+
+    this.frontendRepo = process.env.GITHUB_FRONTEND_REPO;
+    this.backendRepo = process.env.GITHUB_BACKEND_REPO;
   }
 
   // Verificar si el servicio está configurado correctamente
@@ -1486,6 +1489,88 @@ ${repoType === 'frontend' ?
         throw new Error(`PR #${prNumber} ya fue mergeado o cerrado.`);
       }
       
+      throw error;
+    }
+  }
+
+  generateBranchName(solicitud, repoType) {
+    const timestamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0];
+    const tipo = this.mapTipoSolicitud(solicitud.tipo_cambio_sol);
+    return `${tipo}/SOL-${solicitud.id_sol}_${repoType.toLowerCase()}_${timestamp}`;
+  }
+
+  mapTipoSolicitud(tipo) {
+    const tipos = {
+      'NUEVA_FUNCIONALIDAD': 'feature',
+      'MEJORA_EXISTENTE': 'feature',
+      'CORRECCION_ERROR': 'bugfix',
+      'CAMBIO_INTERFAZ': 'feature',
+      'OPTIMIZACION': 'feature',
+      'ACTUALIZACION_DATOS': 'feature',
+      'CAMBIO_SEGURIDAD': 'hotfix',
+      'MIGRACION_DATOS': 'feature',
+      'INTEGRACION_EXTERNA': 'feature',
+      'OTRO': 'feature'
+    };
+    return tipos[tipo] || 'feature';
+  }
+
+  async validarCreacionRama(solicitudId, repoType) {
+    const ramaExistente = await prisma.solicitudRama.findFirst({
+      where: {
+        id_solicitud: solicitudId,
+        repository_type: repoType
+      }
+    });
+
+    if (ramaExistente) {
+      throw new Error(`Ya existe una rama para el repositorio ${repoType}`);
+    }
+
+    const solicitud = await prisma.solicitudCambio.findUnique({
+      where: { id_sol: solicitudId }
+    });
+
+    if (!solicitud) {
+      throw new Error('Solicitud no encontrada');
+    }
+
+    if (solicitud.estado_sol !== 'EN_DESARROLLO' && solicitud.estado_sol !== 'APROBADA') {
+      throw new Error('La solicitud no está en un estado válido para crear ramas');
+    }
+
+    return solicitud;
+  }
+
+  async crearRama(solicitudId, repoType) {
+    try {
+      const solicitud = await this.validarCreacionRama(solicitudId, repoType);
+      const branchName = this.generateBranchName(solicitud, repoType);
+      
+      // Aquí iría la lógica de creación de rama en GitHub usando la API
+      // ... código de creación de rama en GitHub ...
+
+      // Registrar la rama en la base de datos
+      const nuevaRama = await prisma.solicitudRama.create({
+        data: {
+          id_solicitud: solicitudId,
+          repository_type: repoType,
+          branch_name: branchName,
+          pr_status: 'PENDING'
+        }
+      });
+
+      // Actualizar estado de la solicitud si es necesario
+      if (solicitud.estado_sol === 'APROBADA') {
+        await prisma.solicitudCambio.update({
+          where: { id_sol: solicitudId },
+          data: { estado_sol: 'EN_DESARROLLO' }
+        });
+      }
+
+      return nuevaRama;
+    } catch (error) {
+      console.error('Error al crear rama:', error);
       throw error;
     }
   }
