@@ -55,6 +55,9 @@ const verifyEmail = async (req, res) => {
       return res.status(200).json({ success: true, message: 'La cuenta ya está verificada' });
     }
 
+    console.log("👉 Cuenta encontrada:", cuenta);
+    console.log("👉 ID_CUE que se actualizará:", cuenta.id_cue);
+
     // Actualizar cuenta a verificada
     await prisma.cuenta.update({
       where: { id_cue: cuenta.id_cue },
@@ -64,6 +67,9 @@ const verifyEmail = async (req, res) => {
         emailVerificationExpiry: null
       }
     });
+
+    
+    console.log("✅ Cuenta actualizada:", updated);
 
     return res.status(200).json({ success: true, message: 'Cuenta verificada exitosamente' });
 
