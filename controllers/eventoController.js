@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const { generarCertificadoAutomatico } = require('../helpers/certificadosHelper');
 const prisma = new PrismaClient();
 
 // ✅ FUNCIÓN CORREGIDA para convertir hora string a Date object
@@ -64,12 +65,23 @@ const crearEvento = async (req, res) => {
       carreras
     } = req.body;
 
-    // ✅ VALIDACIONES BÁSICAS
+    // ✅ VALIDACIONES BÁSICAS - INCLUYENDO CAMPOS DE APROBACIÓN
     if (!nom_eve || !des_eve || !id_cat_eve || !fec_ini_eve || !hor_ini_eve || 
-        !dur_eve || !are_eve || !ubi_eve || !ced_org_eve || !capacidad_max_eve) {
+        !dur_eve || !are_eve || !ubi_eve || !ced_org_eve || !capacidad_max_eve ||
+        req.body.porcentaje_asistencia_aprobacion == null) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Faltan campos obligatorios: nom_eve, des_eve, id_cat_eve, fec_ini_eve, hor_ini_eve, dur_eve, are_eve, ubi_eve, ced_org_eve, capacidad_max_eve' 
+        message: 'Faltan campos obligatorios: nom_eve, des_eve, id_cat_eve, fec_ini_eve, hor_ini_eve, dur_eve, are_eve, ubi_eve, ced_org_eve, capacidad_max_eve, porcentaje_asistencia_aprobacion' 
+      });
+    }
+
+    // ✅ VALIDAR CAMPOS DE APROBACIÓN - SOLO ASISTENCIA PARA EVENTOS
+    const porcentajeAsistencia = parseFloat(req.body.porcentaje_asistencia_aprobacion);
+    
+    if (isNaN(porcentajeAsistencia) || porcentajeAsistencia < 0 || porcentajeAsistencia > 100) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'El porcentaje de asistencia debe ser un número entre 0 y 100' 
       });
     }
 
@@ -220,7 +232,9 @@ const crearEvento = async (req, res) => {
           capacidad_max_eve: capacidad,
           tipo_audiencia_eve: tipo_audiencia_eve || 'PUBLICO_GENERAL',
           es_gratuito: esGratuito,
-          precio: precioEvento
+          precio: precioEvento,
+          porcentaje_asistencia_aprobacion: porcentajeAsistencia,
+          estado: req.body.estado || 'ACTIVO'
         }
       });
 
@@ -473,6 +487,29 @@ const actualizarEvento = async (req, res) => {
         });
       }
       datosActualizacion.ced_org_eve = data.ced_org_eve;
+    }
+
+    // Validar y actualizar campos de aprobación - SOLO ASISTENCIA PARA EVENTOS
+    if (data.porcentaje_asistencia_aprobacion !== undefined) {
+      const porcentaje = parseInt(data.porcentaje_asistencia_aprobacion);
+      if (isNaN(porcentaje) || porcentaje < 0 || porcentaje > 100) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'El porcentaje de asistencia debe estar entre 0 y 100' 
+        });
+      }
+      datosActualizacion.porcentaje_asistencia_aprobacion = porcentaje;
+    }
+
+    if (data.estado !== undefined) {
+      const estadosValidos = ['ACTIVO', 'CERRADO'];
+      if (!estadosValidos.includes(data.estado)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: `Estado inválido. Valores permitidos: ${estadosValidos.join(', ')}` 
+        });
+      }
+      datosActualizacion.estado = data.estado;
     }
 
     const eventoActualizado = await prisma.evento.update({ 
@@ -934,6 +971,117 @@ const obtenerMisEventos = async (req, res) => {
   }
 };
 
+// Cerrar evento (cambiar estado a CERRADO y generar certificados automáticamente)
+const cerrarEvento = async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const evento = await prisma.evento.findUnique({ 
+      where: { id_eve: id },
+      include: {
+        inscripciones: {
+          include: {
+            usuario: {
+              select: {
+                nom_usu1: true,
+                nom_usu2: true,
+                ape_usu1: true,
+                ape_usu2: true,
+                ced_usu: true
+              }
+            },
+            participaciones: true
+          }
+        },
+        categoria: true,
+        organizador: true
+      }
+    });
+    
+    if (!evento) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Evento no encontrado' 
+      });
+    }
+
+    if (evento.estado === 'CERRADO') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'El evento ya está cerrado' 
+      });
+    }
+
+    // Procesar todas las participaciones y determinar aprobados
+    let certificadosGenerados = 0;
+    let participantesAprobados = 0;
+    
+    for (const inscripcion of evento.inscripciones) {
+      const participacion = inscripcion.participaciones[0];
+      
+      if (participacion) {
+        // Determinar si está aprobado usando el criterio del evento
+        const asistenciaMinima = evento.porcentaje_asistencia_aprobacion || 80; // Default 80% si no está configurado
+        
+        const estaAprobado = participacion.asi_par >= asistenciaMinima;
+        
+        // Actualizar estado de aprobación
+        await prisma.participacion.update({
+          where: { id_par: participacion.id_par },
+          data: { aprobado: estaAprobado }
+        });
+        
+        if (estaAprobado) {
+          participantesAprobados++;
+          
+          // Generar certificado si aún no existe
+          if (!participacion.certificado_pdf) {
+            try {
+              // Usar el helper para generar certificado automáticamente
+              const resultadoCertificado = await generarCertificadoAutomatico(
+                'evento', 
+                inscripcion.id_ins, 
+                { ...participacion, aprobado: estaAprobado }
+              );
+              
+              if (resultadoCertificado.success) {
+                certificadosGenerados++;
+              } else {
+                console.warn('Certificado no generado:', resultadoCertificado.message);
+              }
+            } catch (certError) {
+              console.error('Error generando certificado:', certError);
+            }
+          }
+        }
+      }
+    }
+
+    // Actualizar estado a CERRADO
+    const eventoActualizado = await prisma.evento.update({
+      where: { id_eve: id },
+      data: { estado: 'CERRADO' }
+    });
+
+    res.json({ 
+      success: true, 
+      message: `Evento cerrado correctamente. ${certificadosGenerados} certificados generados para ${participantesAprobados} participantes aprobados.`,
+      evento: eventoActualizado,
+      estadisticas: {
+        participantesTotal: evento.inscripciones.length,
+        participantesAprobados,
+        certificadosGenerados
+      }
+    });
+  } catch (error) {
+    console.error('Error al cerrar evento:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error del servidor' 
+    });
+  }
+};
+
 module.exports = {
   crearEvento,
   obtenerEventos,
@@ -941,5 +1089,6 @@ module.exports = {
   actualizarEvento,
   eliminarEvento,
   obtenerEventosDisponibles,
-  obtenerMisEventos
+  obtenerMisEventos,
+  cerrarEvento
 };
