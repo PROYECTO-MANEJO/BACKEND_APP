@@ -179,6 +179,9 @@ model Inscripcion {
   comprobante_size Int? @map("COMPROBANTE_SIZE")
   fec_subida_comprobante DateTime? @map("FEC_SUBIDA_COMPROBANTE") @db.Timestamp
 
+  // NUEVO CAMPO:
+  carta_motivacion String? @map("CARTA_MOTIVACION") @db.VarChar(500)
+
   id_usu_ins String @map("ID_USU_INS") @db.Uuid
   id_eve_ins String @map("ID_EVE_INS") @db.Uuid
 
@@ -232,7 +235,6 @@ model Curso {
   fec_fin_cur   DateTime @map("FEC_FIN_CUR") @db.Date
   id_cat_cur    String   @map("ID_CAT_CUR") @db.Uuid
   ced_org_cur   String   @map("CED_ORG_CUR") @db.VarChar(10)
-  carta_motivacion String? @map("CARTA_MOTIVACION") @db.VarChar(500)
   
   // Control de capacidad y audiencia
   capacidad_max_cur Int @map("CAPACIDAD_MAX_CUR") @db.Integer
@@ -269,8 +271,8 @@ model CursoPorCarrera {
 model InscripcionCurso {
   id_ins_cur String @id @default(uuid()) @map("ID_INS_CUR") @db.Uuid
   fec_ins_cur DateTime @map("FEC_INS_CUR") @db.Date
-  val_ins_cur Decimal? @map("VAL_INS_CUR") @db.Decimal(6,2) // Opcional para cursos gratuitos
-  met_pag_ins_cur MetodoPago? @map("MET_PAG_INS_CUR") // Opcional para cursos gratuitos
+  val_ins_cur Decimal? @map("VAL_INS_CUR") @db.Decimal(6,2)
+  met_pag_ins_cur MetodoPago? @map("MET_PAG_INS_CUR")
   enl_ord_pag_ins_cur String? @map("ENL_ORD_PAG_INS_CUR") @db.Text
 
   // Campos para comprobante de pago PDF
@@ -278,6 +280,9 @@ model InscripcionCurso {
   comprobante_filename String? @map("COMPROBANTE_FILENAME") @db.VarChar(255)
   comprobante_size Int? @map("COMPROBANTE_SIZE")
   fec_subida_comprobante DateTime? @map("FEC_SUBIDA_COMPROBANTE") @db.Timestamp
+
+  // NUEVO CAMPO:
+  carta_motivacion String? @map("CARTA_MOTIVACION") @db.VarChar(500)
 
   id_usu_ins_cur String @map("ID_USU_INS_CUR") @db.Uuid
   id_cur_ins String @map("ID_CUR_INS") @db.Uuid
