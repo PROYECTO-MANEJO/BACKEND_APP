@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const { validationResult } = require('express-validator');
 const githubService = require('../services/githubService');
+const GitHubService = require('../services/GitHubService');
 
 const prisma = new PrismaClient();
 
@@ -1536,42 +1537,72 @@ const obtenerInformacionPR = async (req, res) => {
 const aprobarPRMaster = async (req, res) => {
   try {
     const { id_sol } = req.params;
+    const { comentarios } = req.body;
     
     // Obtener la solicitud
     const solicitud = await prisma.solicitudCambio.findUnique({
-      where: { id_sol: parseInt(id_sol) },
+      where: { id_sol },
       include: {
         desarrollador: true
       }
     });
 
     if (!solicitud) {
-      return res.status(404).json({ error: 'Solicitud no encontrada' });
+      return res.status(404).json({
+        success: false,
+        message: 'Solicitud no encontrada'
+      });
     }
 
-    if (!solicitud.github_pr_number) {
-      return res.status(404).json({ error: 'Esta solicitud no tiene un PR asociado' });
+    if (!solicitud.frontend_pr_number && !solicitud.backend_pr_number) {
+      return res.status(404).json({
+        success: false,
+        message: 'Esta solicitud no tiene PRs asociados'
+      });
     }
 
-    // Aprobar el PR en GitHub
-    await githubService.aprobarPR(solicitud.github_pr_number);
+    const githubService = new GitHubService();
+
+    // Aprobar y mergear PR de frontend si existe
+    if (solicitud.frontend_pr_number) {
+      await githubService.aprobarYMergearPR(
+        solicitud.frontend_pr_number,
+        comentarios,
+        'frontend'
+      );
+    }
+
+    // Aprobar y mergear PR de backend si existe
+    if (solicitud.backend_pr_number) {
+      await githubService.aprobarYMergearPR(
+        solicitud.backend_pr_number,
+        comentarios,
+        'backend'
+      );
+    }
 
     // Actualizar estado de la solicitud
     await prisma.solicitudCambio.update({
-      where: { id_sol: parseInt(id_sol) },
+      where: { id_sol },
       data: {
         estado_sol: 'EN_DESPLIEGUE',
-        fecha_ultima_actualizacion: new Date()
+        comentarios_master: comentarios,
+        fec_ultima_actualizacion: new Date()
       }
     });
 
     res.json({
       success: true,
-      message: 'PR aprobado y solicitud actualizada a EN_DESPLIEGUE'
+      message: 'PRs aprobados y solicitud actualizada a EN_DESPLIEGUE'
     });
+
   } catch (error) {
-    console.error('Error al aprobar PR:', error);
-    res.status(500).json({ error: 'Error al aprobar el PR' });
+    console.error('Error al aprobar PRs:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al aprobar los PRs',
+      error: error.message
+    });
   }
 };
 
@@ -1582,45 +1613,76 @@ const rechazarPRMaster = async (req, res) => {
     const { comentarios } = req.body;
 
     if (!comentarios) {
-      return res.status(400).json({ error: 'Debe proporcionar comentarios para el rechazo' });
+      return res.status(400).json({
+        success: false,
+        message: 'Debe proporcionar comentarios para el rechazo'
+      });
     }
 
     // Obtener la solicitud
     const solicitud = await prisma.solicitudCambio.findUnique({
-      where: { id_sol: parseInt(id_sol) },
+      where: { id_sol },
       include: {
         desarrollador: true
       }
     });
 
     if (!solicitud) {
-      return res.status(404).json({ error: 'Solicitud no encontrada' });
+      return res.status(404).json({
+        success: false,
+        message: 'Solicitud no encontrada'
+      });
     }
 
-    if (!solicitud.github_pr_number) {
-      return res.status(404).json({ error: 'Esta solicitud no tiene un PR asociado' });
+    if (!solicitud.frontend_pr_number && !solicitud.backend_pr_number) {
+      return res.status(404).json({
+        success: false,
+        message: 'Esta solicitud no tiene PRs asociados'
+      });
     }
 
-    // Rechazar el PR en GitHub con los comentarios
-    await githubService.rechazarPR(solicitud.github_pr_number, comentarios);
+    const githubService = new GitHubService();
 
-    // Actualizar estado de la solicitud y guardar comentarios
+    // Rechazar PR de frontend si existe
+    if (solicitud.frontend_pr_number) {
+      await githubService.rechazarPR(
+        solicitud.frontend_pr_number,
+        comentarios,
+        'frontend'
+      );
+    }
+
+    // Rechazar PR de backend si existe
+    if (solicitud.backend_pr_number) {
+      await githubService.rechazarPR(
+        solicitud.backend_pr_number,
+        comentarios,
+        'backend'
+      );
+    }
+
+    // Actualizar estado de la solicitud
     await prisma.solicitudCambio.update({
-      where: { id_sol: parseInt(id_sol) },
+      where: { id_sol },
       data: {
         estado_sol: 'EN_DESARROLLO',
         comentarios_master: comentarios,
-        fecha_ultima_actualizacion: new Date()
+        fec_ultima_actualizacion: new Date()
       }
     });
 
     res.json({
       success: true,
-      message: 'PR rechazado y solicitud actualizada a EN_DESARROLLO'
+      message: 'PRs rechazados y solicitud actualizada a EN_DESARROLLO'
     });
+
   } catch (error) {
-    console.error('Error al rechazar PR:', error);
-    res.status(500).json({ error: 'Error al rechazar el PR' });
+    console.error('Error al rechazar PRs:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al rechazar los PRs',
+      error: error.message
+    });
   }
 };
 

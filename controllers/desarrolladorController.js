@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const GitHubService = require('../services/githubService');
 
 // Obtener solicitudes asignadas a un desarrollador específico
 const getSolicitudesAsignadas = async (req, res) => {
@@ -226,12 +227,26 @@ const getSolicitudEspecifica = async (req, res) => {
   }
 };
 
+// Función auxiliar para obtener el token de GitHub del desarrollador
+const obtenerTokenGitHubDesarrollador = async (desarrolladorId) => {
+  const desarrollador = await prisma.usuario.findUnique({
+    where: { id_usu: desarrolladorId },
+    select: { github_token: true }
+  });
+
+  if (!desarrollador?.github_token) {
+    throw new Error('El desarrollador no tiene configurado su token de GitHub');
+  }
+
+  return desarrollador.github_token;
+};
+
 // Actualizar estado de una solicitud
 const actualizarEstadoSolicitud = async (req, res) => {
   try {
     const { id } = req.params;
     const { estado } = req.body;
-    const userId = req.uid; // Usar req.uid que viene del validateJWT
+    const userId = req.uid;
     
     console.log('=== ACTUALIZAR ESTADO SOLICITUD ===');
     console.log('Solicitud ID:', id);
@@ -244,6 +259,19 @@ const actualizarEstadoSolicitud = async (req, res) => {
         success: false,
         message: 'ID de usuario no encontrado en la sesión'
       });
+    }
+
+    // Obtener el token de GitHub del desarrollador si es necesario
+    let githubToken = null;
+    if (['EN_DESARROLLO', 'EN_TESTING', 'EN_DESPLIEGUE'].includes(estado)) {
+      try {
+        githubToken = await obtenerTokenGitHubDesarrollador(userId);
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: error.message
+        });
+      }
     }
 
     // Verificar que la solicitud existe
@@ -583,127 +611,160 @@ const enviarPlanesARevision = async (req, res) => {
   }
 };
 
-// Iniciar desarrollo (LISTO_PARA_IMPLEMENTAR → EN_DESARROLLO)
+// Iniciar desarrollo de una solicitud
 const iniciarDesarrollo = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.uid; // Usar req.uid que viene del validateJWT
+    const desarrolladorId = req.uid;
 
     console.log('=== INICIAR DESARROLLO ===');
     console.log('Solicitud ID:', id);
-    console.log('Desarrollador ID:', userId);
+    console.log('Desarrollador ID:', desarrolladorId);
 
-    // Validar parámetros
-    if (!id || typeof id !== 'string') {
+    // Obtener el token de GitHub del desarrollador
+    let githubToken;
+    try {
+      githubToken = await obtenerTokenGitHubDesarrollador(desarrolladorId);
+    } catch (error) {
       return res.status(400).json({
         success: false,
-        message: 'ID de solicitud inválido'
+        message: error.message
       });
     }
 
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        message: 'ID de desarrollador no encontrado en la sesión'
-      });
-    }
-
-    // Verificar que la solicitud existe y está asignada al desarrollador
-    console.log('Buscando solicitud para iniciar desarrollo...');
+    // Verificar que la solicitud existe y está en estado correcto
     const solicitud = await prisma.solicitudCambio.findFirst({
       where: {
         id_sol: id,
-        id_desarrollador_asignado: userId,
-        estado_sol: 'LISTO_PARA_IMPLEMENTAR'
+        estado_sol: 'LISTO_PARA_IMPLEMENTAR',
+        id_desarrollador_asignado: desarrolladorId
       }
     });
 
-    console.log('Resultado de búsqueda:', solicitud ? 'Encontrada' : 'No encontrada');
-
     if (!solicitud) {
-      // Hacer una búsqueda más amplia para diagnosticar el problema
-      const solicitudGeneral = await prisma.solicitudCambio.findFirst({
-        where: { id_sol: id }
-      });
-
-      if (!solicitudGeneral) {
-        return res.status(404).json({
-          success: false,
-          message: 'Solicitud no encontrada'
-        });
-      }
-
-      console.log('Diagnóstico de solicitud:', {
-        id: solicitudGeneral.id_sol,
-        estado_actual: solicitudGeneral.estado_sol,
-        desarrollador_asignado: solicitudGeneral.id_desarrollador_asignado,
-        desarrollador_solicitante: userId
-      });
-
-      if (solicitudGeneral.id_desarrollador_asignado !== userId) {
-        return res.status(403).json({
-          success: false,
-          message: 'Esta solicitud no está asignada a ti'
-        });
-      }
-
-      if (solicitudGeneral.estado_sol !== 'LISTO_PARA_IMPLEMENTAR') {
-        return res.status(400).json({
-          success: false,
-          message: `La solicitud está en estado ${solicitudGeneral.estado_sol}, debe estar en LISTO_PARA_IMPLEMENTAR para iniciar desarrollo`
-        });
-      }
-
       return res.status(404).json({
         success: false,
-        message: 'Solicitud no encontrada o no está lista para implementar'
+        message: 'Solicitud no encontrada o no está lista para iniciar desarrollo'
       });
     }
 
-    console.log('Iniciando desarrollo para solicitud:', solicitud.id_sol);
+    // Crear branch en GitHub usando el token del desarrollador
+    const githubService = new GitHubService();
+    
+    // Crear branch en frontend
+    console.log('Creando branch en frontend...');
+    const frontendBranch = await githubService.crearBranchGitFlow(
+      solicitud,
+      'feature',
+      'develop',
+      'frontend',
+      githubToken
+    );
 
-    // Actualizar estado y fecha de inicio real
+    // Crear branch en backend si es necesario
+    let backendBranch = null;
+    if (solicitud.requiere_cambios_backend) {
+      console.log('Creando branch en backend...');
+      backendBranch = await githubService.crearBranchGitFlow(
+        solicitud,
+        'feature',
+        'develop',
+        'backend',
+        githubToken
+      );
+    }
+
+    // Crear Pull Request en frontend
+    console.log('Creando PR en frontend...');
+    const frontendPR = await githubService.crearPullRequestPersonalizado(
+      solicitud,
+      frontendBranch.branchName,
+      'frontend',
+      'develop',
+      githubToken
+    );
+
+    // Crear Pull Request en backend si es necesario
+    let backendPR = null;
+    if (backendBranch) {
+      console.log('Creando PR en backend...');
+      backendPR = await githubService.crearPullRequestPersonalizado(
+        solicitud,
+        backendBranch.branchName,
+        'backend',
+        'develop',
+        githubToken
+      );
+    }
+
+    // Actualizar solicitud con información de GitHub
     const solicitudActualizada = await prisma.solicitudCambio.update({
       where: { id_sol: id },
       data: {
         estado_sol: 'EN_DESARROLLO',
-        fecha_real_inicio_sol: new Date(),
-        fec_ultima_actualizacion: new Date()
+        frontend_branch: frontendBranch.branchName,
+        backend_branch: backendBranch?.branchName || null,
+        frontend_pr_url: frontendPR.html_url,
+        backend_pr_url: backendPR?.html_url || null,
+        frontend_pr_number: frontendPR.number,
+        backend_pr_number: backendPR?.number || null,
+        fec_inicio_desarrollo_sol: new Date()
       }
     });
 
-    console.log('Desarrollo iniciado exitosamente');
-
     res.json({
       success: true,
-      message: 'Desarrollo iniciado exitosamente',
-      data: solicitudActualizada
+      message: 'Desarrollo iniciado correctamente',
+      data: {
+        solicitud: solicitudActualizada,
+        frontend: {
+          branch: frontendBranch,
+          pullRequest: frontendPR
+        },
+        backend: backendBranch ? {
+          branch: backendBranch,
+          pullRequest: backendPR
+        } : null
+      }
     });
 
   } catch (error) {
     console.error('Error iniciando desarrollo:', error);
-    console.error('Stack trace completo:', error.stack);
     res.status(500).json({
       success: false,
-      message: 'Error interno del servidor',
-      error: error.message,
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      message: 'Error iniciando desarrollo',
+      error: error.message
     });
   }
 };
 
-// Pasar a testing (EN_DESARROLLO → EN_TESTING)
+// Pasar solicitud a testing
 const pasarATesting = async (req, res) => {
   try {
     const { id } = req.params;
-    const { comentarios } = req.body;
-    const userId = req.uid; // Usar req.uid que viene del validateJWT
+    const desarrolladorId = req.uid;
 
+    console.log('=== PASAR A TESTING ===');
+    console.log('Solicitud ID:', id);
+    console.log('Desarrollador ID:', desarrolladorId);
+
+    // Obtener el token de GitHub del desarrollador
+    let githubToken;
+    try {
+      githubToken = await obtenerTokenGitHubDesarrollador(desarrolladorId);
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    // Verificar que la solicitud existe y está en estado correcto
     const solicitud = await prisma.solicitudCambio.findFirst({
       where: {
         id_sol: id,
-        id_desarrollador_asignado: userId,
-        estado_sol: 'EN_DESARROLLO'
+        estado_sol: 'EN_DESARROLLO',
+        id_desarrollador_asignado: desarrolladorId
       }
     });
 
@@ -714,27 +775,59 @@ const pasarATesting = async (req, res) => {
       });
     }
 
-    const datosActualizacion = {
-      estado_sol: 'EN_TESTING',
-      fec_ultima_actualizacion: new Date()
-    };
+    // Verificar que los PRs existen y están listos
+    const githubService = new GitHubService();
 
-    if (comentarios) {
-      const comentarioCompleto = `[${new Date().toLocaleString('es-ES')} - Testing]: ${comentarios}`;
-      const comentariosExistentes = solicitud.comentarios_tecnicos_sol || '';
-      datosActualizacion.comentarios_tecnicos_sol = comentariosExistentes 
-        ? `${comentariosExistentes}\n\n${comentarioCompleto}`
-        : comentarioCompleto;
+    // Verificar PR de frontend
+    if (!solicitud.frontend_pr_number) {
+      return res.status(400).json({
+        success: false,
+        message: 'No se encontró el Pull Request de frontend'
+      });
     }
 
+    // Verificar estado del PR de frontend
+    const frontendPRInfo = await githubService.obtenerInformacionPR(
+      solicitud.frontend_pr_number,
+      'frontend',
+      githubToken
+    );
+
+    if (!frontendPRInfo || frontendPRInfo.state !== 'open') {
+      return res.status(400).json({
+        success: false,
+        message: 'El Pull Request de frontend no está abierto'
+      });
+    }
+
+    // Si hay cambios en backend, verificar también ese PR
+    if (solicitud.requiere_cambios_backend && solicitud.backend_pr_number) {
+      const backendPRInfo = await githubService.obtenerInformacionPR(
+        solicitud.backend_pr_number,
+        'backend',
+        githubToken
+      );
+
+      if (!backendPRInfo || backendPRInfo.state !== 'open') {
+        return res.status(400).json({
+          success: false,
+          message: 'El Pull Request de backend no está abierto'
+        });
+      }
+    }
+
+    // Actualizar estado de la solicitud
     const solicitudActualizada = await prisma.solicitudCambio.update({
       where: { id_sol: id },
-      data: datosActualizacion
+      data: {
+        estado_sol: 'EN_TESTING',
+        fec_ultima_actualizacion: new Date()
+      }
     });
 
     res.json({
       success: true,
-      message: 'Solicitud pasada a testing exitosamente',
+      message: 'Solicitud pasada a testing correctamente',
       data: solicitudActualizada
     });
 
@@ -742,24 +835,39 @@ const pasarATesting = async (req, res) => {
     console.error('Error pasando a testing:', error);
     res.status(500).json({
       success: false,
-      message: 'Error interno del servidor',
+      message: 'Error pasando a testing',
       error: error.message
     });
   }
 };
 
-// Pasar a despliegue (EN_TESTING → EN_DESPLIEGUE)
+// Pasar solicitud a despliegue
 const pasarADespliegue = async (req, res) => {
   try {
     const { id } = req.params;
-    const { comentarios } = req.body;
-    const userId = req.uid; // Usar req.uid que viene del validateJWT
+    const desarrolladorId = req.uid;
 
+    console.log('=== PASAR A DESPLIEGUE ===');
+    console.log('Solicitud ID:', id);
+    console.log('Desarrollador ID:', desarrolladorId);
+
+    // Obtener el token de GitHub del desarrollador
+    let githubToken;
+    try {
+      githubToken = await obtenerTokenGitHubDesarrollador(desarrolladorId);
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    // Verificar que la solicitud existe y está en estado correcto
     const solicitud = await prisma.solicitudCambio.findFirst({
       where: {
         id_sol: id,
-        id_desarrollador_asignado: userId,
-        estado_sol: 'EN_TESTING'
+        estado_sol: 'EN_TESTING',
+        id_desarrollador_asignado: desarrolladorId
       }
     });
 
@@ -770,27 +878,59 @@ const pasarADespliegue = async (req, res) => {
       });
     }
 
-    const datosActualizacion = {
-      estado_sol: 'EN_DESPLIEGUE',
-      fec_ultima_actualizacion: new Date()
-    };
+    // Verificar que los PRs existen y están listos
+    const githubService = new GitHubService();
 
-    if (comentarios) {
-      const comentarioCompleto = `[${new Date().toLocaleString('es-ES')} - Despliegue]: ${comentarios}`;
-      const comentariosExistentes = solicitud.comentarios_tecnicos_sol || '';
-      datosActualizacion.comentarios_tecnicos_sol = comentariosExistentes 
-        ? `${comentariosExistentes}\n\n${comentarioCompleto}`
-        : comentarioCompleto;
+    // Verificar PR de frontend
+    if (!solicitud.frontend_pr_number) {
+      return res.status(400).json({
+        success: false,
+        message: 'No se encontró el Pull Request de frontend'
+      });
     }
 
+    // Verificar estado del PR de frontend
+    const frontendPRInfo = await githubService.obtenerInformacionPR(
+      solicitud.frontend_pr_number,
+      'frontend',
+      githubToken
+    );
+
+    if (!frontendPRInfo || frontendPRInfo.state !== 'open') {
+      return res.status(400).json({
+        success: false,
+        message: 'El Pull Request de frontend no está abierto'
+      });
+    }
+
+    // Si hay cambios en backend, verificar también ese PR
+    if (solicitud.requiere_cambios_backend && solicitud.backend_pr_number) {
+      const backendPRInfo = await githubService.obtenerInformacionPR(
+        solicitud.backend_pr_number,
+        'backend',
+        githubToken
+      );
+
+      if (!backendPRInfo || backendPRInfo.state !== 'open') {
+        return res.status(400).json({
+          success: false,
+          message: 'El Pull Request de backend no está abierto'
+        });
+      }
+    }
+
+    // Actualizar estado de la solicitud
     const solicitudActualizada = await prisma.solicitudCambio.update({
       where: { id_sol: id },
-      data: datosActualizacion
+      data: {
+        estado_sol: 'EN_DESPLIEGUE',
+        fec_ultima_actualizacion: new Date()
+      }
     });
 
     res.json({
       success: true,
-      message: 'Solicitud pasada a despliegue exitosamente',
+      message: 'Solicitud pasada a despliegue correctamente',
       data: solicitudActualizada
     });
 
@@ -798,7 +938,7 @@ const pasarADespliegue = async (req, res) => {
     console.error('Error pasando a despliegue:', error);
     res.status(500).json({
       success: false,
-      message: 'Error interno del servidor',
+      message: 'Error pasando a despliegue',
       error: error.message
     });
   }

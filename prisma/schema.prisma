@@ -54,8 +54,9 @@ model Usuario {
   resetToken String? @map("RESET_TOKEN") @db.VarChar(255)
   resetTokenExpiry DateTime? @map("RESET_TOKEN_EXPIRY") @db.Timestamp(3)
   
-  // Campo para token personal de GitHub
-  github_token String? @map("GITHUB_TOKEN") @db.VarChar(255) 
+  // Campos para integración con GitHub
+  github_token String? @map("GITHUB_TOKEN") @db.VarChar(255)
+  github_username String? @map("GITHUB_USERNAME") @db.VarChar(100)
 
   // ✅ RELACIONES EXISTENTES
   carrera Carrera? @relation(fields: [id_car_per], references: [id_car])

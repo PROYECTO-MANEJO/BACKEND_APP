@@ -1,18 +1,18 @@
 const axios = require('axios');
 const { Octokit } = require('@octokit/rest');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+const config = require('../config/github');
 
 class GitHubService {
   constructor() {
-    this.baseURL = process.env.GITHUB_BASE_URL || 'https://api.github.com';
-    this.token = process.env.GITHUB_TOKEN;
-    this.defaultOwner = process.env.GITHUB_OWNER;
-    this.defaultRepo = process.env.GITHUB_DEFAULT_REPO || 'tu-repositorio';
+    this.baseURL = config.baseUrl;
+    this.token = config.token;
+    this.defaultOwner = config.owner;
+    this.defaultRepo = config.defaultRepo || 'tu-repositorio';
     
     // Solo 2 repositorios: Frontend y Backend
-    this.repositories = {
-      frontend: process.env.GITHUB_REPO_FRONTEND,
-      backend: process.env.GITHUB_REPO_BACKEND
-    };
+    this.repositories = config.repositories;
     
     this.client = axios.create({
       baseURL: this.baseURL,
@@ -41,8 +41,9 @@ class GitHubService {
   }
 
   // Verificar si el servicio está configurado correctamente
-  isConfigured() {
-    return !!(this.token && this.defaultOwner && this.defaultRepo);
+  isConfigured(userToken = null) {
+    const hasValidToken = !!(userToken || this.token);
+    return !!(hasValidToken && this.defaultOwner && this.repositories);
   }
 
   // Buscar branches que contengan el ID de la solicitud
@@ -526,6 +527,14 @@ ${solicitud.plan_implementacion_sol || 'Por definir'}
   // Crear cliente con token personalizado (si el desarrollador tiene uno)
   createClientWithToken(userToken = null) {
     const token = userToken || this.token;
+    if (!token) {
+      throw new Error('No se proporcionó un token válido');
+    }
+    
+    if (!this.baseURL) {
+      throw new Error('No se ha configurado la URL base de GitHub');
+    }
+
     return axios.create({
       baseURL: this.baseURL,
       headers: {
@@ -566,9 +575,9 @@ ${solicitud.plan_implementacion_sol || 'Por definir'}
         repoType
       });
 
-      if (!this.isConfigured()) {
+      if (!this.isConfigured(userToken)) {
         console.error('❌ GitHub no está configurado:', {
-          token: !!this.token,
+          token: !!(userToken || this.token),
           owner: this.defaultOwner,
           repos: this.repositories
         });
@@ -1007,91 +1016,34 @@ ${solicitud.plan_backout_sol || 'Por definir'}
     }
   }
 
-  // Aprobar un PR
-  async aprobarPR(prNumber, repoType = 'frontend') {
-    try {
-      if (!this.isConfigured()) {
-        throw new Error('GitHub no está configurado');
-      }
-
-      const owner = this.defaultOwner;
-      const repo = this.repositories[repoType];
-
-      if (!repo) {
-        throw new Error(`Repositorio ${repoType} no configurado`);
-      }
-
-      const octokit = new Octokit({ auth: this.token });
-
-      // Aprobar el PR
-      await octokit.rest.pulls.createReview({
-        owner,
-        repo,
-        pull_number: prNumber,
-        event: 'APPROVE',
-        body: '✅ Aprobado por MASTER'
-      });
-
-      return true;
-    } catch (error) {
-      console.error('Error al aprobar PR:', error);
-      throw error;
-    }
-  }
-
-  // Rechazar un PR con comentarios
-  async rechazarPR(prNumber, comentarios, repoType = 'frontend') {
-    try {
-      if (!this.isConfigured()) {
-        throw new Error('GitHub no está configurado');
-      }
-
-      const owner = this.defaultOwner;
-      const repo = this.repositories[repoType];
-
-      if (!repo) {
-        throw new Error(`Repositorio ${repoType} no configurado`);
-      }
-
-      const octokit = new Octokit({ auth: this.token });
-
-      // Primero intentamos solicitar cambios
-      try {
-        await octokit.rest.pulls.createReview({
-          owner,
-          repo,
-          pull_number: prNumber,
-          event: 'REQUEST_CHANGES',
-          body: `❌ Cambios solicitados por MASTER:\n\n${comentarios}`
-        });
-      } catch (reviewError) {
-        // Si falla la solicitud de cambios, creamos un comentario normal
-        if (reviewError.status === 422) {
-          await octokit.rest.issues.createComment({
-            owner,
-            repo,
-            issue_number: prNumber,
-            body: `❌ PR Rechazado por MASTER:\n\n${comentarios}\n\n_Este PR ha sido rechazado y debe ser revisado._`
-          });
-        } else {
-          throw reviewError;
+  // Obtener token del MASTER
+  async obtenerTokenMaster() {
+    const masterUser = await prisma.usuario.findFirst({
+      where: {
+        cuentas: {
+          some: {
+            rol_cue: 'MASTER'
+          }
         }
+      },
+      select: {
+        github_token: true
       }
+    });
 
-      return true;
-    } catch (error) {
-      console.error('Error al rechazar PR:', error);
-      throw error;
+    if (!masterUser?.github_token) {
+      throw new Error('No se encontró el token del MASTER');
     }
+
+    return masterUser.github_token;
   }
 
-  // Aprobar y mergear un PR automáticamente
+  // Aprobar y mergear PR usando el token del MASTER
   async aprobarYMergearPR(prNumber, comentarios, repoType = 'frontend') {
     try {
-      if (!this.isConfigured()) {
-        throw new Error('GitHub no está configurado');
-      }
-
+      // Obtener el token del MASTER
+      const masterToken = await this.obtenerTokenMaster();
+      
       const owner = this.defaultOwner;
       const repo = this.repositories[repoType];
 
@@ -1099,29 +1051,52 @@ ${solicitud.plan_backout_sol || 'Por definir'}
         throw new Error(`Repositorio ${repoType} no configurado`);
       }
 
-      const octokit = new Octokit({ auth: this.token });
+      // Crear cliente con el token del MASTER
+      const client = this.createClientWithToken(masterToken);
 
-      // Primero agregamos un comentario indicando la aprobación
-      await octokit.rest.issues.createComment({
-        owner,
-        repo,
-        issue_number: prNumber,
-        body: `✅ PR aprobado por MASTER:\n\n${comentarios}`
+      // Agregar comentario de aprobación
+      await client.post(`/repos/${owner}/${repo}/issues/${prNumber}/comments`, {
+        body: `✅ Aprobado por MASTER\n\n${comentarios || ''}`
       });
 
-      // Luego hacemos el merge directamente
-      await octokit.rest.pulls.merge({
-        owner,
-        repo,
-        pull_number: prNumber,
+      // Mergear el PR usando squash
+      await client.put(`/repos/${owner}/${repo}/pulls/${prNumber}/merge`, {
         merge_method: 'squash',
-        commit_title: `Merge PR #${prNumber}`,
-        commit_message: `PR aprobado y mergeado por MASTER:\n\n${comentarios}\n\nMerge automático via Sistema de Solicitudes de Cambio`
+        commit_title: `[MASTER] Merge PR #${prNumber}`,
+        commit_message: comentarios || 'Cambios aprobados por MASTER'
       });
 
       return true;
     } catch (error) {
-      console.error('Error al aprobar y mergear PR:', error);
+      console.error('Error en aprobarYMergearPR:', error);
+      throw error;
+    }
+  }
+
+  // Rechazar PR usando el token del MASTER
+  async rechazarPR(prNumber, comentarios, repoType = 'frontend') {
+    try {
+      // Obtener el token del MASTER
+      const masterToken = await this.obtenerTokenMaster();
+      
+      const owner = this.defaultOwner;
+      const repo = this.repositories[repoType];
+
+      if (!repo) {
+        throw new Error(`Repositorio ${repoType} no configurado`);
+      }
+
+      // Crear cliente con el token del MASTER
+      const client = this.createClientWithToken(masterToken);
+
+      // Agregar comentario de rechazo
+      await client.post(`/repos/${owner}/${repo}/issues/${prNumber}/comments`, {
+        body: `❌ Rechazado por MASTER\n\n${comentarios || ''}`
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error en rechazarPR:', error);
       throw error;
     }
   }
