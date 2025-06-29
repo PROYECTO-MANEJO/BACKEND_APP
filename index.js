@@ -25,7 +25,8 @@ app.use(express.json());
 
 // Define los orígenes permitidos
 const allowedOrigins = [
-  'https://frontend-rkqe3156f-adrianmora8s-projects.vercel.app', // <-- ¡TU URL EXACTA DE VERCEL AQUÍ!
+  process.env.FRONTEND_URL,// <-- ¡TU URL EXACTA DE VERCEL AQUÍ!
+  process.env.CORS_ORIGIN,
   'http://localhost:5173', // Para desarrollo local de tu frontend con Vite
   'http://localhost:3000'  // Si tu frontend corre en 3000 en desarrollo (ej. Create React App)
   // Si tienes otras URLs de desarrollo o staging, añádelas aquí
@@ -41,6 +42,7 @@ const corsOptions = {
   origin: function (origin, callback) {
     // Permite peticiones sin origen (ej., Postman, CURL, o solicitudes internas de Render)
     if (!origin) return callback(null, true);
+
 
     // Si el origen de la petición está en nuestra lista de permitidos
     if (allowedOrigins.indexOf(origin) !== -1) {
