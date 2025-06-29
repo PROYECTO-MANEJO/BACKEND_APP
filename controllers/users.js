@@ -14,8 +14,7 @@ const updateUserProfile = async (req, res) => {
       ape_usu1,
       ape_usu2,
       fec_nac_usu,
-      num_tel_usu,
-      id_car_per
+      num_tel_usu
     } = req.body;
 
     // Verificar que el usuario existe
@@ -33,30 +32,7 @@ const updateUserProfile = async (req, res) => {
       });
     }
 
-    // Verificar si es estudiante y se está asignando carrera
-    const isEstudiante = existingUser.cuentas[0]?.rol_cue === 'ESTUDIANTE';
-    
-    // Si no es estudiante, no permitir asignar carrera
-    let carreraToUpdate = id_car_per;
-    if (!isEstudiante && id_car_per) {
-      carreraToUpdate = null;
-    }
-
-    // Si es estudiante y se proporciona carrera, verificar que existe
-    if (isEstudiante && carreraToUpdate) {
-      const carreraExists = await prisma.carrera.findUnique({
-        where: { id_car: carreraToUpdate }
-      });
-
-      if (!carreraExists) {
-        return res.status(400).json({
-          success: false,
-          message: 'La carrera seleccionada no existe'
-        });
-      }
-    }
-
-    // Actualizar el usuario
+    // Actualizar el usuario (sin carrera)
     const updatedUser = await prisma.usuario.update({
       where: { id_usu: userId },
       data: {
@@ -65,8 +41,7 @@ const updateUserProfile = async (req, res) => {
         ape_usu1,
         ape_usu2: ape_usu2 || '',
         fec_nac_usu: new Date(fec_nac_usu),
-        num_tel_usu: num_tel_usu || null,
-        id_car_per: carreraToUpdate || null
+        num_tel_usu: num_tel_usu || null
       },
       include: {
         cuentas: {
