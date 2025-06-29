@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { Octokit } = require('@octokit/rest');
 
 class GitHubService {
   constructor() {
@@ -144,8 +145,32 @@ class GitHubService {
         throw new Error('GitHub no está configurado');
       }
 
-      const response = await this.client.get(`/repos/${owner}/${repo}/pulls/${prNumber}`);
-      const pr = response.data;
+      // Obtener información básica del PR
+      const prResponse = await this.client.get(`/repos/${owner}/${repo}/pulls/${prNumber}`);
+      const pr = prResponse.data;
+
+      // Obtener commits del PR
+      const commitsResponse = await this.client.get(`/repos/${owner}/${repo}/pulls/${prNumber}/commits`);
+      const commits = commitsResponse.data.map(commit => ({
+        sha: commit.sha.substring(0, 7),
+        message: commit.commit.message,
+        shortMessage: commit.commit.message.split('\n')[0],
+        author: commit.commit.author.name,
+        date: commit.commit.author.date,
+        formattedDate: new Date(commit.commit.author.date).toLocaleDateString('es-ES')
+      }));
+
+      // Obtener archivos modificados
+      const filesResponse = await this.client.get(`/repos/${owner}/${repo}/pulls/${prNumber}/files`);
+      const files = filesResponse.data.map(file => ({
+        filename: file.filename,
+        status: file.status,
+        statusLabel: this.getFileStatusLabel(file.status),
+        statusColor: this.getFileStatusColor(file.status),
+        additions: file.additions,
+        deletions: file.deletions,
+        extension: file.filename.split('.').pop()
+      }));
 
       return {
         number: pr.number,
@@ -160,7 +185,8 @@ class GitHubService {
         updated_at: pr.updated_at,
         merged_at: pr.merged_at,
         author: pr.user.login,
-        commits: pr.commits,
+        commits,
+        files,
         additions: pr.additions,
         deletions: pr.deletions,
         changed_files: pr.changed_files
@@ -169,6 +195,34 @@ class GitHubService {
       console.error('Error obteniendo detalles del PR:', error.message);
       return null;
     }
+  }
+
+  // Obtener etiqueta para el estado del archivo
+  getFileStatusLabel(status) {
+    const labels = {
+      added: 'Agregado',
+      removed: 'Eliminado',
+      modified: 'Modificado',
+      renamed: 'Renombrado',
+      copied: 'Copiado',
+      changed: 'Cambiado',
+      unchanged: 'Sin cambios'
+    };
+    return labels[status] || status;
+  }
+
+  // Obtener color para el estado del archivo
+  getFileStatusColor(status) {
+    const colors = {
+      added: '#16a34a',    // Verde
+      removed: '#dc2626',  // Rojo
+      modified: '#2563eb', // Azul
+      renamed: '#9333ea',  // Púrpura
+      copied: '#0d9488',   // Verde azulado
+      changed: '#0891b2',  // Cian
+      unchanged: '#6b7280' // Gris
+    };
+    return colors[status] || '#6b7280';
   }
 
   // Sincronizar información de GitHub para una solicitud en múltiples repositorios
@@ -873,6 +927,129 @@ ${solicitud.plan_backout_sol || 'Por definir'}
         error: errorMessage,
         statusCode: error.response?.status
       };
+    }
+  }
+
+  // Obtener información detallada de un PR
+  async obtenerInformacionPR(prNumber, repoType = 'frontend') {
+    try {
+      if (!this.isConfigured()) {
+        throw new Error('GitHub no está configurado');
+      }
+
+      const owner = this.defaultOwner;
+      const repo = this.repositories[repoType];
+
+      if (!repo) {
+        throw new Error(`Repositorio ${repoType} no configurado`);
+      }
+
+      const octokit = new Octokit({ auth: this.token });
+
+      // Obtener información básica del PR
+      const { data: pr } = await octokit.rest.pulls.get({
+        owner,
+        repo,
+        pull_number: prNumber
+      });
+
+      // Obtener commits del PR
+      const { data: commits } = await octokit.rest.pulls.listCommits({
+        owner,
+        repo,
+        pull_number: prNumber
+      });
+
+      // Obtener archivos modificados
+      const { data: files } = await octokit.rest.pulls.listFiles({
+        owner,
+        repo,
+        pull_number: prNumber
+      });
+
+      // Procesar y formatear la información
+      const prInfo = {
+        number: pr.number,
+        title: pr.title,
+        state: pr.state,
+        created_at: pr.created_at,
+        updated_at: pr.updated_at,
+        author: pr.user.login,
+        url: pr.html_url,
+        commits: commits.map(commit => ({
+          sha: commit.sha.substring(0, 7),
+          message: commit.commit.message,
+          author: commit.commit.author.name,
+          date: commit.commit.author.date,
+          formattedDate: new Date(commit.commit.author.date).toLocaleDateString('es-ES')
+        })),
+        files: files.map(file => ({
+          filename: file.filename,
+          status: file.status,
+          statusLabel: this.getFileStatusLabel(file.status),
+          statusColor: this.getFileStatusColor(file.status),
+          additions: file.additions,
+          deletions: file.deletions,
+          extension: file.filename.split('.').pop()
+        })),
+        stats: {
+          commits_count: commits.length,
+          files_changed: files.length,
+          additions: files.reduce((sum, file) => sum + file.additions, 0),
+          deletions: files.reduce((sum, file) => sum + file.deletions, 0)
+        }
+      };
+
+      return prInfo;
+    } catch (error) {
+      console.error('Error al obtener información del PR:', error);
+      throw error;
+    }
+  }
+
+  // Aprobar un PR
+  async aprobarPR(prNumber) {
+    try {
+      const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+      const owner = process.env.GITHUB_OWNER;
+      const repo = process.env.GITHUB_REPO;
+
+      // Aprobar el PR
+      await octokit.rest.pulls.createReview({
+        owner,
+        repo,
+        pull_number: prNumber,
+        event: 'APPROVE',
+        body: '✅ Aprobado por MASTER'
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error al aprobar PR:', error);
+      throw error;
+    }
+  }
+
+  // Rechazar un PR con comentarios
+  async rechazarPR(prNumber, comentarios) {
+    try {
+      const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+      const owner = process.env.GITHUB_OWNER;
+      const repo = process.env.GITHUB_REPO;
+
+      // Rechazar el PR con comentarios
+      await octokit.rest.pulls.createReview({
+        owner,
+        repo,
+        pull_number: prNumber,
+        event: 'REQUEST_CHANGES',
+        body: `❌ Cambios solicitados por MASTER:\n\n${comentarios}`
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error al rechazar PR:', error);
+      throw error;
     }
   }
 }

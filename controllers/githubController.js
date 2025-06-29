@@ -131,9 +131,38 @@ const obtenerInfoGitHub = async (req, res) => {
       });
     }
 
+    // Si hay un PR asociado y GitHub está configurado, obtener detalles adicionales
+    let detallesPR = null;
+    if (solicitud.github_pr_number && githubService.isConfigured()) {
+      try {
+        // Determinar el tipo de repositorio basado en la URL
+        const repoType = solicitud.github_repo_url?.includes('backend') ? 'backend' : 'frontend';
+        detallesPR = await githubService.obtenerInformacionPR(solicitud.github_pr_number, repoType);
+      } catch (error) {
+        console.error('Error al obtener detalles del PR:', error);
+      }
+    }
+
+    // Combinar la información de la solicitud con los detalles del PR
+    const respuesta = {
+      ...solicitud,
+      commits: detallesPR?.commits || [],
+      files: detallesPR?.files || [],
+      title: detallesPR?.title || solicitud.titulo_sol,
+      author: detallesPR?.author || 'No disponible',
+      created_at: detallesPR?.created_at || solicitud.github_last_sync,
+      state: detallesPR?.state || solicitud.github_pr_state || 'No disponible',
+      stats: detallesPR?.stats || {
+        commits_count: 0,
+        files_changed: 0,
+        additions: 0,
+        deletions: 0
+      }
+    };
+
     res.json({
       success: true,
-      data: solicitud
+      data: respuesta
     });
 
   } catch (error) {
@@ -219,6 +248,14 @@ const asociarPullRequest = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Solicitud no encontrada'
+      });
+    }
+
+    // Verificar que el estado actual permite el cambio
+    if (solicitud.estado_sol !== 'EN_DESARROLLO') {
+      return res.status(400).json({
+        success: false,
+        message: 'Solo se puede crear un Pull Request cuando la solicitud está EN_DESARROLLO'
       });
     }
 
@@ -469,6 +506,14 @@ const crearPullRequest = async (req, res) => {
       });
     }
 
+    // Verificar que el estado actual permite el cambio
+    if (solicitud.estado_sol !== 'EN_DESARROLLO') {
+      return res.status(400).json({
+        success: false,
+        message: 'Solo se puede crear un Pull Request cuando la solicitud está EN_DESARROLLO'
+      });
+    }
+
     // Crear el Pull Request
     const resultado = await githubService.crearPullRequest(solicitud, branchName, repoType, baseBranch);
 
@@ -664,6 +709,14 @@ const crearPullRequestDesarrollador = async (req, res) => {
       });
     }
 
+    // Verificar que el estado actual permite el cambio
+    if (solicitud.estado_sol !== 'EN_DESARROLLO') {
+      return res.status(400).json({
+        success: false,
+        message: 'Solo se puede crear un Pull Request cuando la solicitud está EN_DESARROLLO'
+      });
+    }
+
     // Obtener el token del desarrollador si existe
     const desarrollador = await prisma.usuario.findUnique({
       where: { id_usu: userId }
@@ -688,7 +741,9 @@ const crearPullRequestDesarrollador = async (req, res) => {
         github_pr_url: pullRequest.url,
         github_branch_name: pullRequest.branchName,
         github_repo_url: `https://github.com/${githubService.defaultOwner}/${pullRequest.repository}`,
-        github_last_sync: new Date()
+        github_last_sync: new Date(),
+        estado_sol: 'EN_TESTING',
+        fec_ultima_actualizacion: new Date()
       }
     });
 

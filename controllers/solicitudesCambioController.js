@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const { validationResult } = require('express-validator');
+const githubService = require('../services/githubService');
 
 const prisma = new PrismaClient();
 
@@ -1497,7 +1498,131 @@ const obtenerDesarrolladores = async (req, res) => {
   }
 };
 
+// Obtener información detallada del PR
+const obtenerInformacionPR = async (req, res) => {
+  try {
+    const { id_sol } = req.params;
+    
+    // Obtener la solicitud
+    const solicitud = await prisma.solicitudCambio.findUnique({
+      where: { id_sol: parseInt(id_sol) },
+      include: {
+        desarrollador: true
+      }
+    });
 
+    if (!solicitud) {
+      return res.status(404).json({ error: 'Solicitud no encontrada' });
+    }
+
+    if (!solicitud.github_pr_number) {
+      return res.status(404).json({ error: 'Esta solicitud no tiene un PR asociado' });
+    }
+
+    // Obtener información del PR usando la API de GitHub
+    const prInfo = await githubService.obtenerInformacionPR(solicitud.github_pr_number);
+
+    res.json({
+      success: true,
+      data: prInfo
+    });
+  } catch (error) {
+    console.error('Error al obtener información del PR:', error);
+    res.status(500).json({ error: 'Error al obtener información del PR' });
+  }
+};
+
+// Aprobar PR por el MASTER
+const aprobarPRMaster = async (req, res) => {
+  try {
+    const { id_sol } = req.params;
+    
+    // Obtener la solicitud
+    const solicitud = await prisma.solicitudCambio.findUnique({
+      where: { id_sol: parseInt(id_sol) },
+      include: {
+        desarrollador: true
+      }
+    });
+
+    if (!solicitud) {
+      return res.status(404).json({ error: 'Solicitud no encontrada' });
+    }
+
+    if (!solicitud.github_pr_number) {
+      return res.status(404).json({ error: 'Esta solicitud no tiene un PR asociado' });
+    }
+
+    // Aprobar el PR en GitHub
+    await githubService.aprobarPR(solicitud.github_pr_number);
+
+    // Actualizar estado de la solicitud
+    await prisma.solicitudCambio.update({
+      where: { id_sol: parseInt(id_sol) },
+      data: {
+        estado_sol: 'EN_DESPLIEGUE',
+        fecha_ultima_actualizacion: new Date()
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'PR aprobado y solicitud actualizada a EN_DESPLIEGUE'
+    });
+  } catch (error) {
+    console.error('Error al aprobar PR:', error);
+    res.status(500).json({ error: 'Error al aprobar el PR' });
+  }
+};
+
+// Rechazar PR por el MASTER
+const rechazarPRMaster = async (req, res) => {
+  try {
+    const { id_sol } = req.params;
+    const { comentarios } = req.body;
+
+    if (!comentarios) {
+      return res.status(400).json({ error: 'Debe proporcionar comentarios para el rechazo' });
+    }
+
+    // Obtener la solicitud
+    const solicitud = await prisma.solicitudCambio.findUnique({
+      where: { id_sol: parseInt(id_sol) },
+      include: {
+        desarrollador: true
+      }
+    });
+
+    if (!solicitud) {
+      return res.status(404).json({ error: 'Solicitud no encontrada' });
+    }
+
+    if (!solicitud.github_pr_number) {
+      return res.status(404).json({ error: 'Esta solicitud no tiene un PR asociado' });
+    }
+
+    // Rechazar el PR en GitHub con los comentarios
+    await githubService.rechazarPR(solicitud.github_pr_number, comentarios);
+
+    // Actualizar estado de la solicitud y guardar comentarios
+    await prisma.solicitudCambio.update({
+      where: { id_sol: parseInt(id_sol) },
+      data: {
+        estado_sol: 'EN_DESARROLLO',
+        comentarios_master: comentarios,
+        fecha_ultima_actualizacion: new Date()
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'PR rechazado y solicitud actualizada a EN_DESARROLLO'
+    });
+  } catch (error) {
+    console.error('Error al rechazar PR:', error);
+    res.status(500).json({ error: 'Error al rechazar el PR' });
+  }
+};
 
 module.exports = {
   // Funciones de usuario únicamente
@@ -1517,5 +1642,8 @@ module.exports = {
   aprobarSolicitud,
   rechazarSolicitud,
   obtenerEstadisticasAdmin,
-  obtenerDesarrolladores
+  obtenerDesarrolladores,
+  obtenerInformacionPR,
+  aprobarPRMaster,
+  rechazarPRMaster
 }; 
