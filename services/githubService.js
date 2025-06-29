@@ -1102,4 +1102,6 @@ ${solicitud.plan_backout_sol || 'Por definir'}
   }
 }
 
-module.exports = new GitHubService(); 
+// Este archivo es un enlace para mantener la compatibilidad con las importaciones en mayúsculas
+const githubService = new GitHubService();
+module.exports = githubService; 
