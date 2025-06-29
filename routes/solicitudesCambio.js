@@ -17,7 +17,11 @@ const {
   aprobarSolicitud,
   rechazarSolicitud,
   obtenerEstadisticasAdmin,
-  obtenerDesarrolladores
+  obtenerDesarrolladores,
+  // Nuevas funciones para múltiples PRs
+  obtenerInformacionPR,
+  aprobarPRSpecifico,
+  rechazarPRSpecifico
 } = require('../controllers/solicitudesCambioController');
 
 // Importar controlador de desarrolladores
@@ -170,7 +174,33 @@ router.get(
   obtenerDesarrolladores
 );
 
+// ========================
+// NUEVAS RUTAS PARA MÚLTIPLES PRS
+// ========================
 
+// Obtener información de todos los PRs de una solicitud
+// GET /api/solicitudes-cambio/admin/:id_sol/pr-info
+router.get(
+  '/admin/:id_sol/pr-info',
+  [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER')],
+  obtenerInformacionPR
+);
+
+// Aprobar PR específico
+// POST /api/solicitudes-cambio/admin/:id_sol/aprobar-pr
+router.post(
+  '/admin/:id_sol/aprobar-pr',
+  [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER')],
+  aprobarPRSpecifico
+);
+
+// Rechazar PR específico
+// POST /api/solicitudes-cambio/admin/:id_sol/rechazar-pr
+router.post(
+  '/admin/:id_sol/rechazar-pr',
+  [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER')],
+  rechazarPRSpecifico
+);
 
 // ========================
 // RUTAS PARA DESARROLLADORES

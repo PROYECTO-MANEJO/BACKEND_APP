@@ -118,4 +118,29 @@ router.post('/solicitud/:id/completar',
   desarrolladorController.completarSolicitud
 );
 
+// =====================================================
+// NUEVAS RUTAS PARA MÚLTIPLES RAMAS
+// =====================================================
+
+// Crear rama específica (frontend o backend)
+router.post('/solicitud/:id/crear-rama', 
+  validateJWT, 
+  verificarRolDesarrollador, 
+  desarrolladorController.crearRamaEspecifica
+);
+
+// Crear Pull Request específico
+router.post('/solicitud/:id/crear-pr', 
+  validateJWT, 
+  verificarRolDesarrollador, 
+  desarrolladorController.crearPRSpecifico
+);
+
+// Obtener ramas de una solicitud
+router.get('/solicitud/:id/ramas', 
+  validateJWT, 
+  verificarRolDesarrollador, 
+  desarrolladorController.obtenerRamasSolicitud
+);
+
 module.exports = router; 

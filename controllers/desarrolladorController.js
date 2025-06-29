@@ -178,6 +178,11 @@ const getSolicitudEspecifica = async (req, res) => {
             ape_usu1: true,
             ape_usu2: true
           }
+        },
+        ramas: {
+          orderBy: {
+            repository_type: 'asc'
+          }
         }
       }
     });
@@ -1006,6 +1011,308 @@ const completarSolicitud = async (req, res) => {
   }
 };
 
+// =====================================================
+// NUEVAS FUNCIONES PARA MÚLTIPLES RAMAS
+// =====================================================
+
+// Crear rama específica (frontend o backend)
+const crearRamaEspecifica = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { repository_type } = req.body;
+    const desarrolladorId = req.uid;
+
+    console.log('=== CREAR RAMA ESPECÍFICA ===');
+    console.log('Solicitud ID:', id);
+    console.log('Repository Type:', repository_type);
+    console.log('Desarrollador ID:', desarrolladorId);
+
+    // Validar repository_type
+    if (!['FRONTEND', 'BACKEND'].includes(repository_type)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tipo de repositorio inválido. Debe ser FRONTEND o BACKEND'
+      });
+    }
+
+    // Obtener el token de GitHub del desarrollador
+    let githubToken;
+    try {
+      githubToken = await obtenerTokenGitHubDesarrollador(desarrolladorId);
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    // Verificar que la solicitud existe y está en estado correcto
+    const solicitud = await prisma.solicitudCambio.findFirst({
+      where: {
+        id_sol: id,
+        estado_sol: 'APROBADA',
+        id_desarrollador_asignado: desarrolladorId
+      },
+      include: {
+        ramas: true
+      }
+    });
+
+    if (!solicitud) {
+      return res.status(404).json({
+        success: false,
+        message: 'Solicitud no encontrada o no está aprobada'
+      });
+    }
+
+    // Verificar que no existe ya una rama de este tipo
+    const ramaExistente = solicitud.ramas.find(rama => rama.repository_type === repository_type);
+    if (ramaExistente) {
+      return res.status(400).json({
+        success: false,
+        message: `Ya existe una rama de tipo ${repository_type} para esta solicitud`
+      });
+    }
+
+    // Generar nombre de rama con sufijo
+    const sufijo = repository_type === 'FRONTEND' ? 'f' : 'b';
+    const branchName = `feature/SC-${solicitud.id_sol.split('-')[0]}-${sufijo}`;
+
+    // Crear branch en GitHub
+    const githubService = new GitHubService();
+    const repoType = repository_type.toLowerCase();
+    
+    console.log(`Creando branch en ${repoType}...`);
+    const branchResult = await githubService.crearBranchEspecifico(
+      branchName,
+      'develop',
+      repoType,
+      githubToken
+    );
+
+    // Guardar rama en base de datos
+    const nuevaRama = await prisma.solicitudRama.create({
+      data: {
+        id_solicitud: id,
+        repository_type,
+        branch_name: branchName,
+        pr_status: 'PENDING'
+      }
+    });
+
+    // Actualizar estado de solicitud si es necesario
+    await actualizarEstadoSolicitudPorRamas(id);
+
+    res.json({
+      success: true,
+      message: `Rama ${repository_type} creada correctamente`,
+      data: {
+        rama: nuevaRama,
+        github: branchResult
+      }
+    });
+
+  } catch (error) {
+    console.error('Error creando rama específica:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creando rama',
+      error: error.message
+    });
+  }
+};
+
+// Crear Pull Request específico
+const crearPRSpecifico = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { repository_type } = req.body;
+    const desarrolladorId = req.uid;
+
+    console.log('=== CREAR PR ESPECÍFICO ===');
+    console.log('Solicitud ID:', id);
+    console.log('Repository Type:', repository_type);
+
+    // Validar repository_type
+    if (!['FRONTEND', 'BACKEND'].includes(repository_type)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tipo de repositorio inválido. Debe ser FRONTEND o BACKEND'
+      });
+    }
+
+    // Obtener el token de GitHub del desarrollador
+    let githubToken;
+    try {
+      githubToken = await obtenerTokenGitHubDesarrollador(desarrolladorId);
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    // Verificar que la solicitud y rama existen
+    const solicitud = await prisma.solicitudCambio.findFirst({
+      where: {
+        id_sol: id,
+        id_desarrollador_asignado: desarrolladorId
+      },
+      include: {
+        ramas: {
+          where: {
+            repository_type
+          }
+        }
+      }
+    });
+
+    if (!solicitud) {
+      return res.status(404).json({
+        success: false,
+        message: 'Solicitud no encontrada'
+      });
+    }
+
+    const rama = solicitud.ramas[0];
+    if (!rama) {
+      return res.status(400).json({
+        success: false,
+        message: `No existe rama de tipo ${repository_type} para esta solicitud`
+      });
+    }
+
+    if (rama.pr_number) {
+      return res.status(400).json({
+        success: false,
+        message: `Ya existe un PR para la rama ${repository_type}`
+      });
+    }
+
+    // Crear Pull Request en GitHub
+    const githubService = new GitHubService();
+    const repoType = repository_type.toLowerCase();
+    
+    console.log(`Creando PR en ${repoType}...`);
+    const prResult = await githubService.crearPullRequestEspecifico(
+      solicitud,
+      rama.branch_name,
+      'develop',
+      repoType,
+      githubToken
+    );
+
+    // Actualizar rama con información del PR
+    const ramaActualizada = await prisma.solicitudRama.update({
+      where: { id: rama.id },
+      data: {
+        pr_number: prResult.number,
+        pr_url: prResult.html_url,
+        pr_state: prResult.state,
+        pr_status: 'OPEN',
+        updated_at: new Date()
+      }
+    });
+
+    // Actualizar estado de solicitud si es necesario
+    await actualizarEstadoSolicitudPorRamas(id);
+
+    res.json({
+      success: true,
+      message: `Pull Request ${repository_type} creado correctamente`,
+      data: {
+        rama: ramaActualizada,
+        github: prResult
+      }
+    });
+
+  } catch (error) {
+    console.error('Error creando PR específico:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creando Pull Request',
+      error: error.message
+    });
+  }
+};
+
+// Obtener ramas de una solicitud
+const obtenerRamasSolicitud = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const ramas = await prisma.solicitudRama.findMany({
+      where: {
+        id_solicitud: id
+      },
+      orderBy: {
+        repository_type: 'asc'
+      }
+    });
+
+    res.json({
+      success: true,
+      data: ramas
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo ramas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error obteniendo ramas',
+      error: error.message
+    });
+  }
+};
+
+// Función helper para actualizar estado de solicitud basado en ramas
+const actualizarEstadoSolicitudPorRamas = async (solicitudId) => {
+  try {
+    const solicitud = await prisma.solicitudCambio.findFirst({
+      where: { id_sol: solicitudId },
+      include: { ramas: true }
+    });
+
+    if (!solicitud || !solicitud.ramas.length) return;
+
+    const ramas = solicitud.ramas;
+    
+    // Lógica de estados basada en ramas
+    const tieneRamasConPR = ramas.some(rama => rama.pr_number);
+    const todasTienenPR = ramas.every(rama => rama.pr_number);
+    const todasAprobadas = ramas.every(rama => rama.pr_status === 'APPROVED');
+    const algunaRechazada = ramas.some(rama => rama.pr_status === 'REJECTED');
+    const todasMergeadas = ramas.every(rama => rama.pr_status === 'MERGED');
+
+    let nuevoEstado = solicitud.estado_sol;
+
+    if (todasMergeadas) {
+      nuevoEstado = 'COMPLETADA';
+    } else if (todasAprobadas) {
+      nuevoEstado = 'LISTO_PARA_IMPLEMENTAR';
+    } else if (algunaRechazada) {
+      nuevoEstado = 'EN_DESARROLLO';
+    } else if (todasTienenPR) {
+      nuevoEstado = 'EN_TESTING';
+    } else if (tieneRamasConPR) {
+      nuevoEstado = 'EN_DESARROLLO';
+    }
+
+    if (nuevoEstado !== solicitud.estado_sol) {
+      await prisma.solicitudCambio.update({
+        where: { id_sol: solicitudId },
+        data: { 
+          estado_sol: nuevoEstado,
+          fec_ultima_actualizacion: new Date()
+        }
+      });
+    }
+
+  } catch (error) {
+    console.error('Error actualizando estado por ramas:', error);
+  }
+};
+
 module.exports = {
   getSolicitudesAsignadas,
   getSolicitudEspecifica,
@@ -1017,5 +1324,9 @@ module.exports = {
   iniciarDesarrollo,
   pasarATesting,
   pasarADespliegue,
-  completarSolicitud
+  completarSolicitud,
+  crearRamaEspecifica,
+  crearPRSpecifico,
+  obtenerRamasSolicitud,
+  actualizarEstadoSolicitudPorRamas
 }; 

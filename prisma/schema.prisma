@@ -418,15 +418,6 @@ model SolicitudCambio {
   comentarios_tecnicos_sol    String?       @map("COMENTARIOS_TECNICOS_SOL") @db.Text
   exito_implementacion        Boolean?      @map("EXITO_IMPLEMENTACION")
 
-  // --- GitHub ---
-  github_repo_url             String?       @map("GITHUB_REPO_URL") @db.VarChar(500)
-  github_branch_name          String?       @map("GITHUB_BRANCH_NAME") @db.VarChar(200)
-  github_pr_number            Int?          @map("GITHUB_PR_NUMBER")
-  github_pr_url               String?       @map("GITHUB_PR_URL") @db.VarChar(500)
-  github_pr_state             String?       @map("GITHUB_PR_STATE") @db.VarChar(50)
-  github_merged_at            DateTime?     @map("GITHUB_MERGED_AT") @db.Timestamp
-  github_last_sync            DateTime?     @map("GITHUB_LAST_SYNC") @db.Timestamp
-
   // --- METADATOS ---
   fec_creacion_sol            DateTime      @map("FEC_CREACION_SOL") @default(now()) @db.Timestamp
   fec_respuesta_sol           DateTime?     @map("FEC_RESPUESTA_SOL") @db.Timestamp
@@ -441,7 +432,57 @@ model SolicitudCambio {
   adminResponsable            Usuario?      @relation("SolicitudesAdmin", fields: [id_admin_resp_sol], references: [id_usu])
   desarrolladorAsignado       Usuario?      @relation("SolicitudesDesarrollador", fields: [id_desarrollador_asignado], references: [id_usu])
 
+  // --- NUEVA RELACIÓN PARA MÚLTIPLES RAMAS ---
+  ramas                       SolicitudRama[]
+
   @@map("SOLICITUDES_CAMBIO")
+}
+
+// =====================================================
+// NUEVA TABLA: MÚLTIPLES RAMAS POR SOLICITUD
+// =====================================================
+
+model SolicitudRama {
+  id                          String        @id @default(uuid()) @map("ID") @db.Uuid
+  id_solicitud                String        @map("ID_SOLICITUD") @db.Uuid
+  repository_type             RepositoryType @map("REPOSITORY_TYPE")
+  branch_name                 String        @map("BRANCH_NAME") @db.VarChar(255)
+  
+  // --- INFORMACIÓN DEL PULL REQUEST ---
+  pr_number                   Int?          @map("PR_NUMBER")
+  pr_url                      String?       @map("PR_URL") @db.VarChar(500)
+  pr_state                    String?       @map("PR_STATE") @db.VarChar(50)
+  pr_status                   PRStatus      @map("PR_STATUS") @default(PENDING)
+  
+  // --- METADATOS ---
+  created_at                  DateTime      @map("CREATED_AT") @default(now()) @db.Timestamp
+  updated_at                  DateTime      @map("UPDATED_AT") @default(now()) @db.Timestamp
+  merged_at                   DateTime?     @map("MERGED_AT") @db.Timestamp
+  last_sync                   DateTime?     @map("LAST_SYNC") @db.Timestamp
+
+  // --- RELACIONES ---
+  solicitud                   SolicitudCambio @relation(fields: [id_solicitud], references: [id_sol], onDelete: Cascade)
+
+  // --- CONSTRAINT: SOLO UNA RAMA POR TIPO POR SOLICITUD ---
+  @@unique([id_solicitud, repository_type])
+  @@map("SOLICITUDES_RAMAS")
+}
+
+// =====================================================
+// NUEVOS ENUMS PARA RAMAS
+// =====================================================
+
+enum RepositoryType {
+  FRONTEND
+  BACKEND
+}
+
+enum PRStatus {
+  PENDING     // Rama creada, sin PR
+  OPEN        // PR abierto, esperando revisión
+  APPROVED    // PR aprobado por el Master
+  REJECTED    // PR rechazado por el Master
+  MERGED      // PR mergeado exitosamente
 }
 
 enum TipoCambio {
