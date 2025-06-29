@@ -26,7 +26,9 @@ const {
   // Funciones para múltiples ramas
   crearRamaEspecifica,
   crearPRSpecifico,
-  obtenerRamasSolicitud
+  obtenerRamasSolicitud,
+  aprobarPRPorRepositorio,
+  rechazarPRPorRepositorio
 } = require('../controllers/githubController');
 
 // Importar middlewares
@@ -238,6 +240,20 @@ router.post('/solicitud/:id/aprobar-pr',
   validateJWT,
   validateMaster,
   aprobarPR
+);
+
+// Aprobar PR específico por repositorio
+router.post('/solicitud/:id/aprobar-pr-repo',
+  validateJWT,
+  validateMaster,
+  aprobarPRPorRepositorio
+);
+
+// Rechazar PR específico por repositorio
+router.post('/solicitud/:id/rechazar-pr-repo',
+  validateJWT,
+  validateMaster,
+  rechazarPRPorRepositorio
 );
 
 module.exports = router; 

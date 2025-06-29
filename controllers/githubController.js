@@ -1403,10 +1403,11 @@ const obtenerRamasSolicitud = async (req, res) => {
     const userRole = req.userRole;
 
     // Verificar acceso
-    let whereClause = { id_sol: parseInt(id) };
+    let whereClause = { id_sol: id };
     if (userRole === 'DESARROLLADOR') {
       whereClause.id_desarrollador_asignado = userId;
     }
+    // MASTER y ADMIN pueden ver cualquier solicitud
 
     const solicitud = await prisma.solicitudCambio.findFirst({
       where: whereClause
@@ -1420,7 +1421,7 @@ const obtenerRamasSolicitud = async (req, res) => {
     }
 
     // Obtener ramas con información de GitHub
-    const ramas = await githubService.obtenerRamasSolicitud(parseInt(id));
+    const ramas = await githubService.obtenerRamasSolicitud(id);
 
     res.json({
       success: true,
@@ -1475,6 +1476,219 @@ const actualizarEstadoSolicitudPorRamas = async (solicitudId) => {
   }
 };
 
+/**
+ * Aprobar PR específico por repositorio
+ */
+const aprobarPRPorRepositorio = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { repository_type, comentarios = '' } = req.body;
+    const userId = req.userId;
+    const userRole = req.userRole;
+
+    // Solo MASTER puede aprobar PRs
+    if (userRole !== 'MASTER') {
+      return res.status(403).json({
+        success: false,
+        message: 'Solo el MASTER puede aprobar Pull Requests'
+      });
+    }
+
+    // Verificar solicitud
+    const solicitud = await prisma.solicitudCambio.findUnique({
+      where: { id_sol: id },
+      include: {
+        desarrolladorAsignado: {
+          select: { github_token: true }
+        }
+      }
+    });
+
+    if (!solicitud) {
+      return res.status(404).json({
+        success: false,
+        message: 'Solicitud no encontrada'
+      });
+    }
+
+    // Verificar rama
+    const rama = await prisma.solicitudRama.findFirst({
+      where: {
+        id_solicitud: id,
+        repository_type: repository_type.toUpperCase()
+      }
+    });
+
+    if (!rama || !rama.pr_number) {
+      return res.status(404).json({
+        success: false,
+        message: `No existe PR para el repositorio ${repository_type}`
+      });
+    }
+
+    // Aprobar PR en GitHub
+    const githubService = require('../services/githubService');
+    await githubService.aprobarPR(
+      rama.pr_number,
+      comentarios,
+      repository_type.toLowerCase()
+    );
+
+    // Actualizar rama en base de datos
+    const ramaActualizada = await prisma.solicitudRama.update({
+      where: { id: rama.id },
+      data: {
+        pr_status: 'APPROVED',
+        comentarios_aprobacion: comentarios,
+        fecha_aprobacion: new Date()
+      }
+    });
+
+    // Verificar si todos los PRs están aprobados para mergear automáticamente
+    const todasLasRamas = await prisma.solicitudRama.findMany({
+      where: { id_solicitud: id }
+    });
+
+    const todosAprobados = todasLasRamas.every(r => r.pr_status === 'APPROVED');
+
+    if (todosAprobados) {
+      // Mergear todos los PRs automáticamente
+      for (const ramaParaMergear of todasLasRamas) {
+        try {
+          await githubService.mergearPR(
+            ramaParaMergear.pr_number,
+            ramaParaMergear.repository_type.toLowerCase()
+          );
+
+          await prisma.solicitudRama.update({
+            where: { id: ramaParaMergear.id },
+            data: {
+              pr_status: 'MERGED',
+              fecha_merge: new Date()
+            }
+          });
+        } catch (error) {
+          console.error(`Error mergeando PR ${ramaParaMergear.pr_number}:`, error);
+        }
+      }
+
+      // Actualizar solicitud a COMPLETADA
+      await prisma.solicitudCambio.update({
+        where: { id_sol: id },
+        data: {
+          estado_sol: 'COMPLETADA',
+          fecha_real_fin_sol: new Date()
+        }
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `PR ${repository_type} aprobado exitosamente`,
+      data: {
+        rama: ramaActualizada,
+        todos_aprobados: todosAprobados
+      }
+    });
+
+  } catch (error) {
+    console.error('Error aprobando PR:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
+/**
+ * Rechazar PR específico por repositorio
+ */
+const rechazarPRPorRepositorio = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { repository_type, comentarios = '' } = req.body;
+    const userId = req.userId;
+    const userRole = req.userRole;
+
+    // Solo MASTER puede rechazar PRs
+    if (userRole !== 'MASTER') {
+      return res.status(403).json({
+        success: false,
+        message: 'Solo el MASTER puede rechazar Pull Requests'
+      });
+    }
+
+    // Verificar solicitud
+    const solicitud = await prisma.solicitudCambio.findUnique({
+      where: { id_sol: id }
+    });
+
+    if (!solicitud) {
+      return res.status(404).json({
+        success: false,
+        message: 'Solicitud no encontrada'
+      });
+    }
+
+    // Verificar rama
+    const rama = await prisma.solicitudRama.findFirst({
+      where: {
+        id_solicitud: id,
+        repository_type: repository_type.toUpperCase()
+      }
+    });
+
+    if (!rama || !rama.pr_number) {
+      return res.status(404).json({
+        success: false,
+        message: `No existe PR para el repositorio ${repository_type}`
+      });
+    }
+
+    // Rechazar PR en GitHub
+    const githubService = require('../services/githubService');
+    await githubService.rechazarPR(
+      rama.pr_number,
+      comentarios,
+      repository_type.toLowerCase()
+    );
+
+    // Actualizar rama en base de datos
+    const ramaActualizada = await prisma.solicitudRama.update({
+      where: { id: rama.id },
+      data: {
+        pr_status: 'REJECTED',
+        comentarios_rechazo: comentarios,
+        fecha_rechazo: new Date()
+      }
+    });
+
+    // Actualizar solicitud de vuelta a EN_DESARROLLO
+    await prisma.solicitudCambio.update({
+      where: { id_sol: id },
+      data: {
+        estado_sol: 'EN_DESARROLLO',
+        comentarios_internos_sol: `PR ${repository_type} rechazado por MASTER: ${comentarios}`
+      }
+    });
+
+    res.json({
+      success: true,
+      message: `PR ${repository_type} rechazado. Solicitud devuelta a desarrollo`,
+      data: {
+        rama: ramaActualizada
+      }
+    });
+
+  } catch (error) {
+    console.error('Error rechazando PR:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
 module.exports = {
   // Controladores existentes
   sincronizarSolicitudConGitHub,
@@ -1503,5 +1717,7 @@ module.exports = {
   // Funciones para múltiples ramas
   crearRamaEspecifica,
   crearPRSpecifico,
-  obtenerRamasSolicitud
+  obtenerRamasSolicitud,
+  aprobarPRPorRepositorio,
+  rechazarPRPorRepositorio
 }; 
