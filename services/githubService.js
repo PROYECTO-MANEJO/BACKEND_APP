@@ -1363,16 +1363,34 @@ ${repoType === 'frontend' ?
         auth: this.token
       });
 
-      // Crear review de aprobación
-      await octokit.rest.pulls.createReview({
-        owner: this.defaultOwner,
-        repo,
-        pull_number: prNumber,
-        body: comentarios || `PR aprobado por Master - ${repoType}`,
-        event: 'APPROVE'
-      });
-
-      console.log('✅ PR aprobado exitosamente');
+      try {
+        // Intentar crear review de aprobación
+        await octokit.rest.pulls.createReview({
+          owner: this.defaultOwner,
+          repo,
+          pull_number: prNumber,
+          body: comentarios || `PR aprobado por Master - ${repoType}`,
+          event: 'APPROVE'
+        });
+        
+        console.log('✅ PR aprobado con review exitosamente');
+      } catch (reviewError) {
+        // Si no se puede crear review (ej: propio PR), agregar comentario en su lugar
+        if (reviewError.status === 422 && reviewError.message.includes('approve your own')) {
+          console.log('⚠️ No se puede crear review de aprobación (propio PR), agregando comentario...');
+          
+          await octokit.rest.issues.createComment({
+            owner: this.defaultOwner,
+            repo,
+            issue_number: prNumber,
+            body: `✅ **PR APROBADO POR MASTER**\n\n${comentarios || `PR aprobado para ${repoType}`}\n\n*Nota: Aprobación administrativa sin review formal.*`
+          });
+          
+          console.log('✅ Comentario de aprobación agregado exitosamente');
+        } else {
+          throw reviewError;
+        }
+      }
 
       return {
         success: true,
@@ -1404,16 +1422,34 @@ ${repoType === 'frontend' ?
         auth: this.token
       });
 
-      // Crear review de rechazo
-      await octokit.rest.pulls.createReview({
-        owner: this.defaultOwner,
-        repo,
-        pull_number: prNumber,
-        body: comentarios,
-        event: 'REQUEST_CHANGES'
-      });
-
-      console.log('❌ PR rechazado exitosamente');
+      try {
+        // Intentar crear review de rechazo
+        await octokit.rest.pulls.createReview({
+          owner: this.defaultOwner,
+          repo,
+          pull_number: prNumber,
+          body: comentarios || `PR rechazado por Master - ${repoType}`,
+          event: 'REQUEST_CHANGES'
+        });
+        
+        console.log('❌ PR rechazado con review exitosamente');
+      } catch (reviewError) {
+        // Si no se puede crear review (ej: propio PR), agregar comentario en su lugar
+        if (reviewError.status === 422 && (reviewError.message.includes('request changes on your own') || reviewError.message.includes('Can not request changes'))) {
+          console.log('⚠️ No se puede crear review de rechazo (propio PR), agregando comentario...');
+          
+          await octokit.rest.issues.createComment({
+            owner: this.defaultOwner,
+            repo,
+            issue_number: prNumber,
+            body: `❌ **PR RECHAZADO POR MASTER**\n\n${comentarios || `PR rechazado para ${repoType}`}\n\n*Nota: Rechazo administrativo sin review formal. Se requieren cambios antes de continuar.*`
+          });
+          
+          console.log('❌ Comentario de rechazo agregado exitosamente');
+        } else {
+          throw reviewError;
+        }
+      }
 
       return {
         success: true,

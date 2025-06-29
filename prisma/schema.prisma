@@ -454,10 +454,17 @@ model SolicitudRama {
   pr_state                    String?       @map("PR_STATE") @db.VarChar(50)
   pr_status                   PRStatus      @map("PR_STATUS") @default(PENDING)
   
+  // --- COMENTARIOS Y FECHAS DE REVISIÓN ---
+  comentarios_aprobacion      String?       @map("COMENTARIOS_APROBACION") @db.Text
+  fecha_aprobacion            DateTime?     @map("FECHA_APROBACION") @db.Timestamp
+  comentarios_rechazo         String?       @map("COMENTARIOS_RECHAZO") @db.Text
+  fecha_rechazo               DateTime?     @map("FECHA_RECHAZO") @db.Timestamp
+  
   // --- METADATOS ---
   created_at                  DateTime      @map("CREATED_AT") @default(now()) @db.Timestamp
   updated_at                  DateTime      @map("UPDATED_AT") @default(now()) @db.Timestamp
   merged_at                   DateTime?     @map("MERGED_AT") @db.Timestamp
+  fecha_merge                 DateTime?     @map("FECHA_MERGE") @db.Timestamp
   last_sync                   DateTime?     @map("LAST_SYNC") @db.Timestamp
 
   // --- RELACIONES ---

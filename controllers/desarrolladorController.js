@@ -1096,6 +1096,79 @@ const obtenerRamasDisponibles = async (req, res) => {
   }
 };
 
+// Nueva función: Enviar a testing sin validaciones de PR (solo cambio de estado)
+const enviarATestingSimple = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const desarrolladorId = req.uid;
+
+    console.log('=== ENVIAR A TESTING SIMPLE ===');
+    console.log('Solicitud ID:', id);
+    console.log('Desarrollador ID:', desarrolladorId);
+
+    // Verificar que la solicitud existe y está asignada al desarrollador
+    const solicitud = await prisma.solicitudCambio.findFirst({
+      where: {
+        id_sol: id,
+        id_desarrollador_asignado: desarrolladorId
+      }
+    });
+
+    if (!solicitud) {
+      return res.status(404).json({
+        success: false,
+        message: 'Solicitud no encontrada o no tienes permisos para modificarla'
+      });
+    }
+
+    // Verificar que está en estado EN_DESARROLLO
+    if (solicitud.estado_sol !== 'EN_DESARROLLO') {
+      return res.status(400).json({
+        success: false,
+        message: `La solicitud debe estar en estado EN_DESARROLLO. Estado actual: ${solicitud.estado_sol}`
+      });
+    }
+
+    // Actualizar estado solo de las ramas RECHAZADAS a IN_REVIEW (para que puedan ser revisadas de nuevo)
+    // Las ramas APROBADAS se mantienen como APPROVED
+    await prisma.solicitudRama.updateMany({
+      where: {
+        id_solicitud: id,
+        pr_status: 'REJECTED'
+      },
+      data: {
+        pr_status: 'IN_REVIEW',
+        comentarios_rechazo: null,
+        fecha_rechazo: null,
+        updated_at: new Date()
+      }
+    });
+
+    // Actualizar estado de la solicitud sin validaciones de PR
+    const solicitudActualizada = await prisma.solicitudCambio.update({
+      where: { id_sol: id },
+      data: {
+        estado_sol: 'EN_TESTING',
+        fec_ultima_actualizacion: new Date()
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Solicitud enviada a testing correctamente',
+      data: solicitudActualizada
+    });
+
+  } catch (error) {
+    console.error('Error enviando a testing simple:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error enviando a testing',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getSolicitudesAsignadas,
   getSolicitudEspecifica,
@@ -1108,5 +1181,6 @@ module.exports = {
   crearPRSpecifico,
   obtenerRamasSolicitud,
   actualizarEstadoSolicitudPorRamas,
-  obtenerRamasDisponibles
+  obtenerRamasDisponibles,
+  enviarATestingSimple
 }; 

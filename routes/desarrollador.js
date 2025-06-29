@@ -159,4 +159,11 @@ router.post('/solicitud/:id/testing/enviar',
   desarrolladorController.pasarATesting
 );
 
+// Enviar a testing simple (solo cambio de estado, sin validaciones de PR)
+router.post('/solicitud/:id/testing/enviar-simple', 
+  validateJWT, 
+  verificarRolDesarrollador, 
+  desarrolladorController.enviarATestingSimple
+);
+
 module.exports = router; 
