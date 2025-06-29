@@ -110,7 +110,8 @@ async function inscribirUsuarioEvento(req, res) {
     const datosInscripcion = {
       id_usu_ins: idUsuario,
       id_eve_ins: idEvento,
-      fec_ins: new Date()
+      fec_ins: new Date(),
+      carta_motivacion: req.body.carta_motivacion?.trim() || null
     };
 
     if (evento.es_gratuito) {

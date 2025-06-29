@@ -211,8 +211,8 @@ const crearEvento = async (req, res) => {
           id_cat_eve,
           fec_ini_eve: fechaInicio,
           fec_fin_eve: fechaFin,
-          hor_ini_eve: horaInicio,  // Date object
-          hor_fin_eve: horaFin,     // Date object o null
+          hor_ini_eve: horaInicio,
+          hor_fin_eve: horaFin,
           dur_eve: duracion,
           are_eve,
           ubi_eve: ubi_eve.trim(),
@@ -220,7 +220,8 @@ const crearEvento = async (req, res) => {
           capacidad_max_eve: capacidad,
           tipo_audiencia_eve: tipo_audiencia_eve || 'PUBLICO_GENERAL',
           es_gratuito: esGratuito,
-          precio: precioEvento
+          precio: precioEvento,
+          requiere_carta_motivacion: toBoolean(req.body.requiere_carta_motivacion)
         }
       });
 
@@ -291,16 +292,16 @@ const crearEvento = async (req, res) => {
 const actualizarEvento = async (req, res) => {
   const { id } = req.params;
   const data = req.body;
-  
+
   try {
-    const evento = await prisma.evento.findUnique({ 
-      where: { id_eve: id } 
+    const evento = await prisma.evento.findUnique({
+      where: { id_eve: id }
     });
-    
+
     if (!evento) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Evento no encontrado' 
+      return res.status(404).json({
+        success: false,
+        message: 'Evento no encontrado'
       });
     }
 
@@ -310,183 +311,184 @@ const actualizarEvento = async (req, res) => {
     if (data.nom_eve) datosActualizacion.nom_eve = data.nom_eve.trim();
     if (data.des_eve) datosActualizacion.des_eve = data.des_eve.trim();
     if (data.ubi_eve) datosActualizacion.ubi_eve = data.ubi_eve.trim();
-    
+
     // Campos numéricos
     if (data.dur_eve) {
       const duracion = parseInt(data.dur_eve);
       if (isNaN(duracion) || duracion <= 0) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'La duración debe ser un número positivo' 
+        return res.status(400).json({
+          success: false,
+          message: 'La duración debe ser un número positivo'
         });
       }
       datosActualizacion.dur_eve = duracion;
     }
-    
+
     if (data.capacidad_max_eve) {
       const capacidad = parseInt(data.capacidad_max_eve);
       if (isNaN(capacidad) || capacidad <= 0) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'La capacidad máxima debe ser un número positivo' 
+        return res.status(400).json({
+          success: false,
+          message: 'La capacidad máxima debe ser un número positivo'
         });
       }
       datosActualizacion.capacidad_max_eve = capacidad;
     }
 
-    // 🎯 VALIDAR CONFIGURACIÓN DE PRECIO
-    if (data.es_gratuito !== undefined) {
-      const esGratuito = Boolean(data.es_gratuito);
-      datosActualizacion.es_gratuito = esGratuito;
-      
-      if (!esGratuito) {
-        // Si se cambia a pagado, debe tener precio
-        if (data.precio === undefined || data.precio === null) {
-          return res.status(400).json({ 
-            success: false, 
-            message: 'Para eventos pagados, el precio es obligatorio' 
-          });
-        }
-        
-        const precio = parseFloat(data.precio);
-        if (isNaN(precio) || precio <= 0) {
-          return res.status(400).json({ 
-            success: false, 
-            message: 'El precio debe ser un número positivo' 
-          });
-        }
-        datosActualizacion.precio = precio;
-      } else {
-        // Si se cambia a gratuito, quitar el precio
-        datosActualizacion.precio = null;
-      }
-    } else if (data.precio !== undefined) {
-      // Solo se actualiza el precio si el evento ya es pagado
-      if (evento.es_gratuito) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'No se puede establecer precio en un evento gratuito. Primero cambie es_gratuito a false' 
-        });
-      }
-      
-      const precio = parseFloat(data.precio);
-      if (isNaN(precio) || precio <= 0) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'El precio debe ser un número positivo' 
-        });
-      }
-      datosActualizacion.precio = precio;
-    }
-
-    // Validar y convertir fechas
+    // Fechas
     if (data.fec_ini_eve) {
       const fechaInicio = new Date(data.fec_ini_eve);
       if (isNaN(fechaInicio.getTime())) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Fecha de inicio inválida' 
+        return res.status(400).json({
+          success: false,
+          message: 'Fecha de inicio inválida'
         });
       }
       datosActualizacion.fec_ini_eve = fechaInicio;
     }
-    
+
     if (data.fec_fin_eve) {
       const fechaFin = new Date(data.fec_fin_eve);
       if (isNaN(fechaFin.getTime())) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Fecha de fin inválida' 
+        return res.status(400).json({
+          success: false,
+          message: 'Fecha de fin inválida'
         });
       }
       datosActualizacion.fec_fin_eve = fechaFin;
     }
-    
-    // ✅ VALIDAR Y CONVERTIR HORAS - CORREGIDO
+
+    // Horas
     if (data.hor_ini_eve) {
       try {
         datosActualizacion.hor_ini_eve = convertirHoraADate(data.hor_ini_eve);
       } catch (error) {
-        return res.status(400).json({ 
-          success: false, 
-          message: `Error en hora de inicio: ${error.message}` 
-        });
-      }
-    }
-    
-    if (data.hor_fin_eve) {
-      try {
-        datosActualizacion.hor_fin_eve = convertirHoraADate(data.hor_fin_eve);
-      } catch (error) {
-        return res.status(400).json({ 
-          success: false, 
-          message: `Error en hora de fin: ${error.message}` 
+        return res.status(400).json({
+          success: false,
+          message: `Error en hora de inicio: ${error.message}`
         });
       }
     }
 
-    // Resto de validaciones...
+    if (data.hor_fin_eve) {
+      try {
+        datosActualizacion.hor_fin_eve = convertirHoraADate(data.hor_fin_eve);
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: `Error en hora de fin: ${error.message}`
+        });
+      }
+    }
+
+    // Enums
     if (data.are_eve) {
       const areasValidas = ['PRACTICA', 'INVESTIGACION', 'ACADEMICA', 'TECNICA', 'INDUSTRIAL', 'EMPRESARIAL', 'IA', 'REDES'];
       if (!areasValidas.includes(data.are_eve)) {
-        return res.status(400).json({ 
-          success: false, 
-          message: `Área inválida. Valores permitidos: ${areasValidas.join(', ')}` 
+        return res.status(400).json({
+          success: false,
+          message: `Área inválida. Valores permitidos: ${areasValidas.join(', ')}`
         });
       }
       datosActualizacion.are_eve = data.are_eve;
     }
-    
+
     if (data.tipo_audiencia_eve) {
       const audienciasValidas = ['CARRERA_ESPECIFICA', 'TODAS_CARRERAS', 'PUBLICO_GENERAL'];
       if (!audienciasValidas.includes(data.tipo_audiencia_eve)) {
-        return res.status(400).json({ 
-          success: false, 
-          message: `Tipo de audiencia inválido. Valores permitidos: ${audienciasValidas.join(', ')}` 
+        return res.status(400).json({
+          success: false,
+          message: `Tipo de audiencia inválido. Valores permitidos: ${audienciasValidas.join(', ')}`
         });
       }
       datosActualizacion.tipo_audiencia_eve = data.tipo_audiencia_eve;
     }
 
-    // Validar referencias
+    // Precio y gratuito
+    if (data.es_gratuito !== undefined) {
+      const esGratuito = Boolean(data.es_gratuito);
+      datosActualizacion.es_gratuito = esGratuito;
+
+      if (!esGratuito) {
+        if (data.precio === undefined || data.precio === null) {
+          return res.status(400).json({
+            success: false,
+            message: 'Para eventos pagados, el precio es obligatorio'
+          });
+        }
+        const precio = parseFloat(data.precio);
+        if (isNaN(precio) || precio <= 0) {
+          return res.status(400).json({
+            success: false,
+            message: 'El precio debe ser un número positivo'
+          });
+        }
+        datosActualizacion.precio = precio;
+      } else {
+        datosActualizacion.precio = null;
+      }
+    } else if (data.precio !== undefined) {
+      if (evento.es_gratuito) {
+        return res.status(400).json({
+          success: false,
+          message: 'No se puede establecer precio en un evento gratuito. Primero cambie es_gratuito a false'
+        });
+      }
+      const precio = parseFloat(data.precio);
+      if (isNaN(precio) || precio <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'El precio debe ser un número positivo'
+        });
+      }
+      datosActualizacion.precio = precio;
+    }
+
+    // Relaciones directas
     if (data.id_cat_eve) {
-      const categoria = await prisma.categoriaEvento.findUnique({ 
-        where: { id_cat: data.id_cat_eve } 
+      const categoria = await prisma.categoriaEvento.findUnique({
+        where: { id_cat: data.id_cat_eve }
       });
       if (!categoria) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Categoría inválida' 
+        return res.status(400).json({
+          success: false,
+          message: 'Categoría inválida'
         });
       }
       datosActualizacion.id_cat_eve = data.id_cat_eve;
     }
 
     if (data.ced_org_eve) {
-      const organizador = await prisma.organizador.findUnique({ 
-        where: { ced_org: data.ced_org_eve } 
+      const organizador = await prisma.organizador.findUnique({
+        where: { ced_org: data.ced_org_eve }
       });
       if (!organizador) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Organizador inválido' 
+        return res.status(400).json({
+          success: false,
+          message: 'Organizador inválido'
         });
       }
       datosActualizacion.ced_org_eve = data.ced_org_eve;
     }
 
-    const eventoActualizado = await prisma.evento.update({ 
-      where: { id_eve: id }, 
+    // Carta de motivación (checkbox)
+    if (data.requiere_carta_motivacion !== undefined) {
+      datosActualizacion.requiere_carta_motivacion = toBoolean(data.requiere_carta_motivacion);
+    }
+
+    // Actualizar evento
+    const eventoActualizado = await prisma.evento.update({
+      where: { id_eve: id },
       data: datosActualizacion,
       include: {
         categoria: true,
         organizador: true
       }
     });
-    
-    res.json({ 
-      success: true, 
-      message: 'Evento actualizado correctamente', 
+
+    res.json({
+      success: true,
+      message: 'Evento actualizado correctamente',
       evento: {
         ...eventoActualizado,
         hora_inicio: formatearHora(eventoActualizado.hor_ini_eve),
@@ -495,17 +497,17 @@ const actualizarEvento = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al actualizar evento:', error);
-    
+
     if (error.code === 'P2002') {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Ya existe un evento con estos datos únicos' 
+      return res.status(400).json({
+        success: false,
+        message: 'Ya existe un evento con estos datos únicos'
       });
     }
-    
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error del servidor' 
+
+    res.status(500).json({
+      success: false,
+      message: 'Error del servidor'
     });
   }
 };
@@ -598,12 +600,20 @@ const obtenerEventoPorId = async (req, res) => {
           }
         },
         inscripciones: {
-          include: {
+          select: {
+            id_inscripcion: true,
+            carta_motivacion: true, // <-- AGREGA ESTA LÍNEA
+            fecha_inscripcion: true,
+            estado_pago: true,
+            valor: true,
+            metodo_pago: true,
+            tiene_comprobante: true,
             usuario: {
               select: {
                 nom_usu1: true,
                 ape_usu1: true,
-                cor_usu: true
+                cor_usu: true,
+                // ...otros campos que necesites...
               }
             }
           }
@@ -635,7 +645,8 @@ const obtenerEventoPorId = async (req, res) => {
         })),
         total_inscripciones: evento._count.inscripciones,
         hora_inicio: formatearHora(evento.hor_ini_eve),
-        hora_fin: formatearHora(evento.hor_fin_eve)
+        hora_fin: formatearHora(evento.hor_fin_eve),
+        requiere_carta_motivacion: evento.requiere_carta_motivacion
       }
     });
   } catch (error) {
@@ -933,6 +944,10 @@ const obtenerMisEventos = async (req, res) => {
     });
   }
 };
+
+function toBoolean(val) {
+  return val === true || val === "true" || val === 1 || val === "1";
+}
 
 module.exports = {
   crearEvento,

@@ -144,7 +144,9 @@ model Evento {
   // 🎯 CONFIGURACIÓN DE PRECIO
   es_gratuito Boolean @map("ES_GRATUITO") @default(true)
   precio Decimal? @map("PRECIO") @db.Decimal(6,2) // Solo si no es gratuito
-  
+
+  requiere_carta_motivacion Boolean @default(false) @map("REQUIERE_CARTA_MOTIVACION") // <-- AGREGA ESTA LÍNEA
+
   // 🎯 EVENTOS: Sin asignaciones ni requisitos complejos
   categoria CategoriaEvento @relation(fields: [id_cat_eve], references: [id_cat])
   organizador Organizador @relation(fields: [ced_org_eve], references: [ced_org])

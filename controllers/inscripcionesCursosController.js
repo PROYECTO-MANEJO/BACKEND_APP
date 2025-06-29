@@ -109,7 +109,8 @@ async function inscribirUsuarioCurso(req, res) {
     const datosInscripcion = {
       id_usu_ins_cur: idUsuario,
       id_cur_ins: idCurso,
-      fec_ins_cur: new Date()
+      fec_ins_cur: new Date(),
+      carta_motivacion: req.body.carta_motivacion?.trim() || null
     };
 
     if (curso.es_gratuito) {

@@ -2,7 +2,8 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 // Crear un nuevo curso
-const crearCurso = async (req, res) => {
+const 
+crearCurso = async (req, res) => {
   try {
     const {
       nom_cur,
@@ -17,7 +18,8 @@ const crearCurso = async (req, res) => {
       requiere_verificacion_docs,
       es_gratuito,
       precio,
-      carreras // Array opcional de IDs de carreras
+      carreras,// Array opcional de IDs de carreras
+      requiere_carta_motivacion // Campo opcional para carta de motivación
     } = req.body;
 
     // ✅ VALIDACIONES BÁSICAS
@@ -150,7 +152,7 @@ const crearCurso = async (req, res) => {
           requiere_verificacion_docs: requiere_verificacion_docs !== undefined ? requiere_verificacion_docs : true,
           es_gratuito: esGratuito,
           precio: precioCurso,
-          carta_motivacion: req.body.carta_motivacion?.trim() || null
+          requiere_carta_motivacion: req.body.requiere_carta_motivacion === true
         }
       });
 
