@@ -1,7 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
-const githubService = require('../services/githubService');
-
 const prisma = new PrismaClient();
+const githubService = require('../services/githubService');
 
 // Sincronizar una solicitud con GitHub
 const sincronizarSolicitudConGitHub = async (req, res) => {
@@ -85,8 +84,8 @@ const sincronizarSolicitudConGitHub = async (req, res) => {
 const obtenerInfoGitHub = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.userId; // ID del usuario autenticado
-    const userRole = req.userRole; // Rol del usuario (viene del middleware)
+    const userId = req.userId;
+    const userRole = req.userRole;
 
     // Construir la consulta base según el rol
     let whereClause = { id_sol: id };
@@ -96,38 +95,32 @@ const obtenerInfoGitHub = async (req, res) => {
       whereClause.id_desarrollador_asignado = userId;
     }
 
-    // Para desarrolladores usamos findFirst, para otros roles findUnique
-    const solicitud = userRole === 'DESARROLLADOR' 
-      ? await prisma.solicitudCambio.findFirst({
-          where: whereClause,
+    // Consulta unificada para todos los roles
+    const solicitud = await prisma.solicitudCambio.findFirst({
+      where: whereClause,
+      select: {
+        id_sol: true,
+        titulo_sol: true,
+        estado_sol: true,
+        id_desarrollador_asignado: true,
+        github_repo_url: true,
+        github_branch_name: true,
+        github_pr_number: true,
+        github_pr_url: true,
+        github_pr_state: true,
+        github_merged_at: true,
+        github_last_sync: true,
+        desarrolladorAsignado: {
           select: {
-            id_sol: true,
-            titulo_sol: true,
-            estado_sol: true,
-            id_desarrollador_asignado: true,
-            github_repo_url: true,
-            github_branch_name: true,
-            github_pr_number: true,
-            github_pr_url: true,
-            github_commits: true,
-            github_last_sync: true
+            nom_usu1: true,
+            nom_usu2: true,
+            ape_usu1: true,
+            ape_usu2: true,
+            github_token: true
           }
-        })
-      : await prisma.solicitudCambio.findUnique({
-          where: { id_sol: id },
-          select: {
-            id_sol: true,
-            titulo_sol: true,
-            estado_sol: true,
-            id_desarrollador_asignado: true,
-            github_repo_url: true,
-            github_branch_name: true,
-            github_pr_number: true,
-            github_pr_url: true,
-            github_commits: true,
-            github_last_sync: true
-          }
-        });
+        }
+      }
+    });
 
     if (!solicitud) {
       return res.status(404).json({
@@ -605,6 +598,7 @@ const crearBranchGitFlow = async (req, res) => {
     // Obtener token personal del desarrollador
     const userToken = await obtenerTokenUsuario(userId);
 
+    console.log('🔄 Iniciando creación de branch GitFlow:'+' ' + branchType + ' ' + baseBranch + ' ' + repoType + ' ' + userToken );
     // Crear el branch con GitFlow
     const resultado = await githubService.crearBranchGitFlow(
       solicitud, 
@@ -651,10 +645,10 @@ const crearPullRequestDesarrollador = async (req, res) => {
     const userId = req.userId;
 
     // Validar datos requeridos
-    if (!branchName || !repoType) {
+    if (!branchName || !repoType || !baseBranch) {
       return res.status(400).json({
         success: false,
-        message: 'Nombre del branch y repositorio son requeridos'
+        message: 'Nombre del branch, repositorio y branch base son requeridos'
       });
     }
 
@@ -670,22 +664,19 @@ const crearPullRequestDesarrollador = async (req, res) => {
       });
     }
 
-    if (solicitud.id_desarrollador_asignado !== userId) {
-      return res.status(403).json({
-        success: false,
-        message: 'No tienes permisos para trabajar en esta solicitud'
-      });
-    }
+    // Obtener el token del desarrollador si existe
+    const desarrollador = await prisma.usuario.findUnique({
+      where: { id_usu: userId }
+    });
 
-    // Obtener token personal del desarrollador
-    const userToken = await obtenerTokenUsuario(userId);
+    const userToken = desarrollador?.github_token || null;
 
-    // Crear el Pull Request
-    const resultado = await githubService.crearPullRequestPersonalizado(
-      solicitud, 
-      branchName, 
-      repoType, 
-      baseBranch || 'main', 
+    // Crear el Pull Request usando el servicio de GitHub
+    const pullRequest = await githubService.crearPullRequestPersonalizado(
+      solicitud,
+      branchName,
+      repoType,
+      baseBranch,  // Usar el branch base proporcionado
       userToken
     );
 
@@ -693,10 +684,10 @@ const crearPullRequestDesarrollador = async (req, res) => {
     const solicitudActualizada = await prisma.solicitudCambio.update({
       where: { id_sol: id },
       data: {
-        github_pr_number: resultado.number,
-        github_pr_url: resultado.url,
-        github_branch_name: resultado.branchName,
-        github_repo_url: `https://github.com/${githubService.defaultOwner}/${resultado.repository}`,
+        github_pr_number: pullRequest.number,
+        github_pr_url: pullRequest.url,
+        github_branch_name: pullRequest.branchName,
+        github_repo_url: `https://github.com/${githubService.defaultOwner}/${pullRequest.repository}`,
         github_last_sync: new Date()
       }
     });
@@ -705,7 +696,7 @@ const crearPullRequestDesarrollador = async (req, res) => {
       success: true,
       message: 'Pull Request creado exitosamente',
       data: {
-        pullRequest: resultado,
+        pullRequest: pullRequest,
         solicitud: solicitudActualizada
       }
     });

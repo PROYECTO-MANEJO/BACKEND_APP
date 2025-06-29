@@ -422,7 +422,8 @@ model SolicitudCambio {
   github_branch_name          String?       @map("GITHUB_BRANCH_NAME") @db.VarChar(200)
   github_pr_number            Int?          @map("GITHUB_PR_NUMBER")
   github_pr_url               String?       @map("GITHUB_PR_URL") @db.VarChar(500)
-  github_commits              Json?         @map("GITHUB_COMMITS")
+  github_pr_state             String?       @map("GITHUB_PR_STATE") @db.VarChar(50)
+  github_merged_at            DateTime?     @map("GITHUB_MERGED_AT") @db.Timestamp
   github_last_sync            DateTime?     @map("GITHUB_LAST_SYNC") @db.Timestamp
 
   // --- METADATOS ---

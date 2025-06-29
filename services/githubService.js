@@ -2,9 +2,9 @@ const axios = require('axios');
 
 class GitHubService {
   constructor() {
-    this.baseURL = 'https://api.github.com';
-    this.token = process.env.GITHUB_TOKEN; // Token de acceso personal
-    this.defaultOwner = process.env.GITHUB_DEFAULT_OWNER || 'tu-organizacion';
+    this.baseURL = process.env.GITHUB_BASE_URL || 'https://api.github.com';
+    this.token = process.env.GITHUB_TOKEN;
+    this.defaultOwner = process.env.GITHUB_OWNER;
     this.defaultRepo = process.env.GITHUB_DEFAULT_REPO || 'tu-repositorio';
     
     // Solo 2 repositorios: Frontend y Backend
@@ -29,6 +29,14 @@ class GitHubService {
       'bugfix': { prefix: 'bugfix/', defaultBase: 'develop' },
       'release': { prefix: 'release/', defaultBase: 'develop' }
     };
+
+    // Validar configuración requerida
+    if (!this.defaultOwner) {
+      console.error('❌ GITHUB_OWNER no está configurado en el .env');
+    }
+    if (!this.repositories.frontend || !this.repositories.backend) {
+      console.error('❌ GITHUB_REPO_FRONTEND o GITHUB_REPO_BACKEND no están configurados en el .env');
+    }
   }
 
   // Verificar si el servicio está configurado correctamente
@@ -497,78 +505,127 @@ ${solicitud.plan_implementacion_sol || 'Por definir'}
   // Crear branch con GitFlow y token personalizado
   async crearBranchGitFlow(solicitud, branchType = 'feature', baseBranch = null, repoType = 'frontend', userToken = null) {
     try {
-      const client = this.createClientWithToken(userToken);
-      const repoName = this.repositories[repoType];
-      const gitFlowConfig = this.gitFlowTypes[branchType];
-      
-      if (!gitFlowConfig) {
-        throw new Error(`Tipo de branch no soportado: ${branchType}`);
+      console.log('🔍 Iniciando creación de branch GitFlow:', {
+        solicitudId: solicitud.id_sol,
+        branchType,
+        baseBranch,
+        repoType
+      });
+
+      if (!this.isConfigured()) {
+        console.error('❌ GitHub no está configurado:', {
+          token: !!this.token,
+          owner: this.defaultOwner,
+          repos: this.repositories
+        });
+        throw new Error('GitHub no está configurado');
       }
 
-      const branchName = this.generarNombreBranchGitFlow(solicitud, branchType);
-      const finalBaseBranch = baseBranch || gitFlowConfig.defaultBase;
+      const repoName = this.repositories[repoType];
+      console.log('📦 Repositorio seleccionado:', {
+        type: repoType,
+        name: repoName,
+        owner: this.defaultOwner
+      });
 
-      // 1. Verificar que el branch base existe
+      // Si no se especifica baseBranch, usar el default del tipo
+      const targetBaseBranch = baseBranch || this.gitFlowTypes[branchType]?.defaultBase || 'develop';
+      console.log('🌿 Branch base a utilizar:', targetBaseBranch);
+
+      // Crear cliente con token personalizado si se proporciona
+      const client = this.createClientWithToken(userToken);
+
+      // 1. Verificar que existe el branch base usando la API de branches
       try {
-        await client.get(`/repos/${this.defaultOwner}/${repoName}/git/refs/heads/${finalBaseBranch}`);
+        console.log('🔍 Verificando branch base usando API de branches...');
+        const branchesResponse = await client.get(`/repos/${this.defaultOwner}/${repoName}/branches`);
+        const branches = branchesResponse.data;
+        console.log('📋 Branches disponibles:', branches.map(b => b.name));
+        
+        const branchExists = branches.some(b => b.name === targetBaseBranch);
+        if (!branchExists) {
+          console.error('❌ Branch base no encontrado en la lista de branches:', targetBaseBranch);
+          throw new Error(`El branch base '${targetBaseBranch}' no existe en el repositorio ${repoName}`);
+        }
+
+        console.log('✅ Branch base encontrado:', targetBaseBranch);
+        
+        // 2. Obtener el SHA del branch base
+        const baseBranchResponse = await client.get(`/repos/${this.defaultOwner}/${repoName}/branches/${targetBaseBranch}`);
+        const baseSha = baseBranchResponse.data.commit.sha;
+        const branchName = this.generarNombreBranchGitFlow(solicitud, branchType);
+
+        // 3. Crear el nuevo branch
+        console.log('📝 Creando nuevo branch:', branchName, 'desde SHA:', baseSha);
+        const newBranchResponse = await client.post(`/repos/${this.defaultOwner}/${repoName}/git/refs`, {
+          ref: `refs/heads/${branchName}`,
+          sha: baseSha
+        });
+
+        console.log('✅ Branch creado exitosamente:', newBranchResponse.data.ref);
+
+        return {
+          success: true,
+          branchName,
+          repository: repoName,
+          repoType,
+          url: `https://github.com/${this.defaultOwner}/${repoName}/tree/${branchName}`,
+          baseBranch: targetBaseBranch,
+          sha: newBranchResponse.data.object.sha
+        };
+
       } catch (error) {
+        console.error('❌ Error detallado:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status
+        });
+        
         if (error.response?.status === 404) {
-          throw new Error(`El branch base '${finalBaseBranch}' no existe en el repositorio ${repoName}`);
+          throw new Error(`El branch base '${targetBaseBranch}' no existe o no es accesible en el repositorio ${repoName}`);
         }
         throw error;
       }
 
-      // 2. Obtener el SHA del branch base
-      const baseBranchResponse = await client.get(`/repos/${this.defaultOwner}/${repoName}/git/refs/heads/${finalBaseBranch}`);
-      const baseSha = baseBranchResponse.data.object.sha;
-
-      // 3. Crear el nuevo branch
-      const newBranchResponse = await client.post(`/repos/${this.defaultOwner}/${repoName}/git/refs`, {
-        ref: `refs/heads/${branchName}`,
-        sha: baseSha
-      });
-
-      return {
-        success: true,
-        branchName,
-        branchType,
-        repository: repoName,
-        repoType,
-        baseBranch: finalBaseBranch,
-        url: `https://github.com/${this.defaultOwner}/${repoName}/tree/${branchName}`,
-        sha: newBranchResponse.data.object.sha,
-        createdWithPersonalToken: !!userToken
-      };
-
     } catch (error) {
-      console.error('Error creando branch GitFlow:', error.message);
-      
-      // Si el branch ya existe, devolver información del branch existente
-      if (error.response?.status === 422 && error.response.data.message.includes('already exists')) {
-        const branchName = this.generarNombreBranchGitFlow(solicitud, branchType);
-        const repoName = this.repositories[repoType];
-        
-        return {
-          success: true,
-          branchName,
-          branchType,
-          repository: repoName,
-          repoType,
-          url: `https://github.com/${this.defaultOwner}/${repoName}/tree/${branchName}`,
-          alreadyExists: true,
-          createdWithPersonalToken: !!userToken
-        };
-      }
-      
+      console.error('❌ Error en crearBranchGitFlow:', error);
       throw error;
     }
   }
 
   // Crear Pull Request con token personalizado
-  async crearPullRequestPersonalizado(solicitud, branchName, repoType = 'frontend', baseBranch = 'main', userToken = null) {
+  async crearPullRequestPersonalizado(solicitud, branchName, repoType = 'frontend', baseBranch = null, userToken = null) {
     try {
       const client = this.createClientWithToken(userToken);
       const repoName = this.repositories[repoType];
+      
+      // Usar exactamente el branch base proporcionado sin valores por defecto
+      const targetBaseBranch = baseBranch;
+
+      console.log('🔍 Creando Pull Request:', {
+        repo: repoName,
+        head: branchName,
+        base: targetBaseBranch,
+        title: `SOL-${solicitud.id_sol.substring(0, 8)}: ${solicitud.titulo_sol}`
+      });
+
+      // Primero verificamos que el branch base exista
+      try {
+        const baseResponse = await client.get(`/repos/${this.defaultOwner}/${repoName}/git/ref/heads/${targetBaseBranch}`);
+        console.log('✅ Branch base verificado:', baseResponse.data);
+      } catch (error) {
+        console.error('❌ Error verificando branch base:', error.message);
+        throw new Error(`El branch base ${targetBaseBranch} no existe en el repositorio ${repoName}`);
+      }
+
+      // Luego verificamos que el branch head exista
+      try {
+        const headResponse = await client.get(`/repos/${this.defaultOwner}/${repoName}/git/ref/heads/${branchName}`);
+        console.log('✅ Branch head verificado:', headResponse.data);
+      } catch (error) {
+        console.error('❌ Error verificando branch head:', error.message);
+        throw new Error(`El branch ${branchName} no existe en el repositorio ${repoName}`);
+      }
       
       const titulo = `SOL-${solicitud.id_sol.substring(0, 8)}: ${solicitud.titulo_sol}`;
       const cuerpo = `## Solicitud de Cambio: ${solicitud.titulo_sol}
@@ -599,28 +656,44 @@ ${solicitud.plan_backout_sol || 'Por definir'}
 *Este PR está vinculado automáticamente con la solicitud de cambio ${solicitud.id_sol}*
       `;
 
-      const prResponse = await client.post(`/repos/${this.defaultOwner}/${repoName}/pulls`, {
-        title: titulo,
-        head: branchName,
-        base: baseBranch,
-        body: cuerpo,
-        draft: false
-      });
+      try {
+        const prResponse = await client.post(`/repos/${this.defaultOwner}/${repoName}/pulls`, {
+          title: titulo,
+          head: branchName,
+          base: targetBaseBranch,
+          body: cuerpo,
+          draft: false
+        });
 
-      return {
-        success: true,
-        number: prResponse.data.number,
-        url: prResponse.data.html_url,
-        title: prResponse.data.title,
-        branchName,
-        repository: repoName,
-        repoType,
-        baseBranch,
-        createdWithPersonalToken: !!userToken
-      };
+        return {
+          success: true,
+          number: prResponse.data.number,
+          url: prResponse.data.html_url,
+          title: prResponse.data.title,
+          branchName,
+          repository: repoName,
+          repoType,
+          baseBranch: targetBaseBranch,
+          createdWithPersonalToken: !!userToken
+        };
 
+      } catch (error) {
+        console.error('Error detallado al crear Pull Request:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+          requestData: error.config?.data,
+          errors: error.response?.data?.errors // Mostrar los errores específicos
+        });
+        throw error;
+      }
     } catch (error) {
-      console.error('Error creando Pull Request personalizado:', error.message);
+      console.error('Error detallado al crear Pull Request:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        requestData: error.config?.data
+      });
       throw error;
     }
   }
