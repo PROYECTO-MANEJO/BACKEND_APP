@@ -166,4 +166,15 @@ router.post('/solicitud/:id/testing/enviar-simple',
   desarrolladorController.enviarATestingSimple
 );
 
+// RUTAS TEMPORALES DE DEBUGGING - REMOVER EN PRODUCCIÓN
+router.get('/verificar-tokens', 
+  validateJWT, 
+  desarrolladorController.verificarTokensDesarrolladores
+);
+
+router.post('/configurar-token', 
+  validateJWT, 
+  desarrolladorController.configurarTokenGitHub
+);
+
 module.exports = router; 

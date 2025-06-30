@@ -873,10 +873,14 @@ ${solicitud.plan_backout_sol || 'Por definir'}
   }
 
   // Obtener branches disponibles en un repositorio
-  async obtenerBranchesDisponibles(repoType = 'frontend') {
+  async obtenerBranchesDisponibles(repoType = 'frontend', userToken = null) {
     try {
       const repoName = this.repositories[repoType];
-      const response = await this.client.get(`/repos/${this.defaultOwner}/${repoName}/branches`);
+      
+      // Usar el token del usuario si se proporciona, sino usar el del sistema
+      const client = userToken ? this.createClientWithToken(userToken) : this.client;
+      
+      const response = await client.get(`/repos/${this.defaultOwner}/${repoName}/branches`);
       
       return response.data.map(branch => ({
         name: branch.name,
@@ -888,6 +892,11 @@ ${solicitud.plan_backout_sol || 'Por definir'}
       }));
     } catch (error) {
       console.error('Error obteniendo branches disponibles:', error.message);
+      if (error.response?.status === 401) {
+        throw new Error('Token de GitHub inválido o sin permisos');
+      } else if (error.response?.status === 404) {
+        throw new Error(`Repositorio ${repoType} no encontrado`);
+      }
       return [];
     }
   }

@@ -1,6 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const { GitHubService } = require('../services/githubService');
+const GitHubService = require('../services/githubService');
 
 // Obtener solicitudes asignadas a un desarrollador específico
 const getSolicitudesAsignadas = async (req, res) => {
@@ -231,16 +231,31 @@ const getSolicitudEspecifica = async (req, res) => {
 
 // Función auxiliar para obtener el token de GitHub del desarrollador
 const obtenerTokenGitHubDesarrollador = async (desarrolladorId) => {
-  const desarrollador = await prisma.usuario.findUnique({
-    where: { id_usu: desarrolladorId },
-    select: { github_token: true }
-  });
+  console.log('🔍 Obteniendo token para desarrollador ID:', desarrolladorId);
+  
+  // Usar una query directa para debuggear
+  const desarrollador = await prisma.$queryRaw`
+    SELECT "ID_USU", "NOM_USU1", "APE_USU1", "GITHUB_TOKEN", "GITHUB_USERNAME" 
+    FROM "USUARIOS" 
+    WHERE "ID_USU" = ${desarrolladorId}::uuid
+  `;
+  
+  console.log('🔍 Query directa resultado:', desarrollador);
+  
+  if (!desarrollador || desarrollador.length === 0) {
+    throw new Error('Desarrollador no encontrado en la base de datos');
+  }
+  
+  const usuario = desarrollador[0];
+  console.log('👤 Desarrollador encontrado:', `${usuario.NOM_USU1} ${usuario.APE_USU1}`);
+  console.log('🔑 Token encontrado:', usuario.GITHUB_TOKEN ? 'SÍ (ocultado por seguridad)' : 'NO');
+  console.log('🔑 Valor del token (primeros 10 chars):', usuario.GITHUB_TOKEN ? usuario.GITHUB_TOKEN.substring(0, 10) + '...' : 'NULL');
 
-  if (!desarrollador?.github_token) {
+  if (!usuario.GITHUB_TOKEN) {
     throw new Error('El desarrollador no tiene configurado su token de GitHub');
   }
 
-  return desarrollador.github_token;
+  return usuario.GITHUB_TOKEN;
 };
 
 // Actualizar estado de una solicitud
@@ -814,8 +829,8 @@ const crearRamaEspecifica = async (req, res) => {
     const sufijo = repository_type === 'FRONTEND' ? 'f' : 'b';
     const branchName = `feature/SC-${solicitud.id_sol.split('-')[0]}-${sufijo}`;
 
-    // Crear branch en GitHub
-    const githubService = new GitHubService();
+    // Crear branch en GitHub usando la instancia importada
+    const githubService = GitHubService;
     const repoType = repository_type.toLowerCase();
     
     console.log(`Creando branch en ${repoType} desde ${base_branch}...`);
@@ -925,8 +940,8 @@ const crearPRSpecifico = async (req, res) => {
       });
     }
 
-    // Crear Pull Request en GitHub
-    const githubService = new GitHubService();
+    // Crear Pull Request en GitHub usando la instancia importada
+    const githubService = GitHubService;
     const repoType = repository_type.toLowerCase();
     
     console.log(`Creando PR en ${repoType}...`);
@@ -1070,16 +1085,22 @@ const obtenerRamasDisponibles = async (req, res) => {
     let githubToken;
     try {
       githubToken = await obtenerTokenGitHubDesarrollador(desarrolladorId);
+      console.log('✅ Token obtenido exitosamente para obtener ramas');
     } catch (error) {
+      console.error('❌ Error obteniendo token:', error.message);
       return res.status(400).json({
         success: false,
         message: error.message
       });
     }
 
-    // Obtener ramas del repositorio
-    const githubService = new GitHubService();
-    const ramas = await githubService.obtenerBranchesDisponibles(repository_type.toLowerCase());
+      // Obtener ramas del repositorio usando el token del desarrollador
+  const githubService = GitHubService;
+  
+  console.log('🔑 Token obtenido para obtener ramas:', githubToken ? 'SÍ (ocultado)' : 'NO');
+  console.log('📁 Tipo de repositorio:', repository_type.toLowerCase());
+  
+  const ramas = await githubService.obtenerBranchesDisponibles(repository_type.toLowerCase(), githubToken);
 
     res.json({
       success: true,
@@ -1169,6 +1190,136 @@ const enviarATestingSimple = async (req, res) => {
   }
 };
 
+// FUNCIÓN TEMPORAL DE DEBUGGING - REMOVER EN PRODUCCIÓN
+const verificarTokensDesarrolladores = async (req, res) => {
+  try {
+    const desarrolladores = await prisma.usuario.findMany({
+      where: {
+        cuentas: {
+          some: {
+            rol_cue: 'DESARROLLADOR'
+          }
+        }
+      },
+      select: {
+        id_usu: true,
+        nom_usu1: true,
+        ape_usu1: true,
+        github_token: true,
+        github_username: true,
+        cuentas: {
+          select: {
+            cor_cue: true,
+            rol_cue: true
+          }
+        }
+      }
+    });
+
+    const resultado = desarrolladores.map(dev => ({
+      id: dev.id_usu,
+      nombre: `${dev.nom_usu1} ${dev.ape_usu1}`,
+      email: dev.cuentas[0]?.cor_cue,
+      tiene_token: !!dev.github_token,
+      tiene_username: !!dev.github_username,
+      token_preview: dev.github_token ? `${dev.github_token.substring(0, 8)}...` : null
+    }));
+
+    res.json({
+      success: true,
+      data: resultado,
+      total: desarrolladores.length
+    });
+
+  } catch (error) {
+    console.error('Error verificando tokens:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error verificando tokens',
+      error: error.message
+    });
+  }
+};
+
+// FUNCIÓN TEMPORAL PARA CONFIGURAR TOKEN - REMOVER EN PRODUCCIÓN
+const configurarTokenGitHub = async (req, res) => {
+  try {
+    const { desarrolladorId, githubToken, githubUsername } = req.body;
+
+    if (!desarrolladorId || !githubToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'desarrolladorId y githubToken son requeridos'
+      });
+    }
+
+    // Verificar que el desarrollador existe
+    const desarrollador = await prisma.usuario.findUnique({
+      where: { id_usu: desarrolladorId },
+      select: {
+        id_usu: true,
+        nom_usu1: true,
+        ape_usu1: true,
+        cuentas: {
+          select: {
+            rol_cue: true
+          }
+        }
+      }
+    });
+
+    if (!desarrollador) {
+      return res.status(404).json({
+        success: false,
+        message: 'Desarrollador no encontrado'
+      });
+    }
+
+    // Verificar que es desarrollador
+    const esDeveloper = desarrollador.cuentas.some(cuenta => cuenta.rol_cue === 'DESARROLLADOR');
+    if (!esDeveloper) {
+      return res.status(400).json({
+        success: false,
+        message: 'El usuario no es un desarrollador'
+      });
+    }
+
+    // Actualizar token
+    const usuarioActualizado = await prisma.usuario.update({
+      where: { id_usu: desarrolladorId },
+      data: {
+        github_token: githubToken,
+        github_username: githubUsername || null
+      },
+      select: {
+        id_usu: true,
+        nom_usu1: true,
+        ape_usu1: true,
+        github_username: true
+      }
+    });
+
+    res.json({
+      success: true,
+      message: `Token configurado para ${usuarioActualizado.nom_usu1} ${usuarioActualizado.ape_usu1}`,
+      data: {
+        id: usuarioActualizado.id_usu,
+        nombre: `${usuarioActualizado.nom_usu1} ${usuarioActualizado.ape_usu1}`,
+        github_username: usuarioActualizado.github_username,
+        token_configurado: true
+      }
+    });
+
+  } catch (error) {
+    console.error('Error configurando token:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error configurando token',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getSolicitudesAsignadas,
   getSolicitudEspecifica,
@@ -1182,5 +1333,7 @@ module.exports = {
   obtenerRamasSolicitud,
   actualizarEstadoSolicitudPorRamas,
   obtenerRamasDisponibles,
-  enviarATestingSimple
+  enviarATestingSimple,
+  verificarTokensDesarrolladores, // TEMPORAL
+  configurarTokenGitHub // TEMPORAL
 }; 

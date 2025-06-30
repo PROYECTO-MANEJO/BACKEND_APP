@@ -41,6 +41,9 @@ model Usuario {
   id_car_per String? @map("ID_CAR_PER") @db.Uuid
 
   // ✅ CAMPOS PARA ARCHIVOS PDF (almacenados como BYTEA)
+  // ✅ NUEVOS CAMPOS PARA APROBACIÓN INDEPENDIENTE
+  cedula_aprobada Boolean @map("CEDULA_APROBADA") @default(false)
+  matricula_aprobada Boolean @map("MATRICULA_APROBADA") @default(false)
   enl_ced_pdf Bytes? @map("ENL_CED_PDF")
   enl_mat_pdf Bytes? @map("ENL_MAT_PDF")
   cedula_filename String? @map("CEDULA_FILENAME") @db.VarChar(255)
@@ -83,9 +86,11 @@ model Cuenta {
   cor_cue String @map("COR_CUE") @db.VarChar(150)
   rol_cue RolCuenta @map("ROL_CUE")
   id_usu_per String @map("ID_USU_PER") @db.Uuid
-
+  isVerified Boolean @default(false) // Este es el campo que indica si la cuenta está verificada
+  emailVerificationToken String?      // El token de verificación
+  emailVerificationExpiry DateTime?
   usuario Usuario @relation(fields: [id_usu_per], references: [id_usu])
-  
+
   @@map("CUENTAS")
 }
 
@@ -417,6 +422,9 @@ model SolicitudCambio {
   comentarios_internos_sol    String?       @map("COMENTARIOS_INTERNOS_SOL") @db.Text
   comentarios_tecnicos_sol    String?       @map("COMENTARIOS_TECNICOS_SOL") @db.Text
   exito_implementacion        Boolean?      @map("EXITO_IMPLEMENTACION")
+
+  // --- INTEGRACIÓN GITHUB ---
+  github_repo_url             String?       @map("GITHUB_REPO_URL") @db.VarChar(500)
 
   // --- METADATOS ---
   fec_creacion_sol            DateTime      @map("FEC_CREACION_SOL") @default(now()) @db.Timestamp
