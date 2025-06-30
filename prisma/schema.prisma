@@ -3,6 +3,7 @@
 
 generator client {
   provider = "prisma-client-js"
+    binaryTargets = ["native", "windows"]
 }
 
 datasource db {
@@ -40,6 +41,9 @@ model Usuario {
   id_car_per String? @map("ID_CAR_PER") @db.Uuid
 
   // ✅ CAMPOS PARA ARCHIVOS PDF (almacenados como BYTEA)
+  // ✅ NUEVOS CAMPOS PARA APROBACIÓN INDEPENDIENTE
+  cedula_aprobada Boolean @map("CEDULA_APROBADA") @default(false)
+  matricula_aprobada Boolean @map("MATRICULA_APROBADA") @default(false)
   enl_ced_pdf Bytes? @map("ENL_CED_PDF")
   enl_mat_pdf Bytes? @map("ENL_MAT_PDF")
   cedula_filename String? @map("CEDULA_FILENAME") @db.VarChar(255)
@@ -51,7 +55,11 @@ model Usuario {
 
   // Campos para recuperación de contraseña
   resetToken String? @map("RESET_TOKEN") @db.VarChar(255)
-  resetTokenExpiry DateTime? @map("RESET_TOKEN_EXPIRY") @db.Timestamp(3) 
+  resetTokenExpiry DateTime? @map("RESET_TOKEN_EXPIRY") @db.Timestamp(3)
+  
+  // Campos para integración con GitHub
+  github_token String? @map("GITHUB_TOKEN") @db.VarChar(255)
+  github_username String? @map("GITHUB_USERNAME") @db.VarChar(100)
 
   // ✅ RELACIONES EXISTENTES
   carrera Carrera? @relation(fields: [id_car_per], references: [id_car])
@@ -68,6 +76,7 @@ model Usuario {
   // ✅ RELACIONES DE SOLICITUDES
   solicitudesCreadas SolicitudCambio[] @relation("SolicitudesUsuario")
   solicitudesResponsables SolicitudCambio[] @relation("SolicitudesAdmin")
+  solicitudesAsignadas SolicitudCambio[] @relation("SolicitudesDesarrollador")
   
   @@map("USUARIOS")
 }
@@ -77,9 +86,11 @@ model Cuenta {
   cor_cue String @map("COR_CUE") @db.VarChar(150)
   rol_cue RolCuenta @map("ROL_CUE")
   id_usu_per String @map("ID_USU_PER") @db.Uuid
-
+  isVerified Boolean @default(false) // Este es el campo que indica si la cuenta está verificada
+  emailVerificationToken String?      // El token de verificación
+  emailVerificationExpiry DateTime?
   usuario Usuario @relation(fields: [id_usu_per], references: [id_usu])
-  
+
   @@map("CUENTAS")
 }
 
@@ -88,6 +99,7 @@ enum RolCuenta {
   USUARIO
   MASTER
   ADMINISTRADOR
+  DESARROLLADOR
 }
 
 model Organizador {
@@ -363,33 +375,142 @@ enum EstadoPago {
 // =====================================================
 
 model SolicitudCambio {
-  id_sol String @id @default(uuid()) @map("ID_SOL") @db.Uuid
-  titulo_sol String @map("TITULO_SOL") @db.VarChar(200)
-  descripcion_sol String @map("DESCRIPCION_SOL") @db.Text
-  justificacion_sol String @map("JUSTIFICACION_SOL") @db.Text
-  tipo_cambio_sol TipoCambio @map("TIPO_CAMBIO_SOL")
-  prioridad_sol PrioridadSolicitud @map("PRIORIDAD_SOL") @default(MEDIA)
-  estado_sol EstadoSolicitud @map("ESTADO_SOL") @default(PENDIENTE)
-  fec_creacion_sol DateTime @map("FEC_CREACION_SOL") @default(now()) @db.Timestamp
-  fec_respuesta_sol DateTime? @map("FEC_RESPUESTA_SOL") @db.Timestamp
-  comentarios_admin_sol String? @map("COMENTARIOS_ADMIN_SOL") @db.Text
-  comentarios_internos_sol String? @map("COMENTARIOS_INTERNOS_SOL") @db.Text
-  id_usuario_sol String @map("ID_USUARIO_SOL") @db.Uuid
-  id_admin_resp_sol String? @map("ID_ADMIN_RESP_SOL") @db.Uuid
-  
-  usuario Usuario @relation("SolicitudesUsuario", fields: [id_usuario_sol], references: [id_usu])
-  adminResponsable Usuario? @relation("SolicitudesAdmin", fields: [id_admin_resp_sol], references: [id_usu])
-  
+  id_sol                       String        @id @default(uuid()) @map("ID_SOL") @db.Uuid
+
+  // --- DATOS INICIALES DEL USUARIO ---
+  titulo_sol                  String        @map("TITULO_SOL") @db.VarChar(200)
+  descripcion_sol             String        @map("DESCRIPCION_SOL") @db.Text
+  justificacion_sol           String        @map("JUSTIFICACION_SOL") @db.Text
+  tipo_cambio_sol             TipoCambio    @map("TIPO_CAMBIO_SOL")
+  prioridad_sol               PrioridadSolicitud @map("PRIORIDAD_SOL") @default(MEDIA)
+  urgencia_sol                UrgenciaSolicitud  @map("URGENCIA_SOL") @default(NORMAL)
+  estado_sol                  EstadoSolicitud    @map("ESTADO_SOL") @default(BORRADOR)
+
+  // --- ANÁLISIS DEL MASTER ---
+  impacto_negocio_sol         String?       @map("IMPACTO_NEGOCIO_SOL") @db.Text
+  impacto_tecnico_sol         String?       @map("IMPACTO_TECNICO_SOL") @db.Text
+  riesgo_cambio_sol           RiesgoCambio  @map("RIESGO_CAMBIO_SOL") @default(BAJO)
+  categoria_cambio_sol        CategoriaCambio @map("CATEGORIA_CAMBIO_SOL") @default(NORMAL)
+
+  // --- PLANES TÉCNICOS (Desarrollador) ---
+  plan_implementacion_sol     String?       @map("PLAN_IMPLEMENTACION_SOL") @db.Text
+  plan_rollout_sol            String?       @map("PLAN_ROLLOUT_SOL") @db.Text
+  plan_backout_sol            String?       @map("PLAN_BACKOUT_SOL") @db.Text
+  plan_testing_sol            String?       @map("PLAN_TESTING_SOL") @db.Text
+
+  planes_enviados_revision    Boolean       @map("PLANES_ENVIADOS_REVISION") @default(false)
+  fecha_envio_planes          DateTime?     @map("FECHA_ENVIO_PLANES") @db.Timestamp
+  planes_aprobados            Boolean?      @map("PLANES_APROBADOS") @default(false)
+  fecha_aprobacion_planes     DateTime?     @map("FECHA_APROBACION_PLANES") @db.Timestamp
+  comentarios_aprobacion_planes String?     @map("COMENTARIOS_APROBACION_PLANES") @db.Text
+
+  // --- PLANIFICACIÓN TEMPORAL ---
+  fecha_planificada_inicio_sol DateTime?    @map("FECHA_PLANIFICADA_INICIO_SOL") @db.Date
+  fecha_planificada_fin_sol   DateTime?     @map("FECHA_PLANIFICADA_FIN_SOL") @db.Date
+  hora_planificada_inicio_sol String?       @map("HORA_PLANIFICADA_INICIO_SOL") @db.VarChar(10)
+  hora_planificada_fin_sol    String?       @map("HORA_PLANIFICADA_FIN_SOL") @db.VarChar(10)
+  tiempo_estimado_horas_sol   Int?          @map("TIEMPO_ESTIMADO_HORAS_SOL")
+
+  fecha_real_inicio_sol       DateTime?     @map("FECHA_REAL_INICIO_SOL") @db.Date
+  fecha_real_fin_sol          DateTime?     @map("FECHA_REAL_FIN_SOL") @db.Date
+  hora_real_inicio_sol        String?       @map("HORA_REAL_INICIO_SOL") @db.VarChar(10)
+  hora_real_fin_sol           String?       @map("HORA_REAL_FIN_SOL") @db.VarChar(10)
+  tiempo_real_horas_sol       Int?          @map("TIEMPO_REAL_HORAS_SOL")
+
+  // --- COMENTARIOS Y RESULTADOS ---
+  comentarios_admin_sol       String?       @map("COMENTARIOS_ADMIN_SOL") @db.Text
+  comentarios_internos_sol    String?       @map("COMENTARIOS_INTERNOS_SOL") @db.Text
+  comentarios_tecnicos_sol    String?       @map("COMENTARIOS_TECNICOS_SOL") @db.Text
+  exito_implementacion        Boolean?      @map("EXITO_IMPLEMENTACION")
+
+  // --- INTEGRACIÓN GITHUB ---
+  github_repo_url             String?       @map("GITHUB_REPO_URL") @db.VarChar(500)
+
+  // --- METADATOS ---
+  fec_creacion_sol            DateTime      @map("FEC_CREACION_SOL") @default(now()) @db.Timestamp
+  fec_respuesta_sol           DateTime?     @map("FEC_RESPUESTA_SOL") @db.Timestamp
+  fec_ultima_actualizacion    DateTime      @map("FEC_ULTIMA_ACTUALIZACION") @default(now()) @db.Timestamp
+
+  // --- RELACIONES ---
+  id_usuario_sol              String        @map("ID_USUARIO_SOL") @db.Uuid
+  id_admin_resp_sol           String?       @map("ID_ADMIN_RESP_SOL") @db.Uuid
+  id_desarrollador_asignado   String?       @map("ID_DESARROLLADOR_ASIGNADO") @db.Uuid
+
+  usuario                     Usuario       @relation("SolicitudesUsuario", fields: [id_usuario_sol], references: [id_usu])
+  adminResponsable            Usuario?      @relation("SolicitudesAdmin", fields: [id_admin_resp_sol], references: [id_usu])
+  desarrolladorAsignado       Usuario?      @relation("SolicitudesDesarrollador", fields: [id_desarrollador_asignado], references: [id_usu])
+
+  // --- NUEVA RELACIÓN PARA MÚLTIPLES RAMAS ---
+  ramas                       SolicitudRama[]
+
   @@map("SOLICITUDES_CAMBIO")
 }
 
+// =====================================================
+// NUEVA TABLA: MÚLTIPLES RAMAS POR SOLICITUD
+// =====================================================
+
+model SolicitudRama {
+  id                          String        @id @default(uuid()) @map("ID") @db.Uuid
+  id_solicitud                String        @map("ID_SOLICITUD") @db.Uuid
+  repository_type             RepositoryType @map("REPOSITORY_TYPE")
+  branch_name                 String        @map("BRANCH_NAME") @db.VarChar(255)
+  
+  // --- INFORMACIÓN DEL PULL REQUEST ---
+  pr_number                   Int?          @map("PR_NUMBER")
+  pr_url                      String?       @map("PR_URL") @db.VarChar(500)
+  pr_state                    String?       @map("PR_STATE") @db.VarChar(50)
+  pr_status                   PRStatus      @map("PR_STATUS") @default(PENDING)
+  
+  // --- COMENTARIOS Y FECHAS DE REVISIÓN ---
+  comentarios_aprobacion      String?       @map("COMENTARIOS_APROBACION") @db.Text
+  fecha_aprobacion            DateTime?     @map("FECHA_APROBACION") @db.Timestamp
+  comentarios_rechazo         String?       @map("COMENTARIOS_RECHAZO") @db.Text
+  fecha_rechazo               DateTime?     @map("FECHA_RECHAZO") @db.Timestamp
+  
+  // --- METADATOS ---
+  created_at                  DateTime      @map("CREATED_AT") @default(now()) @db.Timestamp
+  updated_at                  DateTime      @map("UPDATED_AT") @default(now()) @db.Timestamp
+  merged_at                   DateTime?     @map("MERGED_AT") @db.Timestamp
+  fecha_merge                 DateTime?     @map("FECHA_MERGE") @db.Timestamp
+  last_sync                   DateTime?     @map("LAST_SYNC") @db.Timestamp
+
+  // --- RELACIONES ---
+  solicitud                   SolicitudCambio @relation(fields: [id_solicitud], references: [id_sol], onDelete: Cascade)
+
+  // --- CONSTRAINT: SOLO UNA RAMA POR TIPO POR SOLICITUD ---
+  @@unique([id_solicitud, repository_type])
+  @@map("SOLICITUDES_RAMAS")
+}
+
+// =====================================================
+// NUEVOS ENUMS PARA RAMAS
+// =====================================================
+
+enum RepositoryType {
+  FRONTEND
+  BACKEND
+}
+
+enum PRStatus {
+  PENDING     // Rama creada, sin PR
+  OPEN        // PR abierto, esperando revisión
+  IN_REVIEW   // PR en revisión por el Master
+  APPROVED    // PR aprobado por el Master
+  REJECTED    // PR rechazado por el Master
+  MERGED      // PR mergeado exitosamente
+}
+
 enum TipoCambio {
-  FUNCIONALIDAD_NUEVA
+  NUEVA_FUNCIONALIDAD
   MEJORA_EXISTENTE
   CORRECCION_ERROR
   CAMBIO_INTERFAZ
   OPTIMIZACION
   ACTUALIZACION_DATOS
+  CAMBIO_SEGURIDAD
+  MIGRACION_DATOS
+  INTEGRACION_EXTERNA
   OTRO
 }
 
@@ -398,16 +519,42 @@ enum PrioridadSolicitud {
   MEDIA
   ALTA
   CRITICA
+  URGENTE
+}
+
+enum UrgenciaSolicitud {
+  BAJA
+  NORMAL
+  ALTA
+  URGENTE
+  CRITICA
+}
+
+enum RiesgoCambio {
+  BAJO
+  MEDIO
+  ALTO
+  CRITICO
+}
+
+enum CategoriaCambio {
+  NORMAL
+  EXPEDITO
+  EMERGENCIA
+  ESTANDAR
 }
 
 enum EstadoSolicitud {
+  BORRADOR
   PENDIENTE
   EN_REVISION
   APROBADA
   RECHAZADA
+  CANCELADA
   EN_DESARROLLO
+  EN_TESTING
   COMPLETADA
-  CERRADA
+  FALLIDA
 }
 
 // =====================================================
