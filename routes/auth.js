@@ -36,9 +36,9 @@ router.post('/createUser', [
     check('password', 'La contraseña es obligatoria y debe tener al menos 6 caracteres').isLength({ min: 6 }),
     check('nombre', 'El primer nombre es obligatorio').not().isEmpty(),
     check('apellido', 'El primer apellido es obligatorio').not().isEmpty(),
-    check('ced_usu', 'La cédula es obligatoria').not().isEmpty(),
     check('ced_usu').custom(validarCedulaMiddleware),
-    check('carrera_id', 'La carrera es obligatoria para estudiantes UTA').optional(),
+    check('carrera', 'La carrera es obligatoria para estudiantes UTA').optional(),
+
     validateFields
 ], register);
 
