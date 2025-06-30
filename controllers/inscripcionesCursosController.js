@@ -178,6 +178,7 @@ async function inscribirUsuarioCurso(req, res) {
         estado: nuevaInscripcion.estado_pago_cur,
         esGratuito: curso.es_gratuito,
         precio: curso.precio,
+        carta_motivacion: nuevaInscripcion.carta_motivacion,
         tieneComprobante: !!nuevaInscripcion.comprobante_pago_pdf
       }
     });
@@ -207,6 +208,8 @@ const obtenerMisInscripcionesCurso = async (req, res) => {
             fec_ini_cur: true,
             fec_fin_cur: true,
             tipo_audiencia_cur: true,
+            es_gratuito: true,
+            precio: true,
             categoria: { select: { nom_cat: true } }
           }
         }
@@ -415,8 +418,8 @@ async function obtenerTodasInscripcionesCursos(req, res) {
         usuario: {
           select: {
             id_usu: true,
-            nom_usu: true,
-            ape_usu: true,
+            nom_usu1: true,
+            ape_usu1: true,
             cor_usu: true,
             ced_usu: true
           }
@@ -433,8 +436,8 @@ async function obtenerTodasInscripcionesCursos(req, res) {
         },
         adminAprobador: {
           select: {
-            nom_usu: true,
-            ape_usu: true
+            nom_usu1: true,
+            ape_usu1: true
           }
         }
       },

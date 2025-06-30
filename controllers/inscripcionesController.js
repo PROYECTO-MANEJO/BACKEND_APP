@@ -179,6 +179,7 @@ async function inscribirUsuarioEvento(req, res) {
         estado: nuevaInscripcion.estado_pago,
         esGratuito: evento.es_gratuito,
         precio: evento.precio,
+        carta_motivacion: nuevaInscripcion.carta_motivacion,
         tieneComprobante: !!nuevaInscripcion.comprobante_pago_pdf
       }
     });
@@ -212,6 +213,8 @@ const obtenerMisInscripcionesEvento = async (req, res) => {
             hor_fin_eve: true,
             ubi_eve: true,
             tipo_audiencia_eve: true,
+            es_gratuito: true,
+            precio: true,
             categoria: {
               select: { nom_cat: true }
             }
@@ -432,8 +435,8 @@ async function obtenerTodasInscripcionesEventos(req, res) {
         usuario: {
           select: {
             id_usu: true,
-            nom_usu: true,
-            ape_usu: true,
+            nom_usu1: true,
+            ape_usu1: true,
             cor_usu: true,
             ced_usu: true
           }
@@ -450,8 +453,8 @@ async function obtenerTodasInscripcionesEventos(req, res) {
         },
         adminAprobador: {
           select: {
-            nom_usu: true,
-            ape_usu: true
+            nom_usu1: true,
+            ape_usu1: true
           }
         }
       },

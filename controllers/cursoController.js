@@ -321,13 +321,19 @@ const obtenerCursoPorId = async (req, res) => {
           }
         },
         inscripcionesCurso: {
-          include: {
+          select: {
+            id_inscripcion: true,
+            carta_motivacion: true, // Este campo ya está siendo solicitado
+            fecha_inscripcion: true,
+            estado_pago: true,
+            valor: true,
+            metodo_pago: true,
+            tiene_comprobante: true,
             usuario: {
               select: {
                 nom_usu1: true,
                 ape_usu1: true,
                 cor_usu: true,
-                documentos_verificados: true
               }
             }
           }
@@ -840,6 +846,84 @@ const actualizarCarrerasCurso = async (req, res) => {
   }
 };
 
+// Obtener detalles de un curso para admin
+const obtenerDetallesCursoAdmin = async (req, res) => {
+  const { idCurso } = req.params;
+
+  try {
+    const curso = await prisma.curso.findUnique({
+      where: { id_cur: idCurso },
+      include: {
+        inscripcionesCurso: {
+          include: {
+            usuario: {
+              include: {
+                cuentas: true,
+                carrera: true
+              }
+            },
+            adminAprobador: {
+              include: {
+                cuentas: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!curso) {
+      return res.status(404).json({
+        success: false,
+        message: 'Curso no encontrado'
+      });
+    }
+
+    const inscripcionesFormateadas = curso.inscripcionesCurso.map(inscripcion => ({
+      id_inscripcion: inscripcion.id_ins_cur,
+      fecha_inscripcion: inscripcion.fecha_inscripcion,
+      estado_pago: inscripcion.estado_pago,
+      valor: inscripcion.valor,
+      metodo_pago: inscripcion.metodo_pago,
+      fecha_aprobacion: inscripcion.fecha_aprobacion,
+      tiene_comprobante: !!inscripcion.comprobante_pago_pdf,
+      carta_motivacion: inscripcion.carta_motivacion || '', // Agregar este campo
+      comprobante_info: inscripcion.comprobante_pago_pdf ? {
+        filename: inscripcion.comprobante_filename,
+        size: inscripcion.comprobante_size,
+        fecha_subida: inscripcion.fecha_subida_comprobante
+      } : null,
+      usuario: {
+        id: inscripcion.usuario.id_usu,
+        cedula: inscripcion.usuario.ced_usu,
+        nombre_completo: `${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.nom_usu2 || ''} ${inscripcion.usuario.ape_usu1} ${inscripcion.usuario.ape_usu2}`.trim(),
+        email: inscripcion.usuario.cuentas[0]?.cor_cue || 'No disponible',
+        telefono: inscripcion.usuario.num_tel_usu,
+        carrera: inscripcion.usuario.carrera?.nom_car || 'No especificada',
+        rol: inscripcion.usuario.cuentas[0]?.rol_cue || 'USUARIO'
+      },
+      admin_aprobador: inscripcion.adminAprobador ? {
+        nombre: `${inscripcion.adminAprobador.nom_usu1} ${inscripcion.adminAprobador.ape_usu1}`,
+        email: inscripcion.adminAprobador.cuentas[0]?.cor_cue
+      } : null
+    }));
+
+    res.json({
+      success: true,
+      curso: {
+        ...curso,
+        inscripciones: inscripcionesFormateadas
+      }
+    });
+  } catch (error) {
+    console.error('Error al obtener detalles del curso:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error del servidor'
+    });
+  }
+};
+
 module.exports = {
   crearCurso,
   obtenerCursos,
@@ -848,5 +932,6 @@ module.exports = {
   eliminarCurso,
   obtenerCursosDisponibles,
   obtenerMisCursos,
-  actualizarCarrerasCurso
+  actualizarCarrerasCurso,
+  obtenerDetallesCursoAdmin
 };
