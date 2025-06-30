@@ -5,6 +5,7 @@ const router = express.Router();
 const { login, renewToken, adminCreateUser, register } = require('../controllers/auth');
 const { validateFields } = require('../middlewares/validateFields');
 const { validateJWT } = require('../middlewares/validateJWT');
+const { validarCedulaMiddleware } = require('../helpers/cedulaValidator');
 
 // Ruta para login de usuarios (normales y administradores)
 router.post('/login', [
@@ -16,6 +17,7 @@ router.post('/login', [
 // Ruta para crear un usuario administrador
 router.post('/createAdmin', [
     check('ced_usu', 'La cédula es obligatoria').not().isEmpty(),
+    check('ced_usu').custom(validarCedulaMiddleware),
     check('nom_usu1', 'El primer nombre es obligatorio').not().isEmpty(),
     check('nom_usu2', 'El segundo nombre es obligatorio').not().isEmpty(),
     check('ape_usu1', 'El primer apellido es obligatorio').not().isEmpty(),
@@ -33,10 +35,10 @@ router.post('/createUser', [
     check('email', 'El correo electrónico es obligatorio').isEmail(),
     check('password', 'La contraseña es obligatoria y debe tener al menos 6 caracteres').isLength({ min: 6 }),
     check('nombre', 'El primer nombre es obligatorio').not().isEmpty(),
-    check('nombre2', 'El segundo nombre es obligatorio').not().isEmpty(),
     check('apellido', 'El primer apellido es obligatorio').not().isEmpty(),
-    check('apellido2', 'El segundo apellido es obligatorio').not().isEmpty(),
     check('ced_usu', 'La cédula es obligatoria').not().isEmpty(),
+    check('ced_usu').custom(validarCedulaMiddleware),
+    check('carrera_id', 'La carrera es obligatoria para estudiantes UTA').optional(),
     validateFields
 ], register);
 
