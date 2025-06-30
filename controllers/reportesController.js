@@ -431,11 +431,534 @@ async function generarReporteCursos(req, res) {
   }
 }
 
+// =====================================================
+// REPORTES DE SOLICITUDES DE CAMBIO
+// =====================================================
+
+// 📊 Reporte por Estados de Solicitudes
+async function reporteSolicitudesPorEstado(req, res) {
+  try {
+    const reportePorEstado = await prisma.solicitudCambio.groupBy({
+      by: ['estado_sol'],
+      _count: {
+        id_sol: true
+      },
+      orderBy: {
+        _count: {
+          id_sol: 'desc'
+        }
+      }
+    });
+
+    const solicitudesDetalle = await prisma.solicitudCambio.findMany({
+      select: {
+        titulo_sol: true,
+        estado_sol: true,
+        prioridad_sol: true,
+        tipo_cambio_sol: true,
+        fec_creacion_sol: true,
+        usuario: {
+          select: {
+            nom_usu1: true,
+            ape_usu1: true
+          }
+        }
+      },
+      orderBy: {
+        estado_sol: 'asc'
+      }
+    });
+
+    const doc = new PDFDocument({ margin: 50 });
+    const stream = new PassThrough();
+    const bufferPromise = getStream.buffer(stream);
+    doc.pipe(stream);
+
+    // Marco y encabezado
+    doc.rect(40, 40, 515, 712).stroke();
+    doc.fontSize(10).font('Times-Roman')
+      .text('Sistema de Gestión de Solicitudes de Cambio', 110, 50)
+      .text('Reporte por Estados de Solicitudes', 110, 65)
+      .text(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, 110, 80);
+
+    doc.moveDown(2);
+    doc.fillColor('black').fontSize(18).font('Times-Bold')
+      .text('REPORTE DE SOLICITUDES POR ESTADO', { align: 'center' });
+    doc.moveDown(1.5);
+
+    // Resumen por estado
+    doc.rect(50, doc.y, 500, 20).fill('#9c27b0');
+    doc.fillColor('white').fontSize(12).font('Times-Bold')
+      .text('RESUMEN POR ESTADO', 55, doc.y + 5);
+
+    doc.moveDown(1).fillColor('black').font('Times-Roman');
+    
+    reportePorEstado.forEach(item => {
+      const estadoTraducido = traducirEstado(item.estado_sol);
+      doc.text(`${estadoTraducido}: ${item._count.id_sol} solicitudes`, 60);
+    });
+
+    // Detalle de solicitudes
+    doc.moveDown(1.5);
+    doc.rect(50, doc.y, 500, 20).fill('#9c27b0');
+    doc.fillColor('white').fontSize(12).font('Times-Bold')
+      .text('DETALLE DE SOLICITUDES', 55, doc.y + 5);
+
+    doc.moveDown(1).fillColor('black').font('Times-Roman');
+
+    let estadoActual = '';
+    solicitudesDetalle.forEach(solicitud => {
+      if (solicitud.estado_sol !== estadoActual) {
+        estadoActual = solicitud.estado_sol;
+        doc.moveDown(0.5);
+        doc.font('Times-Bold').fontSize(11)
+          .text(`Estado: ${traducirEstado(estadoActual)}`, 60);
+        doc.font('Times-Roman').fontSize(9);
+      }
+
+      const nombreUsuario = `${solicitud.usuario.nom_usu1} ${solicitud.usuario.ape_usu1}`;
+      const fecha = solicitud.fec_creacion_sol.toLocaleDateString('es-ES');
+      
+      doc.text(`• ${solicitud.titulo_sol}`, 80);
+      doc.text(`  Usuario: ${nombreUsuario} | Fecha: ${fecha}`, 85);
+    });
+
+    // Pie de página
+    const bottomY = 770;
+    doc.lineWidth(0.5).moveTo(50, bottomY - 20).lineTo(545, bottomY - 20).stroke();
+    doc.fontSize(9).font('Times-Italic').fillColor('gray')
+      .text('© 2025 - Sistema de Gestión de Solicitudes | Reporte Estados', 50, bottomY - 10, { align: 'center', width: 500 });
+
+    doc.end();
+
+    const buffer = await bufferPromise;
+    const nombre = `reporte_solicitudes_estados_${Date.now()}.pdf`;
+
+    await prisma.reporte.create({
+      data: {
+        tipo: 'SOLICITUDES_ESTADO',
+        nombre_archivo: nombre,
+        archivo_pdf: buffer
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Reporte de solicitudes por estado generado y almacenado correctamente'
+    });
+  } catch (error) {
+    console.error('[ERROR][Reporte Solicitudes por Estado]', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al generar reporte de solicitudes por estado'
+    });
+  }
+}
+
+// Función auxiliar para traducir estados
+function traducirEstado(estado) {
+  const traducciones = {
+    'BORRADOR': 'Borrador',
+    'PENDIENTE': 'Pendiente',
+    'EN_REVISION': 'En Revisión',
+    'APROBADA': 'Aprobada',
+    'RECHAZADA': 'Rechazada',
+    'CANCELADA': 'Cancelada',
+    'EN_DESARROLLO': 'En Desarrollo',
+    'EN_TESTING': 'En Testing',
+    'COMPLETADA': 'Completada',
+    'FALLIDA': 'Fallida'
+  };
+  return traducciones[estado] || estado;
+}
+
+
+
+// 📊 Reporte por Desarrolladores Asignados
+async function reporteSolicitudesPorDesarrollador(req, res) {
+  try {
+    const resultado = await prisma.solicitudCambio.groupBy({
+      by: ['id_desarrollador_asignado'],
+      _count: {
+        id_sol: true
+      },
+      where: {
+        id_desarrollador_asignado: {
+          not: null
+        }
+      }
+    });
+
+    // Obtener información de los desarrolladores
+    const desarrolladoresIds = resultado.map(item => item.id_desarrollador_asignado);
+    const desarrolladores = await prisma.usuario.findMany({
+      where: {
+        id_usu: {
+          in: desarrolladoresIds
+        }
+      },
+      select: {
+        id_usu: true,
+        nom_usu1: true,
+        nom_usu2: true,
+        ape_usu1: true,
+        ape_usu2: true
+      }
+    });
+
+    // Obtener solicitudes detalladas por desarrollador
+    const solicitudesDetalle = await prisma.solicitudCambio.findMany({
+      where: {
+        id_desarrollador_asignado: {
+          not: null
+        }
+      },
+      select: {
+        titulo_sol: true,
+        estado_sol: true,
+        prioridad_sol: true,
+        fec_creacion_sol: true,
+        desarrolladorAsignado: {
+          select: {
+            nom_usu1: true,
+            ape_usu1: true
+          }
+        }
+      },
+      orderBy: [
+        {
+          desarrolladorAsignado: {
+            nom_usu1: 'asc'
+          }
+        },
+        {
+          fec_creacion_sol: 'desc'
+        }
+      ]
+    });
+
+    const reporteFormateado = resultado.map(item => {
+      const dev = desarrolladores.find(d => d.id_usu === item.id_desarrollador_asignado);
+      const nombreCompleto = dev ? 
+        `${dev.nom_usu1} ${dev.nom_usu2 || ''} ${dev.ape_usu1} ${dev.ape_usu2}`.trim() : 
+        'Desarrollador no encontrado';
+      
+      return {
+        desarrollador_id: item.id_desarrollador_asignado,
+        desarrollador_nombre: nombreCompleto,
+        cantidad: item._count.id_sol
+      };
+    });
+
+    // Contar solicitudes sin asignar
+    const sinAsignar = await prisma.solicitudCambio.count({
+      where: {
+        id_desarrollador_asignado: null
+      }
+    });
+
+    const doc = new PDFDocument({ margin: 50 });
+    const stream = new PassThrough();
+    const bufferPromise = getStream.buffer(stream);
+    doc.pipe(stream);
+
+    // Marco y encabezado
+    doc.rect(40, 40, 515, 712).stroke();
+    doc.fontSize(10).font('Times-Roman')
+      .text('Sistema de Gestión de Solicitudes de Cambio', 110, 50)
+      .text('Reporte de Carga de Trabajo por Desarrollador', 110, 65)
+      .text(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, 110, 80);
+
+    doc.moveDown(2);
+    doc.fillColor('black').fontSize(18).font('Times-Bold')
+      .text('CARGA DE TRABAJO POR DESARROLLADOR', { align: 'center' });
+    doc.moveDown(1.5);
+
+    // Resumen de carga
+    doc.rect(50, doc.y, 500, 20).fill('#2196f3');
+    doc.fillColor('white').fontSize(12).font('Times-Bold')
+      .text('RESUMEN DE ASIGNACIONES', 55, doc.y + 5);
+
+    doc.moveDown(1).fillColor('black').font('Times-Roman');
+
+    // Mostrar resumen ordenado por cantidad
+    reporteFormateado
+      .sort((a, b) => b.cantidad - a.cantidad)
+      .forEach(item => {
+        doc.text(`${item.desarrollador_nombre}: ${item.cantidad} solicitudes`, 60);
+      });
+
+    if (sinAsignar > 0) {
+      doc.text(`Sin asignar: ${sinAsignar} solicitudes`, 60);
+    }
+
+    // Detalle por desarrollador
+    doc.moveDown(1.5);
+    doc.rect(50, doc.y, 500, 20).fill('#2196f3');
+    doc.fillColor('white').fontSize(12).font('Times-Bold')
+      .text('DETALLE DE SOLICITUDES POR DESARROLLADOR', 55, doc.y + 5);
+
+    doc.moveDown(1).fillColor('black').font('Times-Roman');
+
+    let desarrolladorActual = '';
+    solicitudesDetalle.forEach(solicitud => {
+      const nombreDev = solicitud.desarrolladorAsignado 
+        ? `${solicitud.desarrolladorAsignado.nom_usu1} ${solicitud.desarrolladorAsignado.ape_usu1}`
+        : 'Sin asignar';
+      
+      if (nombreDev !== desarrolladorActual) {
+        desarrolladorActual = nombreDev;
+        doc.moveDown(0.5);
+        doc.font('Times-Bold').fontSize(11)
+          .text(`Desarrollador: ${desarrolladorActual}`, 60);
+        doc.font('Times-Roman').fontSize(9);
+      }
+
+      const fecha = solicitud.fec_creacion_sol.toLocaleDateString('es-ES');
+      const estado = traducirEstado(solicitud.estado_sol);
+      
+      doc.text(`• ${solicitud.titulo_sol}`, 80);
+      doc.text(`  Estado: ${estado} | Fecha: ${fecha}`, 85);
+    });
+
+    // Pie de página
+    const bottomY = 770;
+    doc.lineWidth(0.5).moveTo(50, bottomY - 20).lineTo(545, bottomY - 20).stroke();
+    doc.fontSize(9).font('Times-Italic').fillColor('gray')
+      .text('© 2025 - Sistema de Gestión de Solicitudes | Reporte Desarrolladores', 50, bottomY - 10, { align: 'center', width: 500 });
+
+    doc.end();
+
+    const buffer = await bufferPromise;
+    const nombre = `reporte_solicitudes_desarrolladores_${Date.now()}.pdf`;
+
+    await prisma.reporte.create({
+      data: {
+        tipo: 'SOLICITUDES_DESARROLLADOR',
+        nombre_archivo: nombre,
+        archivo_pdf: buffer
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Reporte de carga de trabajo por desarrollador generado y almacenado correctamente'
+    });
+  } catch (error) {
+    console.error('[ERROR][Reporte Solicitudes por Desarrollador]', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al generar reporte de solicitudes por desarrollador'
+    });
+  }
+}
+
+
+
+// 📊 Generar PDF Reporte Resumen General de Solicitudes
+async function reporteSolicitudesResumen(req, res) {
+  try {
+    // Obtener todos los datos en paralelo
+    const [
+      totalSolicitudes,
+      porEstado,
+      porPrioridad,
+      porTipo,
+      solicitudesHoy,
+      solicitudesEsteMes,
+      desarrolladoresInfo
+    ] = await Promise.all([
+      // Total general
+      prisma.solicitudCambio.count(),
+      
+      // Por estado
+      prisma.solicitudCambio.groupBy({
+        by: ['estado_sol'],
+        _count: { id_sol: true },
+        orderBy: { _count: { id_sol: 'desc' } }
+      }),
+      
+      // Por prioridad
+      prisma.solicitudCambio.groupBy({
+        by: ['prioridad_sol'],
+        _count: { id_sol: true },
+        orderBy: { _count: { id_sol: 'desc' } }
+      }),
+      
+      // Por tipo
+      prisma.solicitudCambio.groupBy({
+        by: ['tipo_cambio_sol'],
+        _count: { id_sol: true },
+        orderBy: { _count: { id_sol: 'desc' } }
+      }),
+      
+      // Solicitudes de hoy
+      prisma.solicitudCambio.count({
+        where: {
+          fec_creacion_sol: {
+            gte: new Date(new Date().setHours(0, 0, 0, 0))
+          }
+        }
+      }),
+      
+      // Solicitudes de este mes
+      prisma.solicitudCambio.count({
+        where: {
+          fec_creacion_sol: {
+            gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+          }
+        }
+      }),
+
+      // Info de desarrolladores
+      prisma.solicitudCambio.groupBy({
+        by: ['id_desarrollador_asignado'],
+        _count: { id_sol: true },
+        where: {
+          id_desarrollador_asignado: { not: null }
+        }
+      })
+    ]);
+
+    const doc = new PDFDocument({ margin: 50 });
+    const stream = new PassThrough();
+    const bufferPromise = getStream.buffer(stream);
+    doc.pipe(stream);
+
+    // Marco y encabezado
+    doc.rect(40, 40, 515, 712).stroke();
+    doc.fontSize(10).font('Times-Roman')
+      .text('Sistema de Gestión de Solicitudes de Cambio', 110, 50)
+      .text('Reporte Ejecutivo General', 110, 65)
+      .text(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, 110, 80);
+
+    doc.moveDown(2);
+    doc.fillColor('black').fontSize(18).font('Times-Bold')
+      .text('REPORTE EJECUTIVO GENERAL', { align: 'center' });
+    doc.moveDown(1.5);
+
+    // Métricas principales
+    doc.rect(50, doc.y, 500, 20).fill('#673ab7');
+    doc.fillColor('white').fontSize(12).font('Times-Bold')
+      .text('MÉTRICAS PRINCIPALES', 55, doc.y + 5);
+
+    doc.moveDown(1).fillColor('black').font('Times-Roman');
+    doc.text(`Total de solicitudes en el sistema: ${totalSolicitudes}`, 60);
+    doc.text(`Solicitudes creadas hoy: ${solicitudesHoy}`, 60);
+    doc.text(`Solicitudes creadas este mes: ${solicitudesEsteMes}`, 60);
+    doc.text(`Desarrolladores con solicitudes asignadas: ${desarrolladoresInfo.length}`, 60);
+
+    // Estados
+    doc.moveDown(1.5);
+    doc.rect(50, doc.y, 500, 20).fill('#673ab7');
+    doc.fillColor('white').fontSize(12).font('Times-Bold')
+      .text('DISTRIBUCIÓN POR ESTADOS', 55, doc.y + 5);
+
+    doc.moveDown(1).fillColor('black').font('Times-Roman');
+    porEstado.forEach(item => {
+      const estadoTraducido = traducirEstado(item.estado_sol);
+      const porcentaje = ((item._count.id_sol / totalSolicitudes) * 100).toFixed(1);
+      doc.text(`${estadoTraducido}: ${item._count.id_sol} (${porcentaje}%)`, 60);
+    });
+
+    // Prioridades
+    doc.moveDown(1.5);
+    doc.rect(50, doc.y, 500, 20).fill('#673ab7');
+    doc.fillColor('white').fontSize(12).font('Times-Bold')
+      .text('DISTRIBUCIÓN POR PRIORIDADES', 55, doc.y + 5);
+
+    doc.moveDown(1).fillColor('black').font('Times-Roman');
+    porPrioridad.forEach(item => {
+      const prioridadTraducida = traducirPrioridad(item.prioridad_sol);
+      const porcentaje = ((item._count.id_sol / totalSolicitudes) * 100).toFixed(1);
+      doc.text(`${prioridadTraducida}: ${item._count.id_sol} (${porcentaje}%)`, 60);
+    });
+
+    // Tipos de cambio más frecuentes (top 5)
+    doc.moveDown(1.5);
+    doc.rect(50, doc.y, 500, 20).fill('#673ab7');
+    doc.fillColor('white').fontSize(12).font('Times-Bold')
+      .text('TIPOS DE CAMBIO MÁS FRECUENTES', 55, doc.y + 5);
+
+    doc.moveDown(1).fillColor('black').font('Times-Roman');
+    porTipo.slice(0, 5).forEach(item => {
+      const tipoTraducido = traducirTipoCambio(item.tipo_cambio_sol);
+      const porcentaje = ((item._count.id_sol / totalSolicitudes) * 100).toFixed(1);
+      doc.text(`${tipoTraducido}: ${item._count.id_sol} (${porcentaje}%)`, 60);
+    });
+
+    // Pie de página
+    const bottomY = 770;
+    doc.lineWidth(0.5).moveTo(50, bottomY - 20).lineTo(545, bottomY - 20).stroke();
+    doc.fontSize(9).font('Times-Italic').fillColor('gray')
+      .text('© 2025 - Sistema de Gestión de Solicitudes | Reporte Ejecutivo', 50, bottomY - 10, { align: 'center', width: 500 });
+
+    doc.end();
+
+    const buffer = await bufferPromise;
+    const nombre = `reporte_solicitudes_resumen_${Date.now()}.pdf`;
+
+    await prisma.reporte.create({
+      data: {
+        tipo: 'SOLICITUDES_RESUMEN',
+        nombre_archivo: nombre,
+        archivo_pdf: buffer
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Reporte ejecutivo general de solicitudes generado y almacenado correctamente'
+    });
+  } catch (error) {
+    console.error('[ERROR][Reporte Resumen Solicitudes]', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al generar reporte resumen de solicitudes'
+    });
+  }
+}
+
+// Función auxiliar para traducir prioridades
+function traducirPrioridad(prioridad) {
+  const traducciones = {
+    'BAJA': 'Baja',
+    'MEDIA': 'Media',
+    'ALTA': 'Alta',
+    'CRITICA': 'Crítica',
+    'URGENTE': 'Urgente'
+  };
+  return traducciones[prioridad] || prioridad;
+}
+
+// Función auxiliar para traducir tipos de cambio
+function traducirTipoCambio(tipo) {
+  const traducciones = {
+    'NUEVA_FUNCIONALIDAD': 'Nueva Funcionalidad',
+    'MEJORA_EXISTENTE': 'Mejora Existente',
+    'CORRECCION_ERROR': 'Corrección de Error',
+    'CAMBIO_INTERFAZ': 'Cambio de Interfaz',
+    'OPTIMIZACION': 'Optimización',
+    'ACTUALIZACION_DATOS': 'Actualización de Datos',
+    'CAMBIO_SEGURIDAD': 'Cambio de Seguridad',
+    'MIGRACION_DATOS': 'Migración de Datos',
+    'INTEGRACION_EXTERNA': 'Integración Externa',
+    'OTRO': 'Otro'
+  };
+  return traducciones[tipo] || tipo;
+}
+
+
+
 module.exports = {
   guardarReporteFinanciero,
   listarReportesPorTipo,
   descargarReportePorId,
   generarReporteEventos,
   generarReporteCursos,
-  generarReporteUsuarios
+  generarReporteUsuarios,
+  // Reportes PDF de solicitudes
+  reporteSolicitudesPorEstado,
+  reporteSolicitudesPorDesarrollador,
+  reporteSolicitudesResumen
 };

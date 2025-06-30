@@ -1,26 +1,22 @@
 const { Router } = require('express');
+const { check } = require('express-validator');
 
 // Importar controladores
-const {
-  crearSolicitud,
-  obtenerSolicitudesUsuario,
-  obtenerSolicitudPorId,
-  obtenerTodasLasSolicitudes,
-  responderSolicitud,
-  editarSolicitud,
-  actualizarEstadoSolicitud,
-  obtenerEstadisticas
-} = require('../controllers/solicitudesCambio');
+const solicitudesCambioController = require('../controllers/solicitudesCambioController');
+const desarrolladorController = require('../controllers/desarrolladorController');
 
 // Importar middlewares
-const { validateJWT, validateAdmin, validateRoles } = require('../middlewares/validateJWT');
+const { validateJWT } = require('../middlewares/validateJWT');
+const { validateRoles } = require('../middlewares/validateJWT');
 const {
   validarCreacionSolicitud,
-  validarRespuestaSolicitud,
   validarEdicionSolicitud,
-  validarActualizacionEstado,
-  validarIdSolicitud
+  validarIdSolicitud,
+  validarActualizacionMaster,
+  validarAprobacion,
+  validarRechazo
 } = require('../middlewares/validacionSolicitudes');
+const { validateFields } = require('../middlewares/validateFields');
 
 const router = Router();
 
@@ -29,11 +25,11 @@ const router = Router();
 // ===================
 
 // Crear una nueva solicitud de cambio
-// POST /api/solicitudes-cambio
+// POST /api/solicitudes-cambio/solicitud-nueva
 router.post(
   '/solicitud-nueva',
   [validateJWT, ...validarCreacionSolicitud],
-  crearSolicitud
+  solicitudesCambioController.crearSolicitud
 );
 
 // Obtener todas las solicitudes del usuario autenticado
@@ -41,7 +37,7 @@ router.post(
 router.get(
   '/mis-solicitudes',
   validateJWT,
-  obtenerSolicitudesUsuario
+  solicitudesCambioController.obtenerMisSolicitudes
 );
 
 // Obtener una solicitud específica del usuario autenticado
@@ -49,110 +45,263 @@ router.get(
 router.get(
   '/mis-solicitudes/:id',
   [validateJWT, ...validarIdSolicitud],
-  obtenerSolicitudPorId
+  solicitudesCambioController.obtenerMiSolicitud
+);
+
+// Editar solicitud (usuario - solo BORRADOR)
+// PUT /api/solicitudes-cambio/:id/editar
+router.put(
+  '/:id/editar',
+  [validateJWT, ...validarEdicionSolicitud],
+  solicitudesCambioController.editarSolicitud
+);
+
+// Enviar solicitud (BORRADOR → PENDIENTE)
+// PUT /api/solicitudes-cambio/:id/enviar
+router.put(
+  '/:id/enviar',
+  [validateJWT, ...validarIdSolicitud],
+  solicitudesCambioController.enviarSolicitud
+);
+
+// Cancelar solicitud (solo BORRADOR)
+// PUT /api/solicitudes-cambio/:id/cancelar
+router.put(
+  '/:id/cancelar',
+  [validateJWT, ...validarIdSolicitud],
+  solicitudesCambioController.cancelarSolicitud
+);
+
+// Obtener estadísticas del usuario
+// GET /api/solicitudes-cambio/mis-estadisticas
+router.get(
+  '/mis-estadisticas',
+  validateJWT,
+  solicitudesCambioController.obtenerEstadisticasUsuario
 );
 
 // ========================
-// RUTAS PARA ADMINISTRADORES
+// RUTAS SIMPLIFICADAS 
+// ========================
+// Las rutas de comentarios e historial se eliminan ya que 
+// esas funcionalidades no están implementadas actualmente
+
+// ========================
+// RUTAS PARA ADMIN MASTER
 // ========================
 
-// Obtener todas las solicitudes (solo administradores)
+// Obtener todas las solicitudes (para admin/master)
 // GET /api/solicitudes-cambio/admin/todas
 router.get(
   '/admin/todas',
-  [validateJWT, validateAdmin],
-  obtenerTodasLasSolicitudes
+  [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER')],
+  solicitudesCambioController.obtenerTodasLasSolicitudes
 );
 
-// Responder a una solicitud (aprobar/rechazar) - Solo administradores
-// PUT /api/solicitudes-cambio/admin/:id/responder
+// Obtener una solicitud específica (para admin/master)
+// GET /api/solicitudes-cambio/admin/solicitud/:id
+router.get(
+  '/admin/solicitud/:id',
+  [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER'), ...validarIdSolicitud],
+  solicitudesCambioController.obtenerSolicitudParaAdmin
+);
+
+// Actualizar solicitud con campos de admin/master
+// PUT /api/solicitudes-cambio/admin/:id/actualizar
 router.put(
-  '/admin/:id/responder',
-  [validateJWT, validateAdmin, ...validarRespuestaSolicitud],
-  responderSolicitud
+  '/admin/:id/actualizar',
+  [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER'), ...validarActualizacionMaster],
+  solicitudesCambioController.actualizarSolicitudMaster
 );
 
-// Editar una solicitud - Solo administradores
-// PUT /api/solicitudes-cambio/admin/:id/editar
+// Poner solicitud en revisión (PENDIENTE → EN_REVISION)
+// PUT /api/solicitudes-cambio/admin/:id/poner-revision
 router.put(
-  '/admin/:id/editar',
-  [validateJWT, validateAdmin, ...validarEdicionSolicitud],
-  editarSolicitud
+  '/admin/:id/poner-revision',
+  [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER'), ...validarIdSolicitud],
+  solicitudesCambioController.ponerEnRevision
 );
 
-// Actualizar el estado de una solicitud - Solo administradores
-// PUT /api/solicitudes-cambio/admin/:id/estado
+// Aprobar solicitud (EN_REVISION → APROBADA)
+// PUT /api/solicitudes-cambio/admin/:id/aprobar
 router.put(
-  '/admin/:id/estado',
-  [validateJWT, validateAdmin, ...validarActualizacionEstado],
-  actualizarEstadoSolicitud
+  '/admin/:id/aprobar',
+  [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER'), ...validarAprobacion],
+  solicitudesCambioController.aprobarSolicitud
 );
 
-// Obtener estadísticas de solicitudes - Solo administradores
+// Rechazar solicitud (EN_REVISION → RECHAZADA)
+// PUT /api/solicitudes-cambio/admin/:id/rechazar
+router.put(
+  '/admin/:id/rechazar',
+  [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER'), ...validarRechazo],
+  solicitudesCambioController.rechazarSolicitud
+);
+
+// Obtener estadísticas generales (para admin/master)
 // GET /api/solicitudes-cambio/admin/estadisticas
 router.get(
   '/admin/estadisticas',
-  [validateJWT, validateAdmin],
-  obtenerEstadisticas
+  [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER')],
+  solicitudesCambioController.obtenerEstadisticasAdmin
 );
 
-// =======================
-// RUTAS ADICIONALES (PARA DESARROLLO)
-// =======================
-
-// Obtener una solicitud específica por ID (para administradores)
-// GET /api/solicitudes-cambio/admin/:id
+// Obtener desarrolladores disponibles (para admin/master)
+// GET /api/solicitudes-cambio/admin/desarrolladores
 router.get(
-  '/admin/:id',
-  [validateJWT, validateAdmin, ...validarIdSolicitud],
-  async (req, res) => {
-    try {
-      const { id } = req.params;
+  '/admin/desarrolladores',
+  [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER')],
+  solicitudesCambioController.obtenerDesarrolladores
+);
 
-      const solicitud = await require('@prisma/client').PrismaClient().solicitudCambio.findUnique({
-        where: { id_sol: id },
-        include: {
-          usuario: {
-            select: {
-              nom_usu1: true,
-              nom_usu2: true,
-              ape_usu1: true,
-              ape_usu2: true,
-              ced_usu: true
-            }
-          },
-          adminResponsable: {
-            select: {
-              nom_usu1: true,
-              nom_usu2: true,
-              ape_usu1: true,
-              ape_usu2: true
-            }
-          }
-        }
-      });
+// ========================
+// NUEVAS RUTAS PARA MÚLTIPLES PRS
+// ========================
 
-      if (!solicitud) {
-        return res.status(404).json({
-          success: false,
-          message: 'Solicitud no encontrada'
-        });
-      }
+// Obtener información de todos los PRs de una solicitud
+// GET /api/solicitudes-cambio/admin/:id_sol/pr-info
+router.get(
+  '/admin/:id_sol/pr-info',
+  [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER')],
+  solicitudesCambioController.obtenerInformacionPR
+);
 
-      res.json({
-        success: true,
-        data: solicitud
-      });
+// Aprobar PR específico
+// POST /api/solicitudes-cambio/admin/:id_sol/aprobar-pr
+router.post(
+  '/admin/:id_sol/aprobar-pr',
+  [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER')],
+  solicitudesCambioController.aprobarPRSpecifico
+);
 
-    } catch (error) {
-      console.error('Error al obtener solicitud:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error interno del servidor',
-        error: error.message
-      });
-    }
-  }
+// Rechazar PR específico
+// POST /api/solicitudes-cambio/admin/:id_sol/rechazar-pr
+router.post(
+  '/admin/:id_sol/rechazar-pr',
+  [validateJWT, validateRoles('ADMINISTRADOR', 'MASTER')],
+  solicitudesCambioController.rechazarPRSpecifico
+);
+
+// ========================
+// RUTAS PARA DESARROLLADORES
+// ========================
+
+// Obtener solicitudes asignadas a un desarrollador
+// GET /api/solicitudes-cambio/desarrollador/:desarrolladorId
+router.get(
+  '/desarrollador/:desarrolladorId',
+  validateJWT,
+  desarrolladorController.getSolicitudesAsignadas
+);
+
+// Obtener una solicitud específica para desarrollador
+// GET /api/solicitudes-cambio/desarrollador/solicitud/:id
+router.get(
+  '/desarrollador/solicitud/:id',
+  validateJWT,
+  desarrolladorController.getSolicitudEspecifica
+);
+
+// Actualizar estado de una solicitud (desarrolladores)
+// POST /api/solicitudes-cambio/:id/estado
+router.post(
+  '/:id/estado',
+  validateJWT,
+  desarrolladorController.actualizarEstadoSolicitud
+);
+
+// Agregar comentario de desarrollo
+// POST /api/solicitudes-cambio/:id/comentario-desarrollo
+router.post(
+  '/:id/comentario-desarrollo',
+  validateJWT,
+  desarrolladorController.agregarComentarioDesarrollo
+);
+
+// Actualizar planes técnicos (desarrolladores)
+// PUT /api/solicitudes-cambio/desarrollador/solicitud/:id/planes-tecnicos
+router.put(
+  '/desarrollador/solicitud/:id/planes-tecnicos',
+  validateJWT,
+  desarrolladorController.actualizarPlanesTecnicos
+);
+
+// Esta ruta ya no es necesaria con el nuevo flujo
+
+// Ruta para crear rama para una solicitud
+router.post(
+  '/:id_solicitud/ramas',
+  [
+    validateJWT,
+    validateRoles('DESARROLLADOR'),
+    check('repository_type').isIn(['FRONTEND', 'BACKEND']),
+    validateFields
+  ],
+  solicitudesCambioController.crearRamaParaSolicitud
+);
+
+// Ruta para obtener ramas de una solicitud
+router.get(
+  '/:id_solicitud/ramas',
+  [
+    validateJWT,
+    validateRoles('DESARROLLADOR', 'ADMINISTRADOR', 'MASTER')
+  ],
+  solicitudesCambioController.obtenerRamasPorSolicitud
+);
+
+// Ruta para validar estado de solicitud para creación de ramas
+router.get(
+  '/:id_solicitud/ramas/validar-estado',
+  [
+    validateJWT,
+    validateRoles('DESARROLLADOR')
+  ],
+  solicitudesCambioController.validarEstadoSolicitudParaRamas
+);
+
+// === RUTAS PARA GESTIÓN DE PULL REQUESTS ===
+
+// Ruta para crear PR para una rama específica
+router.post(
+  '/:id_solicitud/pull-requests',
+  [
+    validateJWT,
+    validateRoles('DESARROLLADOR'),
+    check('repository_type').isIn(['FRONTEND', 'BACKEND']),
+    validateFields
+  ],
+  solicitudesCambioController.crearPRParaSolicitud
+);
+
+// Ruta para obtener estado de PRs de una solicitud
+router.get(
+  '/:id_solicitud/pull-requests/estado',
+  [
+    validateJWT,
+    validateRoles('DESARROLLADOR', 'ADMINISTRADOR', 'MASTER')
+  ],
+  solicitudesCambioController.obtenerEstadoPRsParaSolicitud
+);
+
+// Ruta para verificar si puede enviar a testing
+router.get(
+  '/:id_solicitud/testing/verificar',
+  [
+    validateJWT,
+    validateRoles('DESARROLLADOR')
+  ],
+  solicitudesCambioController.verificarEstadoParaTesting
+);
+
+// Ruta para enviar solicitud a testing
+router.post(
+  '/:id_solicitud/testing/enviar',
+  [
+    validateJWT,
+    validateRoles('DESARROLLADOR')
+  ],
+  solicitudesCambioController.enviarSolicitudATesting
 );
 
 module.exports = router; 

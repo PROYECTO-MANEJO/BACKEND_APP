@@ -1,15 +1,19 @@
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcrypt');
 const { generateJWT, generateAdminJWT } = require('../helpers/jwt');
+// controllers/auth.js
+const { sendVerificationToken } = require('../controllers/verificationController'); // Ruta correcta
 
 const prisma = new PrismaClient();
 
 // Controlador para registrar un nuevo usuario
 const register = async (req, res) => {
-    const { email, password, nombre, nombre2, apellido, apellido2, ced_usu, fec_nac_usu } = req.body;
+
+    const { email, password, nombre, nombre2, apellido, apellido2, ced_usu, fec_nac_usu, carrera } = req.body;
+
 
     try {
-        // Verificar si ya existe un usuario con ese correo o cédula
+        // Verificar si ya existe una cuenta con ese correo
         const existingAccount = await prisma.cuenta.findFirst({
             where: {
                 cor_cue: email
@@ -23,10 +27,9 @@ const register = async (req, res) => {
             });
         }
 
+        // Verificar si ya existe un usuario con esa cédula
         const existingUserByCedula = await prisma.usuario.findFirst({
-            where: {
-                ced_usu
-            }
+            where: { ced_usu }
         });
 
         if (existingUserByCedula) {
@@ -36,7 +39,6 @@ const register = async (req, res) => {
             });
         }
 
-        // Verificar que la cédula está presente
         if (!ced_usu) {
             return res.status(400).json({
                 success: false,
@@ -44,85 +46,111 @@ const register = async (req, res) => {
             });
         }
 
+
+
+
+        // Validar fortaleza de la contraseña
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
+        if (!passwordRegex.test(password)) {
+            return res.status(400).json({
+                success: false,
+                message: 'La contraseña debe contener al menos 6 caracteres, una mayúscula, un número y un carácter especial (@$!%*?&)'
+            });
+        }
+
+        // Validar carrera para usuarios UTA
+        if (email && email.endsWith('@uta.edu.ec')) {
+            if (!carrera) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'La carrera es obligatoria para estudiantes UTA'
+                });
+            }
+            
+            // Verificar que la carrera existe
+            const carreraExists = await prisma.carrera.findUnique({
+                where: { id_car: carrera }
+            });
+            
+            if (!carreraExists) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'La carrera seleccionada no es válida'
+                });
+            }
+
+        }
+
         // Encriptar la contraseña
+
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        let rolAsignado = '';
-        if (email && email.endsWith('@uta.edu.ec')) {
-            rolAsignado = 'ESTUDIANTE'; // estudiante
-        } else {
-            rolAsignado = 'USUARIO'; // externo
-        }
+        // Rol automático
+        let rolAsignado = email.endsWith('@uta.edu.ec') ? 'ESTUDIANTE' : 'USUARIO';
 
-        // Validar y convertir fecha de nacimiento (OPCIONAL)
+        // Validar fecha de nacimiento
         let fechaNacimiento = null;
         if (fec_nac_usu) {
-            try {
-                fechaNacimiento = new Date(fec_nac_usu);
-                if (isNaN(fechaNacimiento.getTime())) {
-                    return res.status(400).json({
-                        success: false,
-                        message: 'La fecha de nacimiento es inválida. Usa formato YYYY-MM-DD'
-                    });
-                }
-            } catch {
+            fechaNacimiento = new Date(fec_nac_usu);
+            if (isNaN(fechaNacimiento.getTime())) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Fecha de nacimiento inválida'
+                    message: 'La fecha de nacimiento es inválida. Usa formato YYYY-MM-DD'
                 });
             }
         } else {
-            // Si no se proporciona fecha, usar una fecha por defecto
             fechaNacimiento = new Date('2000-01-01');
         }
 
-        // Crear el usuario y la cuenta en una transacción
+        // Crear usuario y cuenta en transacción
         const result = await prisma.$transaction(async (prisma) => {
+
+            // Preparar datos del usuario
+            const userData = {
+                ced_usu,
+                nom_usu1: nombre,
+                nom_usu2: nombre2 || '',
+                ape_usu1: apellido,
+                ape_usu2: apellido2 || '',
+                pas_usu: hashedPassword,
+                fec_nac_usu: fechaNacimiento
+            };
+
+            // Solo agregar carrera si es usuario UTA
+            if (email && email.endsWith('@uta.edu.ec') && carrera) {
+                userData.id_car_per = carrera;
+            }
+
             // Crear el usuario
+
             const newUser = await prisma.usuario.create({
-                data: {
-                    ced_usu,
-                    nom_usu1: nombre,
-                    nom_usu2: nombre2 || '',
-                    ape_usu1: apellido,
-                    ape_usu2: apellido2 || '',
-                    pas_usu: hashedPassword,
-                    fec_nac_usu: fechaNacimiento
-                }
+                data: userData
             });
 
-            // Crear la cuenta asociada al usuario
             const newAccount = await prisma.cuenta.create({
                 data: {
                     cor_cue: email,
                     rol_cue: rolAsignado,
-                    id_usu_per: newUser.id_usu
+                    id_usu_per: newUser.id_usu,
+                    isVerified: false
                 }
             });
 
             return { user: newUser, account: newAccount };
         });
 
-        // Generar el token JWT para el nuevo usuario
-        const token = await generateJWT(result.user.id_usu);
+        // Enviar token de verificación
+        await sendVerificationToken(email, result.user.id_usu);
 
-        // Respuesta exitosa
+        // NO devolvemos token de sesión, solo mensaje
         res.status(201).json({
             success: true,
-            user: {
-                id: result.user.id_usu,
-                nombre1: result.user.nom_usu1,
-                nombre2: result.user.nom_usu2,
-                apellido1: result.user.ape_usu1,
-                apellido2: result.user.ape_usu2,
-                rol: rolAsignado
-            },
-            token
+            message: 'Se ha enviado un correo de verificación a tu dirección de correo electrónico. Por favor, verifica tu cuenta antes de iniciar sesión.'
         });
 
     } catch (error) {
-        console.log(error);
+        console.error(error);
         res.status(500).json({
             success: false,
             message: 'Error en el servidor, contacte al administrador'
@@ -179,6 +207,15 @@ const adminCreateUser = async (req, res) => {
             });
         }
 
+        // Validar fortaleza de la contraseña para administrador
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
+        if (!passwordRegex.test(pas_usu)) {
+            return res.status(400).json({
+                success: false,
+                message: 'La contraseña debe contener al menos 6 caracteres, una mayúscula, un número y un carácter especial (@$!%*?&)'
+            });
+        }
+
         // Encriptar contraseña
         const hashedPassword = await bcrypt.hash(pas_usu, 10);
 
@@ -194,8 +231,7 @@ const adminCreateUser = async (req, res) => {
                     ape_usu2,
                     fec_nac_usu: fechaNacimiento,
                     num_tel_usu,
-                    pas_usu: hashedPassword,
-                    
+                    pas_usu: hashedPassword
                 }
             });
 
@@ -287,6 +323,14 @@ const login = async (req, res) => {
             });
         }
 
+        // Verificar si la cuenta está verificada
+        if (!cuenta.isVerified) {
+            return res.status(401).json({
+                success: false,
+                message: 'Tu cuenta aún no ha sido verificada. Revisa tu correo electrónico.'
+            });
+        }
+
         // Verificar la contraseña
         const validPassword = await bcrypt.compare(password, cuenta.usuario.pas_usu);
         if (!validPassword) {
@@ -331,7 +375,7 @@ const login = async (req, res) => {
                 matricula_requerida: isEstudiante,
                 documentos_verificados: user.documentos_verificados,
                 fecha_verificacion: user.fec_verificacion_docs,
-                archivos_completos: isEstudiante 
+                archivos_completos: isEstudiante
                     ? (!!user.enl_ced_pdf && !!user.enl_mat_pdf)
                     : !!user.enl_ced_pdf
             }

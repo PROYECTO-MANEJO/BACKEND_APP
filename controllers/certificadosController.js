@@ -973,6 +973,81 @@ const obtenerParticipacionesTerminadas = async (req, res) => {
   }
 };
 
+const obtenerParticipacionesCompletas = async (req, res) => {
+  try {
+    const userId = req.uid;
+
+    // participaciones en eventos
+    const eventos = await prisma.participacion.findMany({
+      where: {
+        inscripcion: { id_usu_ins: userId }
+      },
+      include: {
+        inscripcion: {
+          include: {
+            evento: { select: { nom_eve: true } },
+            usuario: { select: { nom_usu1: true, ape_usu1: true } }
+          }
+        }
+      }
+    });
+
+    // participaciones en cursos
+    const cursos = await prisma.participacionCurso.findMany({
+      where: {
+        inscripcionCurso: { id_usu_ins_cur: userId }
+      },
+      include: {
+        inscripcionCurso: {
+          include: {
+            curso: { select: { nom_cur: true } },
+            usuario: { select: { nom_usu1: true, ape_usu1: true } }
+          }
+        }
+      }
+    });
+
+    const eventosFormateados = eventos.map(p => ({
+      id_par: p.id_par,
+      evento: p.inscripcion?.evento?.nom_eve || 'Sin nombre',
+      asi_par: p.asi_par,
+      aprobado: p.aprobado,
+      en_progreso: p.aprobado === null,
+      usuario: `${p.inscripcion?.usuario?.nom_usu1} ${p.inscripcion?.usuario?.ape_usu1}`,
+      fec_cer_par: p.fec_cer_par,
+      tiene_certificado_pdf: !!p.certificado_pdf
+    }));
+
+    const cursosFormateados = cursos.map(p => ({
+      id_par_cur: p.id_par_cur,
+      curso: p.inscripcionCurso?.curso?.nom_cur || 'Sin nombre',
+      nota_final: p.nota_final,
+      asistencia_porcentaje: p.asistencia_porcentaje,
+      aprobado: p.aprobado,
+      en_progreso: p.aprobado === null,
+      usuario: `${p.inscripcionCurso?.usuario?.nom_usu1} ${p.inscripcionCurso?.usuario?.ape_usu1}`,
+      fec_cer_par_cur: p.fec_cer_par_cur,
+      tiene_certificado_pdf: !!p.certificado_pdf
+    }));
+
+    return res.status(200).json({
+      success: true,
+      message: "Participaciones completas obtenidas exitosamente",
+      data: {
+        eventos: eventosFormateados,
+        cursos: cursosFormateados
+      }
+    });
+  } catch (error) {
+    console.error("❌ Error en obtenerParticipacionesCompletas:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error interno del servidor",
+      error: error.message
+    });
+  }
+};
+
 // =====================================================
 // EXPORTACIONES
 // =====================================================
@@ -984,5 +1059,6 @@ module.exports = {
   obtenerMisCertificados,
   regenerarCertificado,
   debugCertificados,
-  obtenerParticipacionesTerminadas
+  obtenerParticipacionesTerminadas,
+  obtenerParticipacionesCompletas
 };

@@ -3,27 +3,29 @@ const prisma = new PrismaClient();
 const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcrypt');
+const { GitHubService } = require('../services/githubService');
+
 
 // Actualizar perfil del usuario actual
 const updateUserProfile = async (req, res) => {
   try {
     const userId = req.uid;
     const {
+
       nom_usu1,
       nom_usu2,
       ape_usu1,
       ape_usu2,
       fec_nac_usu,
       num_tel_usu,
-      id_car_per
+      id_car_per,
+      github_token
+
     } = req.body;
 
-    // Verificar que el usuario existe
     const existingUser = await prisma.usuario.findUnique({
       where: { id_usu: userId },
-      include: {
-        cuentas: true
-      }
+      include: { cuentas: true }
     });
 
     if (!existingUser) {
@@ -33,30 +35,54 @@ const updateUserProfile = async (req, res) => {
       });
     }
 
-    // Verificar si es estudiante y se está asignando carrera
-    const isEstudiante = existingUser.cuentas[0]?.rol_cue === 'ESTUDIANTE';
-    
-    // Si no es estudiante, no permitir asignar carrera
-    let carreraToUpdate = id_car_per;
-    if (!isEstudiante && id_car_per) {
-      carreraToUpdate = null;
-    }
 
-    // Si es estudiante y se proporciona carrera, verificar que existe
-    if (isEstudiante && carreraToUpdate) {
-      const carreraExists = await prisma.carrera.findUnique({
-        where: { id_car: carreraToUpdate }
-      });
+    // Verificar el rol del usuario si se intenta guardar un token
+    if (github_token) {
+      const userRole = existingUser.cuentas[0]?.rol_cue;
+      const allowedRoles = ['DESARROLLADOR', 'MASTER', 'ADMINISTRADOR'];
+      
+      if (!allowedRoles.includes(userRole)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Solo los desarrolladores, masters y administradores pueden configurar un token de GitHub'
+        });
+      }
 
-      if (!carreraExists) {
+      // Validar el token de GitHub
+      const githubService = new GitHubService();
+      const githubValidationResult = await githubService.validarTokenPersonal(github_token);
+
+      if (!githubValidationResult.valid) {
         return res.status(400).json({
           success: false,
-          message: 'La carrera seleccionada no existe'
+          message: `Error validando token de GitHub: ${githubValidationResult.error}`
+        });
+      }
+
+      // Verificar permisos necesarios
+      const hasRequiredPermissions = Object.values(githubValidationResult.permissions).every(
+        repo => repo.push && repo.pull
+      );
+
+      if (!hasRequiredPermissions) {
+        return res.status(400).json({
+          success: false,
+          message: 'El token de GitHub no tiene los permisos necesarios (push y pull) en los repositorios'
         });
       }
     }
 
-    // Actualizar el usuario
+
+    const isEstudiante = existingUser.cuentas[0]?.rol_cue === 'ESTUDIANTE';
+    let carreraToUpdate = isEstudiante ? id_car_per : null;
+
+    if (isEstudiante && carreraToUpdate) {
+      const carreraExists = await prisma.carrera.findUnique({ where: { id_car: carreraToUpdate } });
+      if (!carreraExists) {
+        return res.status(400).json({ success: false, message: 'La carrera seleccionada no existe' });
+      }
+    }
+
     const updatedUser = await prisma.usuario.update({
       where: { id_usu: userId },
       data: {
@@ -66,21 +92,14 @@ const updateUserProfile = async (req, res) => {
         ape_usu2: ape_usu2 || '',
         fec_nac_usu: new Date(fec_nac_usu),
         num_tel_usu: num_tel_usu || null,
-        id_car_per: carreraToUpdate || null
+
+        id_car_per: carreraToUpdate || null,
+        github_token: github_token || null,
+        github_username: githubValidationResult?.user?.login || null
       },
       include: {
-        cuentas: {
-          select: {
-            cor_cue: true,
-            rol_cue: true
-          }
-        },
-        carrera: {
-          select: {
-            id_car: true,
-            nom_car: true
-          }
-        }
+        cuentas: { select: { cor_cue: true, rol_cue: true } },
+        carrera: { select: { id_car: true, nom_car: true } }
       }
     });
 
@@ -95,6 +114,8 @@ const updateUserProfile = async (req, res) => {
       fec_nac_usu: updatedUser.fec_nac_usu,
       num_tel_usu: updatedUser.num_tel_usu,
       id_car_per: updatedUser.id_car_per,
+      github_token: updatedUser.github_token,
+      github_username: updatedUser.github_username,
       email: updatedUser.cuentas[0]?.cor_cue,
       rol: updatedUser.cuentas[0]?.rol_cue,
       carrera: updatedUser.carrera ? {
@@ -105,19 +126,23 @@ const updateUserProfile = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Perfil actualizado exitosamente',
+      message: github_token ? 
+        'Perfil y token de GitHub actualizados exitosamente' : 
+        'Perfil actualizado exitosamente',
       data: userProfile
     });
 
   } catch (error) {
     console.error('Error en updateUserProfile:', error);
+
     res.status(500).json({
       success: false,
-      message: 'Error interno del servidor'
+      message: 'Error interno del servidor',
+      error: error.message
     });
+
   }
 };
-
 // Obtener todos los usuarios (solo para administradores)
 const getAllUsers = async (req, res) => {
   try {
@@ -173,12 +198,12 @@ const getAllUsers = async (req, res) => {
 const uploadDocuments = async (req, res) => {
   try {
     const userId = req.uid;
-    
+
     console.log('📁 Archivos recibidos:', {
       cedula: req.files?.cedula_pdf?.[0]?.originalname,
       matricula: req.files?.matricula_pdf?.[0]?.originalname
     });
-    
+
     // Obtener información del usuario
     const user = await prisma.usuario.findUnique({
       where: { id_usu: userId },
@@ -206,7 +231,7 @@ const uploadDocuments = async (req, res) => {
     }
 
     const isEstudiante = user.cuentas[0]?.rol_cue === 'ESTUDIANTE';
-    
+
     // Validar archivos recibidos
     const cedulaFile = req.files?.cedula_pdf?.[0];
     const matriculaFile = req.files?.matricula_pdf?.[0];
@@ -323,7 +348,7 @@ const downloadDocument = async (req, res) => {
   try {
     const { tipo } = req.params; // tipo: 'cedula' o 'matricula'
     const userId = req.uid; // ID del usuario autenticado
-    
+
     // Obtener el usuario autenticado
     const user = await prisma.usuario.findUnique({
       where: { id_usu: userId },
@@ -369,9 +394,9 @@ const downloadDocument = async (req, res) => {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
     res.setHeader('Content-Length', fileBuffer.length);
-    
+
     res.send(fileBuffer);
-    
+
     console.log('✅ Archivo descargado exitosamente desde BD');
 
   } catch (error) {
@@ -451,10 +476,10 @@ const deleteDocuments = async (req, res) => {
     }
 
     // Si eliminamos todos los documentos, resetear fecha
-    if (tipo === 'ambos' || 
-        (tipo === 'cedula' && !isEstudiante) || 
-        (tipo === 'cedula' && !user.matricula_filename) ||
-        (tipo === 'matricula' && !user.cedula_filename)) {
+    if (tipo === 'ambos' ||
+      (tipo === 'cedula' && !isEstudiante) ||
+      (tipo === 'cedula' && !user.matricula_filename) ||
+      (tipo === 'matricula' && !user.cedula_filename)) {
       updateData.fec_verificacion_docs = null;
     }
 
@@ -487,85 +512,44 @@ const deleteDocuments = async (req, res) => {
 
 // ✅ ACTUALIZAR la función getDocumentStatus (simplificada)
 const getDocumentStatus = async (req, res) => {
-  try {
-    const userId = req.uid;
+  const userId = req.uid;
 
-    const user = await prisma.usuario.findUnique({
-      where: { id_usu: userId },
-      select: {
-        cedula_filename: true,
-        matricula_filename: true,
-        cedula_size: true,
-        matricula_size: true,
-        documentos_verificados: true,
-        fec_verificacion_docs: true,
-        cuentas: {
-          select: {
-            rol_cue: true
-          }
-        }
+  const user = await prisma.usuario.findUnique({
+    where: { id_usu: userId },
+    include: {
+      cuentas: {
+        select: { rol_cue: true }
       }
-    });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'Usuario no encontrado'
-      });
     }
+  });
 
-    const isEstudiante = user.cuentas[0]?.rol_cue === 'ESTUDIANTE';
-
-    // ✅ SIMPLIFICADO: Solo verificar si NO están verificados para poder eliminar
-    const puede_eliminar = !user.documentos_verificados && 
-                          (!!user.cedula_filename || !!user.matricula_filename);
-
-    console.log('📊 Estado calculado:', {
-      userId,
-      documentos_verificados: user.documentos_verificados,
-      puede_eliminar,
-      cedula_subida: !!user.cedula_filename,
-      matricula_subida: !!user.matricula_filename
-    });
-
-    res.json({
-      success: true,
-      data: {
-        cedula_subida: !!user.cedula_filename,
-        matricula_subida: !!user.matricula_filename,
-        matricula_requerida: isEstudiante,
-        documentos_verificados: user.documentos_verificados,
-        fecha_verificacion: user.fec_verificacion_docs,
-        fecha_subida: user.fec_verificacion_docs,
-        archivos_completos: isEstudiante 
-          ? (!!user.cedula_filename && !!user.matricula_filename)
-          : !!user.cedula_filename,
-        
-        // ✅ CAMPO SIMPLIFICADO
-        puede_eliminar: puede_eliminar,
-        puede_subir_nuevos: !user.cedula_filename || (isEstudiante && !user.matricula_filename),
-        
-        archivos_info: {
-          cedula: user.cedula_filename ? {
-            nombre: user.cedula_filename,
-            tamaño: user.cedula_size ? `${(user.cedula_size / 1024).toFixed(2)} KB` : 'N/A'
-          } : null,
-          matricula: user.matricula_filename ? {
-            nombre: user.matricula_filename,
-            tamaño: user.matricula_size ? `${(user.matricula_size / 1024).toFixed(2)} KB` : 'N/A'
-          } : null
-        }
-      }
-    });
-
-  } catch (error) {
-    console.error('❌ Error en getDocumentStatus:', error);
-    res.status(500).json({
+  if (!user) {
+    return res.status(404).json({
       success: false,
-      message: 'Error interno del servidor'
+      message: 'Usuario no encontrado'
     });
   }
+
+  const rol = user.cuentas[0]?.rol_cue;
+  const isEstudiante = rol === 'ESTUDIANTE';
+
+  res.json({
+    success: true,
+    data: {
+      cedula_subida: !!user.cedula_filename,
+      matricula_subida: !!user.matricula_filename,
+      documentos_verificados: user.documentos_verificados,
+      cedula_aprobada: user.cedula_aprobada,
+      matricula_aprobada: user.matricula_aprobada,
+      fecha_verificacion: user.fec_verificacion_docs,
+      matricula_requerida: isEstudiante,
+      archivos_completos: isEstudiante
+        ? !!user.cedula_filename && !!user.matricula_filename
+        : !!user.cedula_filename
+    }
+  });
 };
+
 
 // Actualizar getUserProfile para incluir estado de documentos
 const getUserProfile = async (req, res) => {
@@ -610,6 +594,7 @@ const getUserProfile = async (req, res) => {
       fec_nac_usu: user.fec_nac_usu,
       num_tel_usu: user.num_tel_usu,
       id_car_per: user.id_car_per,
+      github_token: user.github_token,
       email: user.cuentas[0]?.cor_cue,
       rol: user.cuentas[0]?.rol_cue,
       carrera: user.carrera ? {
@@ -623,7 +608,7 @@ const getUserProfile = async (req, res) => {
         matricula_requerida: isEstudiante,
         documentos_verificados: user.documentos_verificados,
         fecha_verificacion: user.fec_verificacion_docs,
-        archivos_completos: isEstudiante 
+        archivos_completos: isEstudiante
           ? (!!user.enl_ced_pdf && !!user.enl_mat_pdf)
           : !!user.enl_ced_pdf
       }
@@ -748,7 +733,7 @@ const createUser = async (req, res) => {
     // Encriptar contraseña
     const hashedPassword = await bcrypt.hash(pas_usu, 10);
 
-        // Crear usuario y cuenta en una transacción
+    // Crear usuario y cuenta en una transacción
     const result = await prisma.$transaction(async (prisma) => {
       // Crear usuario
       const newUser = await prisma.usuario.create({
@@ -776,21 +761,21 @@ const createUser = async (req, res) => {
       return { user: newUser, account: newAccount };
     });
 
-         res.status(201).json({
-       success: true,
-       message: 'Usuario creado exitosamente',
-       data: {
-         id_usu: result.user.id_usu,
-         ced_usu: result.user.ced_usu,
-         nom_usu1: result.user.nom_usu1,
-         nom_usu2: result.user.nom_usu2,
-         ape_usu1: result.user.ape_usu1,
-         ape_usu2: result.user.ape_usu2,
-         ema_usu: result.account.cor_cue,
-         tel_usu: result.user.num_tel_usu,
-         rol_cue: result.account.rol_cue
-       }
-     });
+    res.status(201).json({
+      success: true,
+      message: 'Usuario creado exitosamente',
+      data: {
+        id_usu: result.user.id_usu,
+        ced_usu: result.user.ced_usu,
+        nom_usu1: result.user.nom_usu1,
+        nom_usu2: result.user.nom_usu2,
+        ape_usu1: result.user.ape_usu1,
+        ape_usu2: result.user.ape_usu2,
+        ema_usu: result.account.cor_cue,
+        tel_usu: result.user.num_tel_usu,
+        rol_cue: result.account.rol_cue
+      }
+    });
 
   } catch (error) {
     console.error('Error en createUser:', error);
@@ -805,15 +790,15 @@ const createUser = async (req, res) => {
 const updateUser = async (req, res) => {
   try {
     const { cedula } = req.params;
-    const { 
-      nom_usu1, 
-      nom_usu2, 
-      ape_usu1, 
-      ape_usu2, 
-      fec_nac_usu, 
-      num_tel_usu, 
-      pas_usu, 
-      cor_cue 
+    const {
+      nom_usu1,
+      nom_usu2,
+      ape_usu1,
+      ape_usu2,
+      fec_nac_usu,
+      num_tel_usu,
+      pas_usu,
+      cor_cue
     } = req.body;
 
     // Buscar usuario existente
@@ -928,15 +913,15 @@ const updateUser = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al actualizar usuario administrador:', error);
-    
+
     // Manejo de errores específicos
     if (error.code === 'P2002') {
-      return res.status(409).json({ 
-        success: false, 
-        message: 'Error de duplicación. Verifique que los datos no estén ya registrados.' 
+      return res.status(409).json({
+        success: false,
+        message: 'Error de duplicación. Verifique que los datos no estén ya registrados.'
       });
     }
-    
+
     res.status(500).json({
       success: false,
       message: 'Error al actualizar el usuario administrador',
@@ -1030,7 +1015,7 @@ const getUsersWithPendingDocuments = async (req, res) => {
     // Filtrar en JavaScript para mayor control
     const usersWithDocuments = allUsersWithDocuments.filter(user => {
       const rol = user.cuentas[0]?.rol_cue;
-      
+
       if (rol === 'ESTUDIANTE') {
         // Estudiantes deben tener ambos documentos
         return !!user.enl_ced_pdf && !!user.enl_mat_pdf;
@@ -1038,7 +1023,7 @@ const getUsersWithPendingDocuments = async (req, res) => {
         // Usuarios normales solo necesitan cédula
         return !!user.enl_ced_pdf;
       }
-      
+
       return false;
     });
 
@@ -1048,7 +1033,7 @@ const getUsersWithPendingDocuments = async (req, res) => {
 
     usersWithDocuments.forEach(user => {
       const isEstudiante = user.cuentas[0]?.rol_cue === 'ESTUDIANTE';
-      
+
       const userData = {
         id_usu: user.id_usu,
         ced_usu: user.ced_usu,
@@ -1153,43 +1138,80 @@ const downloadUserDocument = async (req, res) => {
 };
 
 // Aprobar documentos de un usuario
+
+// ✅ approveUserDocuments (robusto)
 const approveUserDocuments = async (req, res) => {
-  try {
-    const { userId } = req.params;
+  const { userId, documentType } = req.params;
 
-    const user = await prisma.usuario.findUnique({
-      where: { id_usu: userId }
-    });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'Usuario no encontrado'
-      });
+  const user = await prisma.usuario.findUnique({
+    where: { id_usu: userId },
+    include: {
+      cuentas: { select: { rol_cue: true } }
     }
+  });
+  if (!user) return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
 
-    // Actualizar el estado de verificación
-    await prisma.usuario.update({
-      where: { id_usu: userId },
-      data: {
-        documentos_verificados: true,
-        fec_verificacion_docs: new Date()
-      }
-    });
+  const isEstudiante = user.cuentas[0].rol_cue === 'ESTUDIANTE';
+  let updateData = {};
+  let aprobadoMsg = '';
 
-    res.json({
-      success: true,
-      message: 'Documentos aprobados exitosamente'
-    });
-
-  } catch (error) {
-    console.error('Error en approveUserDocuments:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor'
-    });
+  if (documentType === 'cedula') {
+    updateData.cedula_aprobada = true;
+    aprobadoMsg = 'Cédula aprobada';
+    if (!isEstudiante) {
+      updateData.documentos_verificados = true;
+      updateData.fec_verificacion_docs = new Date();
+      aprobadoMsg += ' y documentos verificados';
+    } else if (user.matricula_aprobada) {
+      updateData.documentos_verificados = true;
+      updateData.fec_verificacion_docs = new Date();
+      aprobadoMsg += ' y documentos verificados';
+    }
+  } else if (documentType === 'matricula' && isEstudiante) {
+    updateData.matricula_aprobada = true;
+    aprobadoMsg = 'Matrícula aprobada';
+    if (user.cedula_aprobada) {
+      updateData.documentos_verificados = true;
+      updateData.fec_verificacion_docs = new Date();
+      aprobadoMsg += ' y documentos verificados';
+    }
+  } else if (documentType === 'all') {
+    updateData = {
+      cedula_aprobada: true,
+      matricula_aprobada: true,
+      documentos_verificados: true,
+      fec_verificacion_docs: new Date()
+    };
+    aprobadoMsg = 'Todos los documentos aprobados';
+  } else {
+    return res.status(400).json({ success: false, message: 'Tipo de documento no válido' });
   }
+
+  await prisma.usuario.update({ where: { id_usu: userId }, data: updateData });
+  res.json({ success: true, message: aprobadoMsg });
 };
+
+
+// ✅ approveAllDocuments global
+const approveAllDocuments = async (req, res) => {
+  const { userId } = req.params;
+  const user = await prisma.usuario.findUnique({ where: { id_usu: userId } });
+  if (!user) return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+  if (user.documentos_verificados) {
+    return res.status(400).json({ success: false, message: 'Ya estaban aprobados' });
+  }
+  await prisma.usuario.update({
+    where: { id_usu: userId },
+    data: {
+      documentos_verificados: true,
+      fec_verificacion_docs: new Date(),
+      cedula_aprobada: true,
+      matricula_aprobada: true
+    }
+  });
+  res.json({ success: true, message: 'Documentos verificados globalmente desde el CRUD' });
+};
+
 
 // Rechazar documentos de un usuario
 const rejectUserDocuments = async (req, res) => {
@@ -1252,5 +1274,6 @@ module.exports = {
   getUsersWithPendingDocuments,
   downloadUserDocument,
   approveUserDocuments,
+  approveAllDocuments,
   rejectUserDocuments
 };
