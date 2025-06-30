@@ -49,6 +49,10 @@ model Usuario {
   documentos_verificados Boolean @map("DOCUMENTOS_VERIFICADOS") @default(false)
   fec_verificacion_docs DateTime? @map("FEC_VERIFICACION_DOCS") @db.Timestamp
 
+  // ✅ NUEVOS CAMPOS PARA APROBACIÓN INDEPENDIENTE
+  cedula_aprobada Boolean @map("CEDULA_APROBADA") @default(false)
+  matricula_aprobada Boolean @map("MATRICULA_APROBADA") @default(false)
+
   // Campos para recuperación de contraseña
   resetToken String? @map("RESET_TOKEN") @db.VarChar(255)
   resetTokenExpiry DateTime? @map("RESET_TOKEN_EXPIRY") @db.Timestamp(3) 
@@ -71,6 +75,7 @@ model Usuario {
   
   @@map("USUARIOS")
 }
+
 
 model Cuenta {
   id_cue String @id @default(uuid()) @map("ID_CUE") @db.Uuid
