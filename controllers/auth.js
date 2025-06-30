@@ -6,7 +6,9 @@ const prisma = new PrismaClient();
 
 // Controlador para registrar un nuevo usuario
 const register = async (req, res) => {
+
     const { email, password, nombre, nombre2, apellido, apellido2, ced_usu, fec_nac_usu, carrera } = req.body;
+
 
     try {
         // Verificar si ya existe un usuario con ese correo o cédula
@@ -44,6 +46,16 @@ const register = async (req, res) => {
             });
         }
 
+
+
+        // Validar fortaleza de la contraseña
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
+        if (!passwordRegex.test(password)) {
+            return res.status(400).json({
+                success: false,
+                message: 'La contraseña debe contener al menos 6 caracteres, una mayúscula, un número y un carácter especial (@$!%*?&)'
+            });
+
         // Validar carrera para usuarios UTA
         if (email && email.endsWith('@uta.edu.ec')) {
             if (!carrera) {
@@ -64,6 +76,7 @@ const register = async (req, res) => {
                     message: 'La carrera seleccionada no es válida'
                 });
             }
+
         }
 
         // Encriptar la contraseña
@@ -206,6 +219,15 @@ const adminCreateUser = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'El formato de fecha de nacimiento es inválido. Use YYYY-MM-DD'
+            });
+        }
+
+        // Validar fortaleza de la contraseña para administrador
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
+        if (!passwordRegex.test(pas_usu)) {
+            return res.status(400).json({
+                success: false,
+                message: 'La contraseña debe contener al menos 6 caracteres, una mayúscula, un número y un carácter especial (@$!%*?&)'
             });
         }
 

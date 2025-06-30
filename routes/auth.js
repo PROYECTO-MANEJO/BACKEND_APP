@@ -24,7 +24,9 @@ router.post('/createAdmin', [
     check('ape_usu2', 'El segundo apellido es obligatorio').not().isEmpty(),
     check('fec_nac_usu', 'La fecha de nacimiento es obligatoria').not().isEmpty(),
     check('num_tel_usu', 'El número de teléfono es obligatorio').not().isEmpty(),
-    check('pas_usu', 'La contraseña es obligatoria y debe tener al menos 6 caracteres').isLength({ min: 6 }),
+    check('pas_usu', 'La contraseña debe tener al menos 6 caracteres, una mayúscula, un número y un carácter especial')
+        .isLength({ min: 6 })
+        .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/),
     check('id_car_per', 'El ID del cargo es obligatorio').optional(),
     check('cor_cue', 'El correo electrónico es obligatorio').isEmail(),
     validateFields
@@ -33,9 +35,12 @@ router.post('/createAdmin', [
 // Ruta para crear un usuario normal
 router.post('/createUser', [
     check('email', 'El correo electrónico es obligatorio').isEmail(),
-    check('password', 'La contraseña es obligatoria y debe tener al menos 6 caracteres').isLength({ min: 6 }),
+    check('password', 'La contraseña debe tener al menos 6 caracteres, una mayúscula, un número y un carácter especial')
+        .isLength({ min: 6 })
+        .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/),
     check('nombre', 'El primer nombre es obligatorio').not().isEmpty(),
     check('apellido', 'El primer apellido es obligatorio').not().isEmpty(),
+
     check('ced_usu').custom(validarCedulaMiddleware),
     check('carrera', 'La carrera es obligatoria para estudiantes UTA').optional(),
 
