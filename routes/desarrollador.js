@@ -83,20 +83,6 @@ router.put('/solicitud/:id/planes-tecnicos',
   desarrolladorController.actualizarPlanesTecnicos
 );
 
-// Enviar planes a revisión del MASTER
-router.post('/solicitud/:id/enviar-planes', 
-  validateJWT, 
-  verificarRolDesarrollador, 
-  desarrolladorController.enviarPlanesARevision
-);
-
-// Iniciar desarrollo (LISTO_PARA_IMPLEMENTAR → EN_DESARROLLO)
-router.post('/solicitud/:id/iniciar-desarrollo', 
-  validateJWT, 
-  verificarRolDesarrollador, 
-  desarrolladorController.iniciarDesarrollo
-);
-
 // Pasar a testing (EN_DESARROLLO → EN_TESTING)
 router.post('/solicitud/:id/pasar-testing', 
   validateJWT, 
@@ -104,18 +90,91 @@ router.post('/solicitud/:id/pasar-testing',
   desarrolladorController.pasarATesting
 );
 
-// Pasar a despliegue (EN_TESTING → EN_DESPLIEGUE)
-router.post('/solicitud/:id/pasar-despliegue', 
+// =====================================================
+// NUEVAS RUTAS PARA MÚLTIPLES RAMAS
+// =====================================================
+
+// Crear rama específica (frontend o backend)
+router.post('/solicitud/:id/crear-rama', 
   validateJWT, 
   verificarRolDesarrollador, 
-  desarrolladorController.pasarADespliegue
+  desarrolladorController.crearRamaEspecifica
 );
 
-// Completar solicitud (EN_DESPLIEGUE → COMPLETADA/FALLIDA)
-router.post('/solicitud/:id/completar', 
+// Crear Pull Request específico
+router.post('/solicitud/:id/crear-pr', 
   validateJWT, 
   verificarRolDesarrollador, 
-  desarrolladorController.completarSolicitud
+  desarrolladorController.crearPRSpecifico
+);
+
+// Obtener ramas de una solicitud
+router.get('/solicitud/:id/ramas', 
+  validateJWT, 
+  verificarRolDesarrollador, 
+  desarrolladorController.obtenerRamasSolicitud
+);
+
+// Obtener ramas disponibles de un repositorio
+router.get('/ramas-disponibles/:repository_type', 
+  validateJWT, 
+  verificarRolDesarrollador, 
+  desarrolladorController.obtenerRamasDisponibles
+);
+
+// Validar estado para crear ramas/PRs
+router.get('/solicitud/:id/validar-estado', 
+  validateJWT, 
+  verificarRolDesarrollador, 
+  (req, res) => {
+    // Endpoint simple para validar permisos
+    res.json({ success: true, message: 'Acceso autorizado' });
+  }
+);
+
+// Obtener estado de PRs de una solicitud
+router.get('/solicitud/:id/pull-requests/estado', 
+  validateJWT, 
+  verificarRolDesarrollador, 
+  (req, res) => {
+    // Este endpoint se puede implementar más tarde si es necesario
+    res.json({ success: true, data: { status: 'pending' } });
+  }
+);
+
+// Verificar si está listo para testing
+router.get('/solicitud/:id/testing/verificar', 
+  validateJWT, 
+  verificarRolDesarrollador, 
+  (req, res) => {
+    // Este endpoint se puede implementar más tarde si es necesario
+    res.json({ success: true, canSendToTesting: false });
+  }
+);
+
+// Enviar a testing
+router.post('/solicitud/:id/testing/enviar', 
+  validateJWT, 
+  verificarRolDesarrollador, 
+  desarrolladorController.pasarATesting
+);
+
+// Enviar a testing simple (solo cambio de estado, sin validaciones de PR)
+router.post('/solicitud/:id/testing/enviar-simple', 
+  validateJWT, 
+  verificarRolDesarrollador, 
+  desarrolladorController.enviarATestingSimple
+);
+
+// RUTAS TEMPORALES DE DEBUGGING - REMOVER EN PRODUCCIÓN
+router.get('/verificar-tokens', 
+  validateJWT, 
+  desarrolladorController.verificarTokensDesarrolladores
+);
+
+router.post('/configurar-token', 
+  validateJWT, 
+  desarrolladorController.configurarTokenGitHub
 );
 
 module.exports = router; 
