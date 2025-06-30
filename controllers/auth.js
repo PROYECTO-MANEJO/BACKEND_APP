@@ -55,6 +55,7 @@ const register = async (req, res) => {
                 success: false,
                 message: 'La contraseña debe contener al menos 6 caracteres, una mayúscula, un número y un carácter especial (@$!%*?&)'
             });
+        }
 
         // Validar carrera para usuarios UTA
         if (email && email.endsWith('@uta.edu.ec')) {
@@ -246,8 +247,7 @@ const adminCreateUser = async (req, res) => {
                     ape_usu2,
                     fec_nac_usu: fechaNacimiento,
                     num_tel_usu,
-                    pas_usu: hashedPassword,
-                    
+                    pas_usu: hashedPassword
                 }
             });
 
