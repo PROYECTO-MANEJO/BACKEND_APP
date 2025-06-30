@@ -1166,11 +1166,67 @@ ${solicitud.plan_backout_sol || 'Por definir'}
         auth: userToken || this.token
       });
 
+      // Validaciones previas
+      console.log('🔍 Validando existencia de ramas...');
+      
+      // Verificar que la rama head existe
+      try {
+        await octokit.rest.repos.getBranch({
+          owner: this.defaultOwner,
+          repo,
+          branch: branchName
+        });
+        console.log('✅ Rama head encontrada:', branchName);
+      } catch (error) {
+        if (error.status === 404) {
+          throw new Error(`La rama '${branchName}' no existe en el repositorio ${repoType}`);
+        }
+        throw error;
+      }
+
+      // Verificar que la rama base existe
+      try {
+        await octokit.rest.repos.getBranch({
+          owner: this.defaultOwner,
+          repo,
+          branch: baseBranch
+        });
+        console.log('✅ Rama base encontrada:', baseBranch);
+      } catch (error) {
+        if (error.status === 404) {
+          throw new Error(`La rama base '${baseBranch}' no existe en el repositorio ${repoType}`);
+        }
+        throw error;
+      }
+
+      // Verificar que no existe ya un PR con la misma head
+      try {
+        const { data: existingPRs } = await octokit.rest.pulls.list({
+          owner: this.defaultOwner,
+          repo,
+          head: `${this.defaultOwner}:${branchName}`,
+          state: 'open'
+        });
+        
+        if (existingPRs.length > 0) {
+          const existingPR = existingPRs[0];
+          throw new Error(`Ya existe un PR abierto (#${existingPR.number}) para la rama '${branchName}'`);
+        }
+        console.log('✅ No hay PRs existentes para esta rama');
+      } catch (error) {
+        if (error.message.includes('Ya existe un PR')) {
+          throw error;
+        }
+        console.warn('⚠️ No se pudo verificar PRs existentes:', error.message);
+      }
+
       // Generar título y descripción del PR
       const repoTypeLabel = repoType === 'frontend' ? 'Frontend' : 'Backend';
       const title = `[${repoTypeLabel}] ${solicitud.titulo_sol}`;
       
       const body = this.generarDescripcionPR(solicitud, repoType);
+
+      console.log('📝 Datos del PR:', { title, head: branchName, base: baseBranch });
 
       // Crear Pull Request
       const { data: pullRequest } = await octokit.rest.pulls.create({
@@ -1203,10 +1259,28 @@ ${solicitud.plan_backout_sol || 'Por definir'}
 
     } catch (error) {
       console.error('❌ Error creando PR específico:', error);
+      console.error('❌ Error response:', error.response?.data);
       
       if (error.status === 422) {
-        const message = error.response?.data?.errors?.[0]?.message || 'Error de validación';
-        throw new Error(`Error creando PR: ${message}`);
+        const errorData = error.response?.data;
+        const errors = errorData?.errors || [];
+        const message = errorData?.message || 'Error de validación';
+        
+        // Log detallado del error 422
+        console.error('❌ Error 422 detallado:', {
+          message,
+          errors,
+          documentation_url: errorData?.documentation_url
+        });
+        
+        // Crear mensaje de error más específico
+        let errorMessage = `Error creando PR: ${message}`;
+        if (errors.length > 0) {
+          const errorDetails = errors.map(err => `${err.field}: ${err.message}`).join(', ');
+          errorMessage += ` (${errorDetails})`;
+        }
+        
+        throw new Error(errorMessage);
       } else if (error.status === 404) {
         throw new Error(`Rama ${branchName} no encontrada en el repositorio ${repoType}`);
       } else if (error.status === 401) {
@@ -1267,8 +1341,14 @@ ${repoType === 'frontend' ?
     try {
       console.log('🔍 Obteniendo información del PR:', { prNumber, repoType });
 
-      if (!this.isConfigured()) {
-        throw new Error('GitHub no está configurado');
+      // Obtener token master si no tenemos token configurado
+      let token = this.token;
+      if (!token) {
+        console.log('🔑 Obteniendo token master para consultar PR...');
+        token = await this.obtenerTokenMaster();
+        if (!token) {
+          throw new Error('No se pudo obtener token de GitHub para consultar PR');
+        }
       }
 
       const repo = this.repositories[repoType];
@@ -1277,7 +1357,7 @@ ${repoType === 'frontend' ?
       }
 
       const octokit = new Octokit({
-        auth: this.token
+        auth: token
       });
 
       // Obtener información del PR
@@ -1363,13 +1443,19 @@ ${repoType === 'frontend' ?
     try {
       console.log('✅ Aprobando PR:', { prNumber, repoType });
 
+      // Obtener token master
+      const token = await this.obtenerTokenMaster();
+      if (!token) {
+        throw new Error('No se pudo obtener token master para aprobar PR');
+      }
+
       const repo = this.repositories[repoType];
       if (!repo) {
         throw new Error(`Repositorio ${repoType} no configurado`);
       }
 
       const octokit = new Octokit({
-        auth: this.token
+        auth: token
       });
 
       try {
@@ -1422,13 +1508,19 @@ ${repoType === 'frontend' ?
     try {
       console.log('❌ Rechazando PR:', { prNumber, repoType });
 
+      // Obtener token master
+      const token = await this.obtenerTokenMaster();
+      if (!token) {
+        throw new Error('No se pudo obtener token master para rechazar PR');
+      }
+
       const repo = this.repositories[repoType];
       if (!repo) {
         throw new Error(`Repositorio ${repoType} no configurado`);
       }
 
       const octokit = new Octokit({
-        auth: this.token
+        auth: token
       });
 
       try {
@@ -1525,13 +1617,19 @@ ${repoType === 'frontend' ?
     try {
       console.log('🔄 Mergeando PR:', { prNumber, repoType });
 
+      // Obtener token master
+      const token = await this.obtenerTokenMaster();
+      if (!token) {
+        throw new Error('No se pudo obtener token master para mergear PR');
+      }
+
       const repo = this.repositories[repoType];
       if (!repo) {
         throw new Error(`Repositorio ${repoType} no configurado`);
       }
 
       const octokit = new Octokit({
-        auth: this.token
+        auth: token
       });
 
       // Mergear Pull Request
