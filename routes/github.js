@@ -22,7 +22,13 @@ const {
   verificarMerges,
   validarTokenPersonal,
   rechazarPR,
-  aprobarPR
+  aprobarPR,
+  // Funciones para múltiples ramas
+  crearRamaEspecifica,
+  crearPRSpecifico,
+  obtenerRamasSolicitud,
+  aprobarPRPorRepositorio,
+  rechazarPRPorRepositorio
 } = require('../controllers/githubController');
 
 // Importar middlewares
@@ -167,6 +173,34 @@ router.get(
 );
 
 // ===================
+// RUTAS PARA MÚLTIPLES RAMAS
+// ===================
+
+// Crear rama específica (frontend o backend) - Solo desarrolladores
+// POST /api/github/dev/solicitud/:id/crear-rama
+router.post(
+  '/dev/solicitud/:id/crear-rama',
+  [validateJWT, validateDeveloper],
+  crearRamaEspecifica
+);
+
+// Crear PR específico para una rama - Solo desarrolladores
+// POST /api/github/dev/solicitud/:id/crear-pr
+router.post(
+  '/dev/solicitud/:id/crear-pr',
+  [validateJWT, validateDeveloper],
+  crearPRSpecifico
+);
+
+// Obtener todas las ramas de una solicitud - Desarrolladores y Master
+// GET /api/github/solicitud/:id/ramas
+router.get(
+  '/solicitud/:id/ramas',
+  [validateJWT],
+  obtenerRamasSolicitud
+);
+
+// ===================
 // RUTAS PARA POLLING/AUTOMATIZACIÓN
 // ===================
 
@@ -206,6 +240,20 @@ router.post('/solicitud/:id/aprobar-pr',
   validateJWT,
   validateMaster,
   aprobarPR
+);
+
+// Aprobar PR específico por repositorio
+router.post('/solicitud/:id/aprobar-pr-repo',
+  validateJWT,
+  validateMaster,
+  aprobarPRPorRepositorio
+);
+
+// Rechazar PR específico por repositorio
+router.post('/solicitud/:id/rechazar-pr-repo',
+  validateJWT,
+  validateMaster,
+  rechazarPRPorRepositorio
 );
 
 module.exports = router; 

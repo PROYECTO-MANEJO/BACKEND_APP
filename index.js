@@ -25,7 +25,8 @@ app.use(express.json());
 
 // Define los orígenes permitidos
 const allowedOrigins = [
-  'https://frontend-rkqe3156f-adrianmora8s-projects.vercel.app', // <-- ¡TU URL EXACTA DE VERCEL AQUÍ!
+  process.env.FRONTEND_URL,// <-- ¡TU URL EXACTA DE VERCEL AQUÍ!
+  process.env.CORS_ORIGIN,
   'http://localhost:5173', // Para desarrollo local de tu frontend con Vite
   'http://localhost:3000'  // Si tu frontend corre en 3000 en desarrollo (ej. Create React App)
   // Si tienes otras URLs de desarrollo o staging, añádelas aquí
@@ -41,6 +42,7 @@ const corsOptions = {
   origin: function (origin, callback) {
     // Permite peticiones sin origen (ej., Postman, CURL, o solicitudes internas de Render)
     if (!origin) return callback(null, true);
+
 
     // Si el origen de la petición está en nuestra lista de permitidos
     if (allowedOrigins.indexOf(origin) !== -1) {
@@ -91,6 +93,9 @@ app.use('/api/administracion', require('./routes/administracion'));
 app.use('/api/reportes', require('./routes/reportes'));
 app.use('/api/certificados', require('./routes/certificados'));
 app.use('/api/github', require('./routes/github'));
+app.use('/api/pagina-principal', require('./routes/paginaPrincipal'));
+
+app.use('/api/verification', require('./routes/verificationRoutes')); // Ruta para verificación de cuenta
 
 
 // Función para iniciar el servidor
@@ -110,6 +115,7 @@ const startServer = async () => {
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => {
       console.log(`Servidor corriendo en el puerto ${PORT}`);
+      console.log(process.env.SMTP_HOST);
     });
   } catch (error) {
     console.error('Error al iniciar el servidor:', error);

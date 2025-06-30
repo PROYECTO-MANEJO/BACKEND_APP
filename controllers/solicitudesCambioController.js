@@ -1,7 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const { validationResult } = require('express-validator');
-const githubService = require('../services/githubService');
-const GitHubService = require('../services/GitHubService');
+const { GitHubService } = require('../services/githubService');
 
 const prisma = new PrismaClient();
 
@@ -769,6 +768,11 @@ const obtenerTodasLasSolicitudes = async (req, res) => {
                 }
               }
             }
+          },
+          ramas: {
+            orderBy: {
+              repository_type: 'asc'
+            }
           }
         },
         orderBy: [
@@ -834,6 +838,11 @@ const obtenerSolicitudParaAdmin = async (req, res) => {
                 cor_cue: true
               }
             }
+          }
+        },
+        ramas: {
+          orderBy: {
+            repository_type: 'asc'
           }
         }
       }
@@ -1499,131 +1508,371 @@ const obtenerDesarrolladores = async (req, res) => {
   }
 };
 
-// Obtener información detallada del PR
+// =====================================================
+// NUEVAS FUNCIONES PARA MÚLTIPLES PRS
+// =====================================================
+
+// Obtener información detallada de todos los PRs de una solicitud
 const obtenerInformacionPR = async (req, res) => {
   try {
     const { id_sol } = req.params;
     
-    // Obtener la solicitud
-    const solicitud = await prisma.solicitudCambio.findUnique({
-      where: { id_sol: parseInt(id_sol) },
-      include: {
-        desarrollador: true
-      }
-    });
-
-    if (!solicitud) {
-      return res.status(404).json({ error: 'Solicitud no encontrada' });
-    }
-
-    if (!solicitud.github_pr_number) {
-      return res.status(404).json({ error: 'Esta solicitud no tiene un PR asociado' });
-    }
-
-    // Obtener información del PR usando la API de GitHub
-    const prInfo = await githubService.obtenerInformacionPR(solicitud.github_pr_number);
-
-    res.json({
-      success: true,
-      data: prInfo
-    });
-  } catch (error) {
-    console.error('Error al obtener información del PR:', error);
-    res.status(500).json({ error: 'Error al obtener información del PR' });
-  }
-};
-
-// Aprobar PR por el MASTER
-const aprobarPRMaster = async (req, res) => {
-  try {
-    const { id_sol } = req.params;
-    const { comentarios } = req.body;
+    console.log('=== OBTENER INFORMACIÓN PRS ===');
+    console.log('Solicitud ID:', id_sol);
     
-    // Obtener la solicitud
-    const solicitud = await prisma.solicitudCambio.findUnique({
+    // Obtener la solicitud con sus ramas
+    const solicitud = await prisma.solicitudCambio.findFirst({
       where: { id_sol },
       include: {
-        desarrollador: true
+        ramas: {
+          where: {
+            pr_number: {
+              not: null
+            }
+          },
+          orderBy: {
+            repository_type: 'asc'
+          }
+        },
+        desarrolladorAsignado: {
+          select: {
+            nom_usu1: true,
+            ape_usu1: true,
+            github_username: true
+          }
+        }
       }
     });
 
     if (!solicitud) {
-      return res.status(404).json({
+      return res.status(404).json({ 
         success: false,
-        message: 'Solicitud no encontrada'
+        message: 'Solicitud no encontrada' 
       });
     }
 
-    if (!solicitud.frontend_pr_number && !solicitud.backend_pr_number) {
-      return res.status(404).json({
+    if (!solicitud.ramas || solicitud.ramas.length === 0) {
+      return res.status(404).json({ 
         success: false,
-        message: 'Esta solicitud no tiene PRs asociados'
+        message: 'Esta solicitud no tiene PRs asociados' 
       });
     }
 
+    // Obtener información detallada de cada PR desde GitHub
     const githubService = new GitHubService();
+    const prsInfo = [];
 
-    // Aprobar y mergear PR de frontend si existe
-    if (solicitud.frontend_pr_number) {
-      await githubService.aprobarYMergearPR(
-        solicitud.frontend_pr_number,
-        comentarios,
-        'frontend'
-      );
-    }
-
-    // Aprobar y mergear PR de backend si existe
-    if (solicitud.backend_pr_number) {
-      await githubService.aprobarYMergearPR(
-        solicitud.backend_pr_number,
-        comentarios,
-        'backend'
-      );
-    }
-
-    // Actualizar estado de la solicitud
-    await prisma.solicitudCambio.update({
-      where: { id_sol },
-      data: {
-        estado_sol: 'EN_DESPLIEGUE',
-        comentarios_master: comentarios,
-        fec_ultima_actualizacion: new Date()
+    for (const rama of solicitud.ramas) {
+      try {
+        const repoType = rama.repository_type.toLowerCase();
+        const prInfo = await githubService.obtenerInformacionPR(
+          rama.pr_number,
+          repoType
+        );
+        
+        prsInfo.push({
+          ...rama,
+          github_info: prInfo
+        });
+      } catch (error) {
+        console.error(`Error obteniendo info del PR ${rama.pr_number}:`, error);
+        prsInfo.push({
+          ...rama,
+          github_info: null,
+          error: error.message
+        });
       }
-    });
+    }
 
     res.json({
       success: true,
-      message: 'PRs aprobados y solicitud actualizada a EN_DESPLIEGUE'
+      data: {
+        solicitud_id: solicitud.id_sol,
+        titulo: solicitud.titulo_sol,
+        desarrollador: solicitud.desarrolladorAsignado,
+        prs: prsInfo
+      }
     });
 
   } catch (error) {
-    console.error('Error al aprobar PRs:', error);
-    res.status(500).json({
+    console.error('Error al obtener información de los PRs:', error);
+    res.status(500).json({ 
       success: false,
-      message: 'Error al aprobar los PRs',
+      message: 'Error al obtener información de los PRs',
       error: error.message
     });
   }
 };
 
-// Rechazar PR por el MASTER
-const rechazarPRMaster = async (req, res) => {
+// Aprobar PR específico por el MASTER
+const aprobarPRSpecifico = async (req, res) => {
   try {
     const { id_sol } = req.params;
-    const { comentarios } = req.body;
+    const { repository_type, comentarios } = req.body;
+    
+    console.log('=== APROBAR PR ESPECÍFICO ===');
+    console.log('Solicitud ID:', id_sol);
+    console.log('Repository Type:', repository_type);
+    
+    // Validar repository_type
+    if (!['FRONTEND', 'BACKEND'].includes(repository_type)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tipo de repositorio inválido. Debe ser FRONTEND o BACKEND'
+      });
+    }
 
-    if (!comentarios) {
+    // Obtener la rama específica
+    const rama = await prisma.solicitudRama.findFirst({
+      where: {
+        id_solicitud: id_sol,
+        repository_type
+      },
+      include: {
+        solicitud: true
+      }
+    });
+
+    if (!rama) {
+      return res.status(404).json({
+        success: false,
+        message: `No se encontró rama ${repository_type} para esta solicitud`
+      });
+    }
+
+    if (!rama.pr_number) {
+      return res.status(400).json({
+        success: false,
+        message: `La rama ${repository_type} no tiene PR asociado`
+      });
+    }
+
+    // Aprobar PR en GitHub
+    const githubService = new GitHubService();
+    const repoType = repository_type.toLowerCase();
+    
+    await githubService.aprobarPR(
+      rama.pr_number,
+      comentarios || `PR ${repository_type} aprobado por Master`,
+      repoType
+    );
+
+    // Actualizar estado del PR en base de datos
+    await prisma.solicitudRama.update({
+      where: { id: rama.id },
+      data: {
+        pr_status: 'APPROVED',
+        updated_at: new Date()
+      }
+    });
+
+    // Actualizar estado general de la solicitud
+    const solicitudConRamas = await prisma.solicitudCambio.findFirst({
+      where: { id_sol },
+      include: { ramas: true }
+    });
+
+    const todasAprobadas = solicitudConRamas.ramas.every(r => 
+      r.pr_status === 'APPROVED' || !r.pr_number
+    );
+
+    if (todasAprobadas && solicitudConRamas.ramas.some(r => r.pr_number)) {
+      await prisma.solicitudCambio.update({
+        where: { id_sol },
+        data: {
+          estado_sol: 'LISTO_PARA_IMPLEMENTAR',
+          fec_ultima_actualizacion: new Date()
+        }
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `PR ${repository_type} aprobado correctamente`,
+      data: {
+        repository_type,
+        pr_number: rama.pr_number,
+        all_approved: todasAprobadas
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al aprobar PR específico:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al aprobar el PR',
+      error: error.message
+    });
+  }
+};
+
+// Rechazar PR específico por el MASTER
+const rechazarPRSpecifico = async (req, res) => {
+  try {
+    const { id_sol } = req.params;
+    const { repository_type, comentarios } = req.body;
+    
+    console.log('=== RECHAZAR PR ESPECÍFICO ===');
+    console.log('Solicitud ID:', id_sol);
+    console.log('Repository Type:', repository_type);
+    
+    // Validar repository_type
+    if (!['FRONTEND', 'BACKEND'].includes(repository_type)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tipo de repositorio inválido. Debe ser FRONTEND o BACKEND'
+      });
+    }
+
+    if (!comentarios || comentarios.trim() === '') {
       return res.status(400).json({
         success: false,
         message: 'Debe proporcionar comentarios para el rechazo'
       });
     }
 
-    // Obtener la solicitud
-    const solicitud = await prisma.solicitudCambio.findUnique({
-      where: { id_sol },
+    // Obtener la rama específica
+    const rama = await prisma.solicitudRama.findFirst({
+      where: {
+        id_solicitud: id_sol,
+        repository_type
+      },
       include: {
-        desarrollador: true
+        solicitud: true
+      }
+    });
+
+    if (!rama) {
+      return res.status(404).json({
+        success: false,
+        message: `No se encontró rama ${repository_type} para esta solicitud`
+      });
+    }
+
+    if (!rama.pr_number) {
+      return res.status(400).json({
+        success: false,
+        message: `La rama ${repository_type} no tiene PR asociado`
+      });
+    }
+
+    // Rechazar PR en GitHub
+    const githubService = new GitHubService();
+    const repoType = repository_type.toLowerCase();
+    
+    await githubService.rechazarPR(
+      rama.pr_number,
+      comentarios,
+      repoType
+    );
+
+    // Actualizar estado del PR en base de datos
+    await prisma.solicitudRama.update({
+      where: { id: rama.id },
+      data: {
+        pr_status: 'REJECTED',
+        updated_at: new Date()
+      }
+    });
+
+    // La solicitud regresa a EN_DESARROLLO cuando cualquier PR es rechazado
+    await prisma.solicitudCambio.update({
+      where: { id_sol },
+      data: {
+        estado_sol: 'EN_DESARROLLO',
+        fec_ultima_actualizacion: new Date()
+      }
+    });
+
+    res.json({
+      success: true,
+      message: `PR ${repository_type} rechazado. Solicitud regresada a EN_DESARROLLO`,
+      data: {
+        repository_type,
+        pr_number: rama.pr_number
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al rechazar PR específico:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al rechazar el PR',
+      error: error.message
+    });
+  }
+};
+
+const crearRamaParaSolicitud = async (req, res) => {
+  try {
+    const { id_solicitud } = req.params;
+    const { repository_type } = req.body;
+
+    if (!['FRONTEND', 'BACKEND'].includes(repository_type)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tipo de repositorio inválido'
+      });
+    }
+
+    const rama = await GitHubService.crearRama(id_solicitud, repository_type);
+
+    res.status(201).json({
+      success: true,
+      message: 'Rama creada exitosamente',
+      data: rama
+    });
+
+  } catch (error) {
+    console.error('Error al crear rama:', error);
+    res.status(error.message.includes('Ya existe') ? 400 : 500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+const obtenerRamasPorSolicitud = async (req, res) => {
+  try {
+    const { id_solicitud } = req.params;
+
+    // Verificar que la solicitud existe
+    const solicitud = await prisma.solicitudCambio.findUnique({
+      where: { id_sol: id_solicitud }
+    });
+
+    if (!solicitud) {
+      return res.status(404).json({
+        success: false,
+        message: 'Solicitud no encontrada'
+      });
+    }
+
+    const ramas = await GitHubService.obtenerRamasPorSolicitud(id_solicitud);
+
+    res.json({
+      success: true,
+      message: 'Ramas obtenidas exitosamente',
+      data: ramas
+    });
+
+  } catch (error) {
+    console.error('Error al obtener ramas:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+const validarEstadoSolicitudParaRamas = async (req, res) => {
+  try {
+    const { id_solicitud } = req.params;
+
+    const solicitud = await prisma.solicitudCambio.findUnique({
+      where: { id_sol: id_solicitud },
+      include: {
+        ramas: true
       }
     });
 
@@ -1634,54 +1883,181 @@ const rechazarPRMaster = async (req, res) => {
       });
     }
 
-    if (!solicitud.frontend_pr_number && !solicitud.backend_pr_number) {
-      return res.status(404).json({
-        success: false,
-        message: 'Esta solicitud no tiene PRs asociados'
-      });
-    }
-
-    const githubService = new GitHubService();
-
-    // Rechazar PR de frontend si existe
-    if (solicitud.frontend_pr_number) {
-      await githubService.rechazarPR(
-        solicitud.frontend_pr_number,
-        comentarios,
-        'frontend'
-      );
-    }
-
-    // Rechazar PR de backend si existe
-    if (solicitud.backend_pr_number) {
-      await githubService.rechazarPR(
-        solicitud.backend_pr_number,
-        comentarios,
-        'backend'
-      );
-    }
-
-    // Actualizar estado de la solicitud
-    await prisma.solicitudCambio.update({
-      where: { id_sol },
-      data: {
-        estado_sol: 'EN_DESARROLLO',
-        comentarios_master: comentarios,
-        fec_ultima_actualizacion: new Date()
-      }
-    });
+    // Verificar qué ramas se pueden crear
+    const puedeCrearFrontend = !solicitud.ramas.some(rama => rama.repository_type === 'FRONTEND');
+    const puedeCrearBackend = !solicitud.ramas.some(rama => rama.repository_type === 'BACKEND');
+    
+    // Verificar estado válido para crear ramas
+    const estadosValidosParaRamas = ['APROBADA', 'EN_DESARROLLO'];
+    const puedeCrearRamas = estadosValidosParaRamas.includes(solicitud.estado_sol);
 
     res.json({
       success: true,
-      message: 'PRs rechazados y solicitud actualizada a EN_DESARROLLO'
+      data: {
+        solicitud: {
+          id_sol: solicitud.id_sol,
+          estado_sol: solicitud.estado_sol,
+          titulo_sol: solicitud.titulo_sol
+        },
+        permisos: {
+          puede_crear_ramas: puedeCrearRamas,
+          puede_crear_frontend: puedeCrearFrontend && puedeCrearRamas,
+          puede_crear_backend: puedeCrearBackend && puedeCrearRamas
+        },
+        ramas_existentes: solicitud.ramas
+      }
     });
 
   } catch (error) {
-    console.error('Error al rechazar PRs:', error);
+    console.error('Error al validar estado:', error);
     res.status(500).json({
       success: false,
-      message: 'Error al rechazar los PRs',
-      error: error.message
+      message: error.message
+    });
+  }
+};
+
+const crearPRParaSolicitud = async (req, res) => {
+  try {
+    const { id_solicitud } = req.params;
+    const { repository_type } = req.body;
+
+    if (!['FRONTEND', 'BACKEND'].includes(repository_type)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tipo de repositorio inválido'
+      });
+    }
+
+    const pr = await GitHubService.crearPR(id_solicitud, repository_type);
+
+    res.status(201).json({
+      success: true,
+      message: 'Pull Request creado exitosamente',
+      data: pr
+    });
+
+  } catch (error) {
+    console.error('Error al crear PR:', error);
+    
+    let statusCode = 500;
+    if (error.message.includes('No existe una rama')) {
+      statusCode = 400;
+    } else if (error.message.includes('Ya existe un PR')) {
+      statusCode = 409;
+    } else if (error.message.includes('No hay commits')) {
+      statusCode = 422;
+    }
+
+    res.status(statusCode).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+const verificarEstadoParaTesting = async (req, res) => {
+  try {
+    const { id_solicitud } = req.params;
+
+    const resultado = await GitHubService.verificarEstadoParaEnviarATesting(id_solicitud);
+
+    res.json({
+      success: true,
+      message: 'Estado verificado exitosamente',
+      data: resultado
+    });
+
+  } catch (error) {
+    console.error('Error al verificar estado:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+const enviarSolicitudATesting = async (req, res) => {
+  try {
+    const { id_solicitud } = req.params;
+
+    const solicitud = await GitHubService.enviarATesting(id_solicitud);
+
+    res.json({
+      success: true,
+      message: 'Solicitud enviada a testing exitosamente',
+      data: solicitud
+    });
+
+  } catch (error) {
+    console.error('Error al enviar a testing:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+const obtenerEstadoPRsParaSolicitud = async (req, res) => {
+  try {
+    const { id_solicitud } = req.params;
+
+    const solicitud = await prisma.solicitudCambio.findUnique({
+      where: { id_sol: id_solicitud },
+      include: {
+        ramas: true
+      }
+    });
+
+    if (!solicitud) {
+      return res.status(404).json({
+        success: false,
+        message: 'Solicitud no encontrada'
+      });
+    }
+
+    // Calcular estadísticas de PRs
+    const totalRamas = solicitud.ramas.length;
+    const prsCreados = solicitud.ramas.filter(rama => rama.pr_status !== 'PENDING').length;
+    const prsEnReview = solicitud.ramas.filter(rama => rama.pr_status === 'IN_REVIEW').length;
+    const prsAprobados = solicitud.ramas.filter(rama => rama.pr_status === 'APPROVED').length;
+    const prsRechazados = solicitud.ramas.filter(rama => rama.pr_status === 'REJECTED').length;
+    const prsMergeados = solicitud.ramas.filter(rama => rama.pr_status === 'MERGED').length;
+
+    // Determinar si puede enviar a testing
+    const puedeEnviarATesting = totalRamas > 0 && 
+                               prsCreados === totalRamas && 
+                               solicitud.estado_sol === 'EN_DESARROLLO';
+
+    res.json({
+      success: true,
+      data: {
+        solicitud: {
+          id_sol: solicitud.id_sol,
+          estado_sol: solicitud.estado_sol,
+          titulo_sol: solicitud.titulo_sol
+        },
+        estadisticas_prs: {
+          total_ramas: totalRamas,
+          prs_creados: prsCreados,
+          prs_pendientes: totalRamas - prsCreados,
+          prs_en_review: prsEnReview,
+          prs_aprobados: prsAprobados,
+          prs_rechazados: prsRechazados,
+          prs_mergeados: prsMergeados
+        },
+        permisos: {
+          puede_enviar_a_testing: puedeEnviarATesting
+        },
+        ramas: solicitud.ramas
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al obtener estado de PRs:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 };
@@ -1706,6 +2082,13 @@ module.exports = {
   obtenerEstadisticasAdmin,
   obtenerDesarrolladores,
   obtenerInformacionPR,
-  aprobarPRMaster,
-  rechazarPRMaster
+  aprobarPRSpecifico,
+  rechazarPRSpecifico,
+  crearRamaParaSolicitud,
+  obtenerRamasPorSolicitud,
+  validarEstadoSolicitudParaRamas,
+  crearPRParaSolicitud,
+  verificarEstadoParaTesting,
+  enviarSolicitudATesting,
+  obtenerEstadoPRsParaSolicitud
 }; 
