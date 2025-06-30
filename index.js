@@ -25,7 +25,8 @@ app.use(express.json());
 
 // Define los orígenes permitidos
 const allowedOrigins = [
-  'https://frontend-rkqe3156f-adrianmora8s-projects.vercel.app', // <-- ¡TU URL EXACTA DE VERCEL AQUÍ!
+  process.env.FRONTEND_URL,// <-- ¡TU URL EXACTA DE VERCEL AQUÍ!
+  process.env.CORS_ORIGIN,
   'http://localhost:5173', // Para desarrollo local de tu frontend con Vite
   'http://localhost:3000'  // Si tu frontend corre en 3000 en desarrollo (ej. Create React App)
   // Si tienes otras URLs de desarrollo o staging, añádelas aquí
@@ -42,6 +43,7 @@ const corsOptions = {
     // Permite peticiones sin origen (ej., Postman, CURL, o solicitudes internas de Render)
     if (!origin) return callback(null, true);
 
+
     // Si el origen de la petición está en nuestra lista de permitidos
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
@@ -51,9 +53,11 @@ const corsOptions = {
       callback(new Error(msg), false);
     }
   },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Asegúrate de que todos los métodos HTTP que usas estén aquí
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'], // Asegúrate de que todos los métodos HTTP que usas estén aquí
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-token'], // Headers permitidos
   credentials: true, // Si usas cookies o tokens de autorización personalizados (como 'x-token')
-  optionsSuccessStatus: 200 // Para compatibilidad con navegadores antiguos
+  optionsSuccessStatus: 200, // Para compatibilidad con navegadores antiguos
+  maxAge: 86400 // Cache preflight por 24 horas para reducir peticiones OPTIONS
 };
 
 app.use(cors(corsOptions));
@@ -78,7 +82,9 @@ app.use('/api/inscripciones', require('./routes/inscripciones'));
 app.use('/api/eventosPorCarrera', require('./routes/eventosPorCarrera'));
 app.use('/api/cursosPorCarrera', require('./routes/cursoPorCarrera'));
 app.use('/api/inscripcionesCursos', require('./routes/inscripcionesCursos'));
+app.use('/api/participaciones', require('./routes/participaciones'));
 
+app.use('/api/desarrollador', require('./routes/desarrollador'));
 
 app.use('/api/admin/inscripciones', require('./routes/inscripciones'));
 app.use('/api/admin/inscripciones', require('./routes/inscripcionesCursos'));
@@ -86,6 +92,8 @@ app.use('/api/administracion', require('./routes/administracion'));
 
 app.use('/api/reportes', require('./routes/reportes'));
 app.use('/api/certificados', require('./routes/certificados'));
+app.use('/api/github', require('./routes/github'));
+app.use('/api/pagina-principal', require('./routes/paginaPrincipal'));
 
 app.use('/api/verification', require('./routes/verificationRoutes')); // Ruta para verificación de cuenta
 

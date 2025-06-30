@@ -54,12 +54,15 @@ const validateJWT = async (req, res, next) => {
       });
     }
     
-    // Agregar el uid y usuario al request
+    // Agregar el uid, usuario y rol al request
     console.log("el ID ES"+payload.id)
     req.uid = payload.id;
     req.usuario = usuario;
+    req.userId = payload.id; // Alias para compatibilidad
+    req.userRole = usuario.cuentas[0]?.rol_cue || null; // Agregar rol del usuario
     console.log('👤 UID agregado al request:', req.uid);
     console.log('👤 Usuario agregado al request:', usuario.nom_usu1, usuario.ape_usu1);
+    console.log('👤 Rol del usuario:', req.userRole);
     console.log('📊 Tipo de UID:', typeof req.uid);
     
     next();
@@ -155,8 +158,93 @@ const validateRoles = (...roles) => {
     };
 };
 
+// Middleware para validar que el usuario sea desarrollador
+const validateDeveloper = async (req, res, next) => {
+    // Verificar que exista un usuario en la request (validado por validateJWT)
+    if (!req.usuario) {
+        return res.status(500).json({
+            success: false,
+            message: 'Se quiere verificar el rol sin validar el token primero'
+        });
+    }
+
+    try {
+        // El usuario ya viene con las cuentas incluidas desde validateJWT
+        const cuentas = req.usuario.cuentas;
+
+        // Verificar si tiene cuenta y si su rol es DESARROLLADOR
+        if (!cuentas || cuentas.length === 0) {
+            return res.status(403).json({
+                success: false,
+                message: 'El usuario no tiene cuenta asociada'
+            });
+        }
+
+        const cuenta = cuentas[0]; // Tomar la primera cuenta
+        if (cuenta.rol_cue !== 'DESARROLLADOR' && cuenta.rol_cue !== 'MASTER') {
+            return res.status(403).json({
+                success: false,
+                message: 'El usuario no tiene permisos de desarrollador'
+            });
+        }
+
+        // Agregar el userId al request para uso en los controladores
+        req.userId = req.uid;
+
+        next();
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            success: false,
+            message: 'Error al verificar el rol de desarrollador'
+        });
+    }
+};
+
+// Middleware para validar que el usuario sea MASTER o ADMINISTRADOR
+const validateMaster = async (req, res, next) => {
+    // Verificar que exista un usuario en la request (validado por validateJWT)
+    if (!req.usuario) {
+        return res.status(500).json({
+            success: false,
+            message: 'Se quiere verificar el rol sin validar el token primero'
+        });
+    }
+
+    try {
+        // El usuario ya viene con las cuentas incluidas desde validateJWT
+        const cuentas = req.usuario.cuentas;
+
+        // Verificar si tiene cuenta y si su rol es MASTER o ADMINISTRADOR
+        if (!cuentas || cuentas.length === 0) {
+            return res.status(403).json({
+                success: false,
+                message: 'El usuario no tiene cuenta asociada'
+            });
+        }
+
+        const cuenta = cuentas[0]; // Tomar la primera cuenta
+        if (cuenta.rol_cue !== 'MASTER' && cuenta.rol_cue !== 'ADMINISTRADOR') {
+            return res.status(403).json({
+                success: false,
+                message: 'El usuario no tiene permisos de administrador master'
+            });
+        }
+
+        next();
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            success: false,
+            message: 'Error al verificar el rol de master'
+        });
+    }
+};
+
 module.exports = {
     validateJWT,
     validateAdmin,
-    validateRoles
+    validateDeveloper,
+    validateRoles,
+    validateMaster
 };
