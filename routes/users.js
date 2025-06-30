@@ -72,8 +72,7 @@ router.get('/pending-documents', [validateJWT, validateRoles('MASTER')], getUser
 router.get('/download-document/:userId/:documentType', [validateJWT, validateRoles('MASTER')], downloadUserDocument);
 
 // Aprobar documentos de un usuario
-router.put('/approve-documents/:userId', [validateJWT, validateRoles('MASTER')], approveUserDocuments);
-
+router.put('/approve-documents/:userId/:documentType', [validateJWT, validateRoles('MASTER')], approveUserDocuments);
 // Rechazar documentos de un usuario
 router.put('/reject-documents/:userId', [validateJWT, validateRoles('MASTER')], rejectUserDocuments);
 
