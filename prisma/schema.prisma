@@ -77,6 +77,7 @@ model Usuario {
   solicitudesCreadas SolicitudCambio[] @relation("SolicitudesUsuario")
   solicitudesResponsables SolicitudCambio[] @relation("SolicitudesAdmin")
   solicitudesAsignadas SolicitudCambio[] @relation("SolicitudesDesarrollador")
+
   
   // ✅ RELACIONES DE PÁGINA PRINCIPAL
   edicionesPaginaPrincipal PaginaPrincipal[] @relation("UltimaEdicionPagina")
@@ -448,6 +449,62 @@ model SolicitudCambio {
   ramas                       SolicitudRama[]
 
   @@map("SOLICITUDES_CAMBIO")
+}
+
+// =====================================================
+// NUEVA TABLA: MÚLTIPLES RAMAS POR SOLICITUD
+// =====================================================
+
+model SolicitudRama {
+  id                          String        @id @default(uuid()) @map("ID") @db.Uuid
+  id_solicitud                String        @map("ID_SOLICITUD") @db.Uuid
+  repository_type             RepositoryType @map("REPOSITORY_TYPE")
+  branch_name                 String        @map("BRANCH_NAME") @db.VarChar(255)
+  
+  // --- INFORMACIÓN DEL PULL REQUEST ---
+  pr_number                   Int?          @map("PR_NUMBER")
+  pr_url                      String?       @map("PR_URL") @db.VarChar(500)
+  pr_state                    String?       @map("PR_STATE") @db.VarChar(50)
+  pr_status                   PRStatus      @map("PR_STATUS") @default(PENDING)
+  
+  // --- COMENTARIOS Y FECHAS DE REVISIÓN ---
+  comentarios_aprobacion      String?       @map("COMENTARIOS_APROBACION") @db.Text
+  fecha_aprobacion            DateTime?     @map("FECHA_APROBACION") @db.Timestamp
+  comentarios_rechazo         String?       @map("COMENTARIOS_RECHAZO") @db.Text
+  fecha_rechazo               DateTime?     @map("FECHA_RECHAZO") @db.Timestamp
+  
+  // --- METADATOS ---
+  created_at                  DateTime      @map("CREATED_AT") @default(now()) @db.Timestamp
+  updated_at                  DateTime      @map("UPDATED_AT") @default(now()) @db.Timestamp
+  merged_at                   DateTime?     @map("MERGED_AT") @db.Timestamp
+  fecha_merge                 DateTime?     @map("FECHA_MERGE") @db.Timestamp
+  last_sync                   DateTime?     @map("LAST_SYNC") @db.Timestamp
+
+  // --- RELACIONES ---
+  solicitud                   SolicitudCambio @relation(fields: [id_solicitud], references: [id_sol], onDelete: Cascade)
+
+  // --- CONSTRAINT: SOLO UNA RAMA POR TIPO POR SOLICITUD ---
+  @@unique([id_solicitud, repository_type])
+  @@map("SOLICITUDES_RAMAS")
+}
+
+// =====================================================
+// NUEVOS ENUMS PARA RAMAS
+// =====================================================
+
+enum RepositoryType {
+  FRONTEND
+  BACKEND
+}
+
+enum PRStatus {
+  PENDING     // Rama creada, sin PR
+  OPEN        // PR abierto, esperando revisión
+  IN_REVIEW   // PR en revisión por el Master
+  APPROVED    // PR aprobado por el Master
+  REJECTED    // PR rechazado por el Master
+  MERGED      // PR mergeado exitosamente
+
 }
 
 // =====================================================
