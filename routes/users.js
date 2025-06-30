@@ -19,6 +19,7 @@ const {
   getUsersWithPendingDocuments,
   downloadUserDocument,
   approveUserDocuments,
+  approveAllDocuments,
   rejectUserDocuments
 } = require('../controllers/users');
 
@@ -73,6 +74,9 @@ router.get('/download-document/:userId/:documentType', [validateJWT, validateRol
 
 // Aprobar documentos de un usuario
 router.put('/approve-documents/:userId/:documentType', [validateJWT, validateRoles('MASTER')], approveUserDocuments);
+//Aprobar todos los documentos de un usuario
+router.put('/approve-all/:userId', [validateJWT, validateRoles('MASTER')], approveAllDocuments);
+
 // Rechazar documentos de un usuario
 router.put('/reject-documents/:userId', [validateJWT, validateRoles('MASTER')], rejectUserDocuments);
 
