@@ -428,8 +428,10 @@ model SolicitudCambio {
   comentarios_tecnicos_sol    String?       @map("COMENTARIOS_TECNICOS_SOL") @db.Text
   exito_implementacion        Boolean?      @map("EXITO_IMPLEMENTACION")
 
+
   // --- INTEGRACIÓN GITHUB ---
   github_repo_url             String?       @map("GITHUB_REPO_URL") @db.VarChar(500)
+
 
   // --- METADATOS ---
   fec_creacion_sol            DateTime      @map("FEC_CREACION_SOL") @default(now()) @db.Timestamp
@@ -445,8 +447,16 @@ model SolicitudCambio {
   adminResponsable            Usuario?      @relation("SolicitudesAdmin", fields: [id_admin_resp_sol], references: [id_usu])
   desarrolladorAsignado       Usuario?      @relation("SolicitudesDesarrollador", fields: [id_desarrollador_asignado], references: [id_usu])
 
+
   // --- NUEVA RELACIÓN PARA MÚLTIPLES RAMAS ---
   ramas                       SolicitudRama[]
+
+=======
+
+=======
+  // --- NUEVA RELACIÓN PARA MÚLTIPLES RAMAS ---
+  ramas                       SolicitudRama[]
+
 
   @@map("SOLICITUDES_CAMBIO")
 }
@@ -505,6 +515,7 @@ enum PRStatus {
   REJECTED    // PR rechazado por el Master
   MERGED      // PR mergeado exitosamente
 
+
 }
 
 // =====================================================
@@ -560,6 +571,7 @@ enum PRStatus {
   APPROVED    // PR aprobado por el Master
   REJECTED    // PR rechazado por el Master
   MERGED      // PR mergeado exitosamente
+
 }
 
 enum TipoCambio {

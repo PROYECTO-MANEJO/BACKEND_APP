@@ -9,7 +9,8 @@ const {
   obtenerMisCertificados,
   regenerarCertificado,
   debugCertificados,
-  obtenerParticipacionesTerminadas
+  obtenerParticipacionesTerminadas,
+  obtenerParticipacionesCompletas
 } = require('../controllers/certificadosController');
 
 // =====================================================
@@ -33,6 +34,9 @@ router.get('/debug', [
 router.get('/mis-certificados', [
   validateJWT
 ], obtenerMisCertificados);
+router.get('/mis-certificados/participaciones-completas', [
+  validateJWT 
+], obtenerParticipacionesCompletas);
 
 /**
  * GET /api/certificados/participaciones-terminadas
