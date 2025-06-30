@@ -163,7 +163,7 @@ model Evento {
 
   inscripciones Inscripcion[]
   eventosPorCarrera EventoPorCarrera[]
-  
+   requiere_carta_motivacion Boolean @default(false) @map("REQUIERE_CARTA_MOTIVACION")
   @@map("EVENTOS")
 }
 
@@ -198,7 +198,7 @@ model Inscripcion {
   estado_pago EstadoPago @map("ESTADO_PAGO") @default(PENDIENTE)
   id_admin_aprobador String? @map("ID_ADMIN_APROBADOR") @db.Uuid
   fec_aprobacion DateTime? @map("FEC_APROBACION") @db.Date
-
+carta_motivacion String? @map("CARTA_MOTIVACION") @db.VarChar(500)
   usuario Usuario @relation(fields: [id_usu_ins], references: [id_usu])
   evento Evento @relation(fields: [id_eve_ins], references: [id_eve])
   adminAprobador Usuario? @relation("AdminAprobador", fields: [id_admin_aprobador], references: [id_usu])
@@ -255,7 +255,7 @@ model Curso {
   // 🎯 CONFIGURACIÓN DE PRECIO
   es_gratuito Boolean @map("ES_GRATUITO") @default(true)
   precio Decimal? @map("PRECIO") @db.Decimal(6,2) // Solo si no es gratuito
-
+requiere_carta_motivacion   Boolean  @default(false) @map("REQUIERE_CARTA_MOTIVACION")
   // Relaciones
   categoria     CategoriaEvento @relation(fields: [id_cat_cur], references: [id_cat])
   organizador   Organizador      @relation(fields: [ced_org_cur], references: [ced_org])
@@ -292,7 +292,8 @@ model InscripcionCurso {
 
   id_usu_ins_cur String @map("ID_USU_INS_CUR") @db.Uuid
   id_cur_ins String @map("ID_CUR_INS") @db.Uuid
-
+ // NUEVO CAMPO:
+  carta_motivacion String? @map("CARTA_MOTIVACION") @db.VarChar(500)
   // Para cursos gratuitos, el estado será APROBADO automáticamente
   estado_pago_cur EstadoPago @map("ESTADO_PAGO_CUR") @default(PENDIENTE)
   id_admin_aprobador_cur String? @map("ID_ADMIN_APROBADOR_CUR") @db.Uuid
