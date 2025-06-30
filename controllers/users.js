@@ -3,6 +3,7 @@ const prisma = new PrismaClient();
 const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcrypt');
+const GitHubService = require('../services/githubService');
 
 
 // Actualizar perfil del usuario actual
@@ -10,15 +11,67 @@ const updateUserProfile = async (req, res) => {
   try {
     const userId = req.uid;
     const {
-      nom_usu1, nom_usu2, ape_usu1, ape_usu2,
-      fec_nac_usu, num_tel_usu, id_car_per
+
+      nom_usu1,
+      nom_usu2,
+      ape_usu1,
+      ape_usu2,
+      fec_nac_usu,
+      num_tel_usu,
+      id_car_per,
+      github_token
+
     } = req.body;
 
     const existingUser = await prisma.usuario.findUnique({
       where: { id_usu: userId },
       include: { cuentas: true }
     });
-    if (!existingUser) return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+
+    if (!existingUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+
+    // Verificar el rol del usuario si se intenta guardar un token
+    if (github_token) {
+      const userRole = existingUser.cuentas[0]?.rol_cue;
+      const allowedRoles = ['DESARROLLADOR', 'MASTER', 'ADMINISTRADOR'];
+      
+      if (!allowedRoles.includes(userRole)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Solo los desarrolladores, masters y administradores pueden configurar un token de GitHub'
+        });
+      }
+
+      // Validar el token de GitHub
+      const githubService = new GitHubService();
+      const githubValidationResult = await githubService.validarTokenPersonal(github_token);
+
+      if (!githubValidationResult.valid) {
+        return res.status(400).json({
+          success: false,
+          message: `Error validando token de GitHub: ${githubValidationResult.error}`
+        });
+      }
+
+      // Verificar permisos necesarios
+      const hasRequiredPermissions = Object.values(githubValidationResult.permissions).every(
+        repo => repo.push && repo.pull
+      );
+
+      if (!hasRequiredPermissions) {
+        return res.status(400).json({
+          success: false,
+          message: 'El token de GitHub no tiene los permisos necesarios (push y pull) en los repositorios'
+        });
+      }
+    }
+
 
     const isEstudiante = existingUser.cuentas[0]?.rol_cue === 'ESTUDIANTE';
     let carreraToUpdate = isEstudiante ? id_car_per : null;
@@ -39,7 +92,10 @@ const updateUserProfile = async (req, res) => {
         ape_usu2: ape_usu2 || '',
         fec_nac_usu: new Date(fec_nac_usu),
         num_tel_usu: num_tel_usu || null,
-        id_car_per: carreraToUpdate
+
+        id_car_per: carreraToUpdate || null,
+        github_token: github_token || null,
+        github_username: githubValidationResult?.user?.login || null
       },
       include: {
         cuentas: { select: { cor_cue: true, rol_cue: true } },
@@ -47,28 +103,44 @@ const updateUserProfile = async (req, res) => {
       }
     });
 
+    // Formatear la respuesta
+    const userProfile = {
+      id_usu: updatedUser.id_usu,
+      ced_usu: updatedUser.ced_usu,
+      nom_usu1: updatedUser.nom_usu1,
+      nom_usu2: updatedUser.nom_usu2,
+      ape_usu1: updatedUser.ape_usu1,
+      ape_usu2: updatedUser.ape_usu2,
+      fec_nac_usu: updatedUser.fec_nac_usu,
+      num_tel_usu: updatedUser.num_tel_usu,
+      id_car_per: updatedUser.id_car_per,
+      github_token: updatedUser.github_token,
+      github_username: updatedUser.github_username,
+      email: updatedUser.cuentas[0]?.cor_cue,
+      rol: updatedUser.cuentas[0]?.rol_cue,
+      carrera: updatedUser.carrera ? {
+        id_car: updatedUser.carrera.id_car,
+        nom_car: updatedUser.carrera.nom_car
+      } : null
+    };
+
     res.json({
       success: true,
-      message: 'Perfil actualizado exitosamente',
-      data: {
-        id_usu: updatedUser.id_usu,
-        ced_usu: updatedUser.ced_usu,
-        nom_usu1: updatedUser.nom_usu1,
-        nom_usu2: updatedUser.nom_usu2,
-        ape_usu1: updatedUser.ape_usu1,
-        ape_usu2: updatedUser.ape_usu2,
-        fec_nac_usu: updatedUser.fec_nac_usu,
-        num_tel_usu: updatedUser.num_tel_usu,
-        id_car_per: updatedUser.id_car_per,
-        email: updatedUser.cuentas[0]?.cor_cue,
-        rol: updatedUser.cuentas[0]?.rol_cue,
-        carrera: updatedUser.carrera
-      }
+      message: github_token ? 
+        'Perfil y token de GitHub actualizados exitosamente' : 
+        'Perfil actualizado exitosamente',
+      data: userProfile
     });
 
   } catch (error) {
     console.error('Error en updateUserProfile:', error);
-    res.status(500).json({ success: false, message: 'Error interno del servidor' });
+
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+
   }
 };
 // Obtener todos los usuarios (solo para administradores)
@@ -522,6 +594,7 @@ const getUserProfile = async (req, res) => {
       fec_nac_usu: user.fec_nac_usu,
       num_tel_usu: user.num_tel_usu,
       id_car_per: user.id_car_per,
+      github_token: user.github_token,
       email: user.cuentas[0]?.cor_cue,
       rol: user.cuentas[0]?.rol_cue,
       carrera: user.carrera ? {
