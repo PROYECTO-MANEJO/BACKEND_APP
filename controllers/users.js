@@ -18,6 +18,7 @@ const updateUserProfile = async (req, res) => {
       num_tel_usu,
       id_car_per,
       github_token
+
     } = req.body;
 
     // Verificar que el usuario existe
@@ -34,6 +35,7 @@ const updateUserProfile = async (req, res) => {
         message: 'Usuario no encontrado'
       });
     }
+
 
     // Verificar el rol del usuario si se intenta guardar un token
     if (github_token) {
@@ -95,6 +97,7 @@ const updateUserProfile = async (req, res) => {
     }
 
     // Actualizar el usuario
+
     const updatedUser = await prisma.usuario.update({
       where: { id_usu: userId },
       data: {
