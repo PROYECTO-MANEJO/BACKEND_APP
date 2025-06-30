@@ -157,6 +157,10 @@ model Evento {
   es_gratuito Boolean @map("ES_GRATUITO") @default(true)
   precio Decimal? @map("PRECIO") @db.Decimal(6,2) // Solo si no es gratuito
   
+  // 🎯 NUEVOS CAMPOS: Criterios de aprobación y estado
+  porcentaje_asistencia_aprobacion Int @map("PORCENTAJE_ASISTENCIA_APROBACION") @default(80) @db.SmallInt // 0-100
+  estado String @map("ESTADO") @default("ACTIVO") @db.VarChar(20) // ACTIVO, CERRADO
+  
   // 🎯 EVENTOS: Sin asignaciones ni requisitos complejos
   categoria CategoriaEvento @relation(fields: [id_cat_eve], references: [id_cat])
   organizador Organizador @relation(fields: [ced_org_eve], references: [ced_org])
@@ -255,6 +259,11 @@ model Curso {
   // 🎯 CONFIGURACIÓN DE PRECIO
   es_gratuito Boolean @map("ES_GRATUITO") @default(true)
   precio Decimal? @map("PRECIO") @db.Decimal(6,2) // Solo si no es gratuito
+
+  // 🎯 NUEVOS CAMPOS: Criterios de aprobación y estado
+  porcentaje_asistencia_aprobacion Int @map("PORCENTAJE_ASISTENCIA_APROBACION") @default(80) @db.SmallInt // 0-100
+  nota_minima_aprobacion Decimal @map("NOTA_MINIMA_APROBACION") @default(7.0) @db.Decimal(3,1) // 0-10
+  estado String @map("ESTADO") @default("ACTIVO") @db.VarChar(20) // ACTIVO, CERRADO
 
   // Relaciones
   categoria     CategoriaEvento @relation(fields: [id_cat_cur], references: [id_cat])
@@ -423,8 +432,19 @@ model SolicitudCambio {
   comentarios_tecnicos_sol    String?       @map("COMENTARIOS_TECNICOS_SOL") @db.Text
   exito_implementacion        Boolean?      @map("EXITO_IMPLEMENTACION")
 
+<<<<<<< HEAD
   // --- INTEGRACIÓN GITHUB ---
   github_repo_url             String?       @map("GITHUB_REPO_URL") @db.VarChar(500)
+=======
+  // --- GitHub ---
+  github_repo_url             String?       @map("GITHUB_REPO_URL") @db.VarChar(500)
+  github_branch_name          String?       @map("GITHUB_BRANCH_NAME") @db.VarChar(200)
+  github_pr_number            Int?          @map("GITHUB_PR_NUMBER")
+  github_pr_url               String?       @map("GITHUB_PR_URL") @db.VarChar(500)
+  github_pr_state             String?       @map("GITHUB_PR_STATE") @db.VarChar(50)
+  github_merged_at            DateTime?     @map("GITHUB_MERGED_AT") @db.Timestamp
+  github_last_sync            DateTime?     @map("GITHUB_LAST_SYNC") @db.Timestamp
+>>>>>>> d7a1242259c51195b015415332350c582f24a5c1
 
   // --- METADATOS ---
   fec_creacion_sol            DateTime      @map("FEC_CREACION_SOL") @default(now()) @db.Timestamp
@@ -440,9 +460,12 @@ model SolicitudCambio {
   adminResponsable            Usuario?      @relation("SolicitudesAdmin", fields: [id_admin_resp_sol], references: [id_usu])
   desarrolladorAsignado       Usuario?      @relation("SolicitudesDesarrollador", fields: [id_desarrollador_asignado], references: [id_usu])
 
+<<<<<<< HEAD
   // --- NUEVA RELACIÓN PARA MÚLTIPLES RAMAS ---
   ramas                       SolicitudRama[]
 
+=======
+>>>>>>> d7a1242259c51195b015415332350c582f24a5c1
   @@map("SOLICITUDES_CAMBIO")
 }
 
@@ -552,7 +575,15 @@ enum EstadoSolicitud {
   RECHAZADA
   CANCELADA
   EN_DESARROLLO
+<<<<<<< HEAD
   EN_TESTING
+=======
+  PLANES_PENDIENTES_APROBACION
+  LISTO_PARA_IMPLEMENTAR
+  ESPERANDO_APROBACION
+  EN_TESTING
+  EN_DESPLIEGUE
+>>>>>>> d7a1242259c51195b015415332350c582f24a5c1
   COMPLETADA
   FALLIDA
 }

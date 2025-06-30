@@ -5,14 +5,17 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
-    "migrate": "node scripts/migrate.js"
+    "dev": "nodemon index.js",
+    "migrate": "node scripts/migrate.js",
+    "check-github": "node scripts/verify-github-config.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@prisma/client": "^6.8.2",
+    "@octokit/rest": "^22.0.0",
+    "@prisma/client": "^6.10.1",
     "axios": "^1.9.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
@@ -26,11 +29,10 @@
     "nodemailer": "^7.0.3",
     "path": "^0.12.7",
     "pdfkit": "^0.17.1",
-    "pg": "^8.16.0",
-    "prisma": "^6.8.2"
+    "pg": "^8.16.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.10",
-    "prisma": "^6.8.2"
+    "prisma": "^6.10.1"
   }
 }
