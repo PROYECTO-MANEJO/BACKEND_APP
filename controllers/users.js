@@ -3,6 +3,7 @@ const prisma = new PrismaClient();
 const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcrypt');
+const GitHubService = require('../services/githubService');
 
 // Actualizar perfil del usuario actual
 const updateUserProfile = async (req, res) => {
@@ -15,7 +16,9 @@ const updateUserProfile = async (req, res) => {
       ape_usu2,
       fec_nac_usu,
       num_tel_usu,
-      id_car_per
+      id_car_per,
+      github_token
+
     } = req.body;
 
     // Verificar que el usuario existe
@@ -31,6 +34,43 @@ const updateUserProfile = async (req, res) => {
         success: false,
         message: 'Usuario no encontrado'
       });
+    }
+
+
+    // Verificar el rol del usuario si se intenta guardar un token
+    if (github_token) {
+      const userRole = existingUser.cuentas[0]?.rol_cue;
+      const allowedRoles = ['DESARROLLADOR', 'MASTER', 'ADMINISTRADOR'];
+      
+      if (!allowedRoles.includes(userRole)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Solo los desarrolladores, masters y administradores pueden configurar un token de GitHub'
+        });
+      }
+
+      // Validar el token de GitHub
+      const githubService = new GitHubService();
+      const githubValidationResult = await githubService.validarTokenPersonal(github_token);
+
+      if (!githubValidationResult.valid) {
+        return res.status(400).json({
+          success: false,
+          message: `Error validando token de GitHub: ${githubValidationResult.error}`
+        });
+      }
+
+      // Verificar permisos necesarios
+      const hasRequiredPermissions = Object.values(githubValidationResult.permissions).every(
+        repo => repo.push && repo.pull
+      );
+
+      if (!hasRequiredPermissions) {
+        return res.status(400).json({
+          success: false,
+          message: 'El token de GitHub no tiene los permisos necesarios (push y pull) en los repositorios'
+        });
+      }
     }
 
     // Verificar si es estudiante y se está asignando carrera
@@ -57,6 +97,7 @@ const updateUserProfile = async (req, res) => {
     }
 
     // Actualizar el usuario
+
     const updatedUser = await prisma.usuario.update({
       where: { id_usu: userId },
       data: {
@@ -66,7 +107,9 @@ const updateUserProfile = async (req, res) => {
         ape_usu2: ape_usu2 || '',
         fec_nac_usu: new Date(fec_nac_usu),
         num_tel_usu: num_tel_usu || null,
-        id_car_per: carreraToUpdate || null
+        id_car_per: carreraToUpdate || null,
+        github_token: github_token || null,
+        github_username: githubValidationResult?.user?.login || null
       },
       include: {
         cuentas: {
@@ -95,6 +138,8 @@ const updateUserProfile = async (req, res) => {
       fec_nac_usu: updatedUser.fec_nac_usu,
       num_tel_usu: updatedUser.num_tel_usu,
       id_car_per: updatedUser.id_car_per,
+      github_token: updatedUser.github_token,
+      github_username: updatedUser.github_username,
       email: updatedUser.cuentas[0]?.cor_cue,
       rol: updatedUser.cuentas[0]?.rol_cue,
       carrera: updatedUser.carrera ? {
@@ -105,7 +150,9 @@ const updateUserProfile = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Perfil actualizado exitosamente',
+      message: github_token ? 
+        'Perfil y token de GitHub actualizados exitosamente' : 
+        'Perfil actualizado exitosamente',
       data: userProfile
     });
 
@@ -113,7 +160,8 @@ const updateUserProfile = async (req, res) => {
     console.error('Error en updateUserProfile:', error);
     res.status(500).json({
       success: false,
-      message: 'Error interno del servidor'
+      message: 'Error interno del servidor',
+      error: error.message
     });
   }
 };
@@ -610,6 +658,7 @@ const getUserProfile = async (req, res) => {
       fec_nac_usu: user.fec_nac_usu,
       num_tel_usu: user.num_tel_usu,
       id_car_per: user.id_car_per,
+      github_token: user.github_token,
       email: user.cuentas[0]?.cor_cue,
       rol: user.cuentas[0]?.rol_cue,
       carrera: user.carrera ? {

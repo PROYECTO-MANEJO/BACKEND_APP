@@ -6,7 +6,9 @@ const prisma = new PrismaClient();
 
 // Controlador para registrar un nuevo usuario
 const register = async (req, res) => {
-    const { email, password, nombre, nombre2, apellido, apellido2, ced_usu, fec_nac_usu, carrera_id } = req.body;
+
+    const { email, password, nombre, nombre2, apellido, apellido2, ced_usu, fec_nac_usu, carrera } = req.body;
+
 
     try {
         // Verificar si ya existe un usuario con ese correo o cédula
@@ -44,13 +46,7 @@ const register = async (req, res) => {
             });
         }
 
-        // Validar que si es email @uta.edu.ec, debe tener carrera
-        if (email && email.endsWith('@uta.edu.ec') && !carrera_id) {
-            return res.status(400).json({
-                success: false,
-                message: 'La carrera es obligatoria para estudiantes UTA'
-            });
-        }
+
 
         // Validar fortaleza de la contraseña
         const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
@@ -59,6 +55,28 @@ const register = async (req, res) => {
                 success: false,
                 message: 'La contraseña debe contener al menos 6 caracteres, una mayúscula, un número y un carácter especial (@$!%*?&)'
             });
+
+        // Validar carrera para usuarios UTA
+        if (email && email.endsWith('@uta.edu.ec')) {
+            if (!carrera) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'La carrera es obligatoria para estudiantes UTA'
+                });
+            }
+            
+            // Verificar que la carrera existe
+            const carreraExists = await prisma.carrera.findUnique({
+                where: { id_car: carrera }
+            });
+            
+            if (!carreraExists) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'La carrera seleccionada no es válida'
+                });
+            }
+
         }
 
         // Encriptar la contraseña
@@ -96,18 +114,25 @@ const register = async (req, res) => {
 
         // Crear el usuario y la cuenta en una transacción
         const result = await prisma.$transaction(async (prisma) => {
+            // Preparar datos del usuario
+            const userData = {
+                ced_usu,
+                nom_usu1: nombre,
+                nom_usu2: nombre2 || '',
+                ape_usu1: apellido,
+                ape_usu2: apellido2 || '',
+                pas_usu: hashedPassword,
+                fec_nac_usu: fechaNacimiento
+            };
+
+            // Solo agregar carrera si es usuario UTA
+            if (email && email.endsWith('@uta.edu.ec') && carrera) {
+                userData.id_car_per = carrera;
+            }
+
             // Crear el usuario
             const newUser = await prisma.usuario.create({
-                data: {
-                    ced_usu,
-                    nom_usu1: nombre,
-                    nom_usu2: nombre2 || '',
-                    ape_usu1: apellido,
-                    ape_usu2: apellido2 || '',
-                    pas_usu: hashedPassword,
-                    fec_nac_usu: fechaNacimiento,
-                    id_car_per: carrera_id || null // Asociar carrera si es proporcionada
-                }
+                data: userData
             });
 
             // Crear la cuenta asociada al usuario
