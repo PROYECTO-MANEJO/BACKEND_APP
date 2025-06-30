@@ -80,6 +80,7 @@ app.use('/api/inscripciones', require('./routes/inscripciones'));
 app.use('/api/eventosPorCarrera', require('./routes/eventosPorCarrera'));
 app.use('/api/cursosPorCarrera', require('./routes/cursoPorCarrera'));
 app.use('/api/inscripcionesCursos', require('./routes/inscripcionesCursos'));
+app.use('/api/participaciones', require('./routes/participaciones'));
 
 app.use('/api/desarrollador', require('./routes/desarrollador'));
 

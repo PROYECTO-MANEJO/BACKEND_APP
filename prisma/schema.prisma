@@ -152,6 +152,10 @@ model Evento {
   es_gratuito Boolean @map("ES_GRATUITO") @default(true)
   precio Decimal? @map("PRECIO") @db.Decimal(6,2) // Solo si no es gratuito
   
+  // 🎯 NUEVOS CAMPOS: Criterios de aprobación y estado
+  porcentaje_asistencia_aprobacion Int @map("PORCENTAJE_ASISTENCIA_APROBACION") @default(80) @db.SmallInt // 0-100
+  estado String @map("ESTADO") @default("ACTIVO") @db.VarChar(20) // ACTIVO, CERRADO
+  
   // 🎯 EVENTOS: Sin asignaciones ni requisitos complejos
   categoria CategoriaEvento @relation(fields: [id_cat_eve], references: [id_cat])
   organizador Organizador @relation(fields: [ced_org_eve], references: [ced_org])
@@ -250,6 +254,11 @@ model Curso {
   // 🎯 CONFIGURACIÓN DE PRECIO
   es_gratuito Boolean @map("ES_GRATUITO") @default(true)
   precio Decimal? @map("PRECIO") @db.Decimal(6,2) // Solo si no es gratuito
+
+  // 🎯 NUEVOS CAMPOS: Criterios de aprobación y estado
+  porcentaje_asistencia_aprobacion Int @map("PORCENTAJE_ASISTENCIA_APROBACION") @default(80) @db.SmallInt // 0-100
+  nota_minima_aprobacion Decimal @map("NOTA_MINIMA_APROBACION") @default(7.0) @db.Decimal(3,1) // 0-10
+  estado String @map("ESTADO") @default("ACTIVO") @db.VarChar(20) // ACTIVO, CERRADO
 
   // Relaciones
   categoria     CategoriaEvento @relation(fields: [id_cat_cur], references: [id_cat])

@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const { generarCertificadoAutomatico } = require('../helpers/certificadosHelper');
 const prisma = new PrismaClient();
 
 // Crear un nuevo curso
@@ -20,12 +21,32 @@ const crearCurso = async (req, res) => {
       carreras // Array opcional de IDs de carreras
     } = req.body;
 
-    // ✅ VALIDACIONES BÁSICAS
+    // ✅ VALIDACIONES BÁSICAS - INCLUYENDO CAMPOS DE APROBACIÓN
     if (!nom_cur || !des_cur || !dur_cur || !fec_ini_cur || !fec_fin_cur || 
-        !id_cat_cur || !ced_org_cur || !capacidad_max_cur) {
+        !id_cat_cur || !ced_org_cur || !capacidad_max_cur || 
+        req.body.porcentaje_asistencia_aprobacion == null || 
+        req.body.nota_minima_aprobacion == null) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Faltan campos obligatorios: nom_cur, des_cur, dur_cur, fec_ini_cur, fec_fin_cur, id_cat_cur, ced_org_cur, capacidad_max_cur' 
+        message: 'Faltan campos obligatorios: nom_cur, des_cur, dur_cur, fec_ini_cur, fec_fin_cur, id_cat_cur, ced_org_cur, capacidad_max_cur, porcentaje_asistencia_aprobacion, nota_minima_aprobacion' 
+      });
+    }
+
+    // ✅ VALIDAR CAMPOS DE APROBACIÓN
+    const porcentajeAsistencia = parseFloat(req.body.porcentaje_asistencia_aprobacion);
+    const notaMinima = parseFloat(req.body.nota_minima_aprobacion);
+    
+    if (isNaN(porcentajeAsistencia) || porcentajeAsistencia < 0 || porcentajeAsistencia > 100) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'El porcentaje de asistencia debe ser un número entre 0 y 100' 
+      });
+    }
+    
+    if (isNaN(notaMinima) || notaMinima < 0 || notaMinima > 10) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'La nota mínima debe ser un número entre 0 y 10' 
       });
     }
 
@@ -149,7 +170,10 @@ const crearCurso = async (req, res) => {
           tipo_audiencia_cur: tipo_audiencia_cur || 'PUBLICO_GENERAL',
           requiere_verificacion_docs: requiere_verificacion_docs !== undefined ? requiere_verificacion_docs : true,
           es_gratuito: esGratuito,
-          precio: precioCurso
+          precio: precioCurso,
+          porcentaje_asistencia_aprobacion: porcentajeAsistencia,
+          nota_minima_aprobacion: notaMinima,
+          estado: req.body.estado || 'ACTIVO'
         }
       });
 
@@ -525,6 +549,40 @@ const actualizarCurso = async (req, res) => {
         });
       }
       datosActualizacion.ced_org_cur = data.ced_org_cur;
+    }
+
+    // Validar y actualizar nuevos campos
+    if (data.porcentaje_asistencia_aprobacion !== undefined) {
+      const porcentaje = parseInt(data.porcentaje_asistencia_aprobacion);
+      if (isNaN(porcentaje) || porcentaje < 0 || porcentaje > 100) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'El porcentaje de asistencia debe estar entre 0 y 100' 
+        });
+      }
+      datosActualizacion.porcentaje_asistencia_aprobacion = porcentaje;
+    }
+
+    if (data.nota_minima_aprobacion !== undefined) {
+      const nota = parseFloat(data.nota_minima_aprobacion);
+      if (isNaN(nota) || nota < 0 || nota > 10) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'La nota mínima de aprobación debe estar entre 0 y 10' 
+        });
+      }
+      datosActualizacion.nota_minima_aprobacion = nota;
+    }
+
+    if (data.estado !== undefined) {
+      const estadosValidos = ['ACTIVO', 'CERRADO'];
+      if (!estadosValidos.includes(data.estado)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: `Estado inválido. Valores permitidos: ${estadosValidos.join(', ')}` 
+        });
+      }
+      datosActualizacion.estado = data.estado;
     }
 
     // Actualizar curso
@@ -954,6 +1012,119 @@ const actualizarCarrerasCurso = async (req, res) => {
   }
 };
 
+// Cerrar curso (cambiar estado a CERRADO y generar certificados automáticamente)
+const cerrarCurso = async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const curso = await prisma.curso.findUnique({ 
+      where: { id_cur: id },
+      include: {
+        inscripcionesCurso: {
+          include: {
+            usuario: {
+              select: {
+                nom_usu1: true,
+                nom_usu2: true,
+                ape_usu1: true,
+                ape_usu2: true,
+                ced_usu: true
+              }
+            },
+            participacionesCurso: true
+          }
+        },
+        categoria: true,
+        organizador: true
+      }
+    });
+    
+    if (!curso) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Curso no encontrado' 
+      });
+    }
+
+    if (curso.estado === 'CERRADO') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'El curso ya está cerrado' 
+      });
+    }
+
+    // Procesar todas las participaciones y determinar aprobados
+    let certificadosGenerados = 0;
+    let participantesAprobados = 0;
+    
+    for (const inscripcion of curso.inscripcionesCurso) {
+      const participacion = inscripcion.participacionesCurso[0];
+      
+      if (participacion) {
+        // Determinar si está aprobado usando los criterios del curso
+        const notaMinima = curso.nota_minima_aprobacion || 7.0; // Default 7.0 si no está configurado
+        const asistenciaMinima = curso.porcentaje_asistencia_aprobacion || 70; // Default 70% si no está configurado
+        
+        const estaAprobado = participacion.nota_final >= notaMinima && 
+                            participacion.asistencia_porcentaje >= asistenciaMinima;
+        
+        // Actualizar estado de aprobación
+        await prisma.participacionCurso.update({
+          where: { id_par_cur: participacion.id_par_cur },
+          data: { aprobado: estaAprobado }
+        });
+        
+        if (estaAprobado) {
+          participantesAprobados++;
+          
+          // Generar certificado si aún no existe
+          if (!participacion.certificado_pdf) {
+            try {
+              // Usar el helper para generar certificado automáticamente
+              const resultadoCertificado = await generarCertificadoAutomatico(
+                'curso', 
+                inscripcion.id_ins_cur, 
+                { ...participacion, aprobado: estaAprobado }
+              );
+              
+              if (resultadoCertificado.success) {
+                certificadosGenerados++;
+              } else {
+                console.warn('Certificado no generado:', resultadoCertificado.message);
+              }
+            } catch (certError) {
+              console.error('Error generando certificado:', certError);
+            }
+          }
+        }
+      }
+    }
+
+    // Actualizar estado a CERRADO
+    const cursoActualizado = await prisma.curso.update({
+      where: { id_cur: id },
+      data: { estado: 'CERRADO' }
+    });
+
+    res.json({ 
+      success: true, 
+      message: `Curso cerrado correctamente. ${certificadosGenerados} certificados generados para ${participantesAprobados} participantes aprobados.`,
+      curso: cursoActualizado,
+      estadisticas: {
+        participantesTotal: curso.inscripcionesCurso.length,
+        participantesAprobados,
+        certificadosGenerados
+      }
+    });
+  } catch (error) {
+    console.error('Error al cerrar curso:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error del servidor' 
+    });
+  }
+};
+
 module.exports = {
   crearCurso,
   obtenerCursos,
@@ -962,5 +1133,6 @@ module.exports = {
   eliminarCurso,
   obtenerCursosDisponibles,
   obtenerMisCursos,
-  actualizarCarrerasCurso
+  actualizarCarrerasCurso,
+  cerrarCurso
 };
