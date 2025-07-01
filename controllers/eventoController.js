@@ -462,7 +462,7 @@ const actualizarEvento = async (req, res) => {
       datosActualizacion.tipo_audiencia_eve = data.tipo_audiencia_eve;
     }
 
-    // Validar referencias
+    // Validar referencias usando la sintaxis de relaciones de Prisma
     if (data.id_cat_eve) {
       const categoria = await prisma.categoriaEvento.findUnique({ 
         where: { id_cat: data.id_cat_eve } 
@@ -473,7 +473,10 @@ const actualizarEvento = async (req, res) => {
           message: 'Categoría inválida' 
         });
       }
-      datosActualizacion.id_cat_eve = data.id_cat_eve;
+      // Usar sintaxis de relación en lugar de campo directo
+      datosActualizacion.categoria = {
+        connect: { id_cat: data.id_cat_eve }
+      };
     }
 
     if (data.ced_org_eve) {
@@ -486,7 +489,10 @@ const actualizarEvento = async (req, res) => {
           message: 'Organizador inválido' 
         });
       }
-      datosActualizacion.ced_org_eve = data.ced_org_eve;
+      // Usar sintaxis de relación en lugar de campo directo
+      datosActualizacion.organizador = {
+        connect: { ced_org: data.ced_org_eve }
+      };
     }
 
     // Validar y actualizar campos de aprobación - SOLO ASISTENCIA PARA EVENTOS

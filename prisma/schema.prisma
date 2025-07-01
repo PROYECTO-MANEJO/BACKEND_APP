@@ -164,7 +164,9 @@ model Evento {
   // 🎯 EVENTOS: Sin asignaciones ni requisitos complejos
   categoria CategoriaEvento @relation(fields: [id_cat_eve], references: [id_cat])
   organizador Organizador @relation(fields: [ced_org_eve], references: [ced_org])
-
+// 🎯 NUEVOS CAMPOS: Criterios de aprobación y estado
+  porcentaje_asistencia_aprobacion Int @map("PORCENTAJE_ASISTENCIA_APROBACION") @default(80) @db.SmallInt // 0-100
+  estado String @map("ESTADO") @default("ACTIVO") @db.VarChar(20) // ACTIVO, CERRADO
   inscripciones Inscripcion[]
   eventosPorCarrera EventoPorCarrera[]
    requiere_carta_motivacion Boolean @default(false) @map("REQUIERE_CARTA_MOTIVACION")
@@ -263,6 +265,10 @@ requiere_carta_motivacion   Boolean  @default(false) @map("REQUIERE_CARTA_MOTIVA
   // Relaciones
   categoria     CategoriaEvento @relation(fields: [id_cat_cur], references: [id_cat])
   organizador   Organizador      @relation(fields: [ced_org_cur], references: [ced_org])
+// 🎯 NUEVOS CAMPOS: Criterios de aprobación y estado
+  porcentaje_asistencia_aprobacion Int @map("PORCENTAJE_ASISTENCIA_APROBACION") @default(80) @db.SmallInt // 0-100
+  nota_minima_aprobacion Decimal @map("NOTA_MINIMA_APROBACION") @default(7.0) @db.Decimal(3,1) // 0-10
+  estado String @map("ESTADO") @default("ACTIVO") @db.VarChar(20) // ACTIVO, CERRADO
   
   inscripcionesCurso InscripcionCurso[]
   cursosPorCarrera CursoPorCarrera[]
@@ -451,19 +457,19 @@ model SolicitudCambio {
   // --- NUEVA RELACIÓN PARA MÚLTIPLES RAMAS ---
   ramas                       SolicitudRama[]
 
-=======
-
-=======
-  // --- NUEVA RELACIÓN PARA MÚLTIPLES RAMAS ---
-  ramas                       SolicitudRama[]
 
 
   @@map("SOLICITUDES_CAMBIO")
 }
 
 // =====================================================
-// NUEVA TABLA: MÚLTIPLES RAMAS POR SOLICITUD
+// ENUMS Y TIPOS PARA SOLICITUDES DE CAMBIO
 // =====================================================
+
+enum RepositoryType {
+  FRONTEND
+  BACKEND
+}
 
 model SolicitudRama {
   id                          String        @id @default(uuid()) @map("ID") @db.Uuid
@@ -498,15 +504,6 @@ model SolicitudRama {
   @@map("SOLICITUDES_RAMAS")
 }
 
-// =====================================================
-// NUEVOS ENUMS PARA RAMAS
-// =====================================================
-
-enum RepositoryType {
-  FRONTEND
-  BACKEND
-}
-
 enum PRStatus {
   PENDING     // Rama creada, sin PR
   OPEN        // PR abierto, esperando revisión
@@ -514,64 +511,6 @@ enum PRStatus {
   APPROVED    // PR aprobado por el Master
   REJECTED    // PR rechazado por el Master
   MERGED      // PR mergeado exitosamente
-
-
-}
-
-// =====================================================
-// NUEVA TABLA: MÚLTIPLES RAMAS POR SOLICITUD
-// =====================================================
-
-model SolicitudRama {
-  id                          String        @id @default(uuid()) @map("ID") @db.Uuid
-  id_solicitud                String        @map("ID_SOLICITUD") @db.Uuid
-  repository_type             RepositoryType @map("REPOSITORY_TYPE")
-  branch_name                 String        @map("BRANCH_NAME") @db.VarChar(255)
-  
-  // --- INFORMACIÓN DEL PULL REQUEST ---
-  pr_number                   Int?          @map("PR_NUMBER")
-  pr_url                      String?       @map("PR_URL") @db.VarChar(500)
-  pr_state                    String?       @map("PR_STATE") @db.VarChar(50)
-  pr_status                   PRStatus      @map("PR_STATUS") @default(PENDING)
-  
-  // --- COMENTARIOS Y FECHAS DE REVISIÓN ---
-  comentarios_aprobacion      String?       @map("COMENTARIOS_APROBACION") @db.Text
-  fecha_aprobacion            DateTime?     @map("FECHA_APROBACION") @db.Timestamp
-  comentarios_rechazo         String?       @map("COMENTARIOS_RECHAZO") @db.Text
-  fecha_rechazo               DateTime?     @map("FECHA_RECHAZO") @db.Timestamp
-  
-  // --- METADATOS ---
-  created_at                  DateTime      @map("CREATED_AT") @default(now()) @db.Timestamp
-  updated_at                  DateTime      @map("UPDATED_AT") @default(now()) @db.Timestamp
-  merged_at                   DateTime?     @map("MERGED_AT") @db.Timestamp
-  fecha_merge                 DateTime?     @map("FECHA_MERGE") @db.Timestamp
-  last_sync                   DateTime?     @map("LAST_SYNC") @db.Timestamp
-
-  // --- RELACIONES ---
-  solicitud                   SolicitudCambio @relation(fields: [id_solicitud], references: [id_sol], onDelete: Cascade)
-
-  // --- CONSTRAINT: SOLO UNA RAMA POR TIPO POR SOLICITUD ---
-  @@unique([id_solicitud, repository_type])
-  @@map("SOLICITUDES_RAMAS")
-}
-
-// =====================================================
-// NUEVOS ENUMS PARA RAMAS
-// =====================================================
-
-enum RepositoryType {
-  FRONTEND
-  BACKEND
-}
-
-enum PRStatus {
-  PENDING     // Rama creada, sin PR
-  OPEN        // PR abierto, esperando revisión
-  IN_REVIEW   // PR en revisión por el Master
-  APPROVED    // PR aprobado por el Master
-  REJECTED    // PR rechazado por el Master
-  MERGED      // PR mergeado exitosamente
-
 }
 
 enum TipoCambio {

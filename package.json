@@ -7,14 +7,15 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "migrate": "node scripts/migrate.js",
-    "check-github": "node scripts/verify-github-config.js"
+    "check-github": "node scripts/verify-github-config.js",
+    "postinstall": "prisma generate && prisma migrate deploy"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@octokit/rest": "^22.0.0",
+    "@octokit/rest": "^18.12.0",
     "@prisma/client": "^6.10.1",
     "axios": "^1.9.0",
     "bcrypt": "^6.0.0",

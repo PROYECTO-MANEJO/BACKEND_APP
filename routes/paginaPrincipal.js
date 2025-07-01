@@ -5,7 +5,10 @@ const {
   actualizarContenido, 
   subirImagen, 
   obtenerImagen,
-  uploadMiddleware 
+  uploadMiddleware,
+  getEventosCursosCarrera,
+  getEventosCursosDisponibles,
+  getEventosCursosPublicos
 } = require('../controllers/paginaPrincipalController');
 const { validateJWT } = require('../middlewares/validateJWT');
 
@@ -38,11 +41,18 @@ router.get('/contenido', obtenerContenido);
 // Obtener imagen específica (público)
 router.get('/imagen/:tipoImagen', obtenerImagen);
 
+// Ruta pública (sin autenticación) para usuarios no logueados
+router.get('/eventos-cursos-publicos', getEventosCursosPublicos);
+
 // ===== RUTAS PROTEGIDAS (SOLO MASTER) =====
 // Actualizar contenido de la página principal
 router.put('/contenido', validateJWT, verificarRolMaster, actualizarContenido);
 
 // Subir imagen
 router.post('/imagen/:tipoImagen', validateJWT, verificarRolMaster, uploadMiddleware, subirImagen);
+
+// Rutas autenticadas
+router.get('/eventos-cursos-carrera', validateJWT, getEventosCursosCarrera);
+router.get('/eventos-cursos-disponibles', validateJWT, getEventosCursosDisponibles);
 
 module.exports = router; 
