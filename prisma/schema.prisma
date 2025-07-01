@@ -463,11 +463,6 @@ model SolicitudCambio {
 }
 
 // =====================================================
-// NUEVA TABLA: MÚLTIPLES RAMAS POR SOLICITUD
-// =====================================================
-
-
-// =====================================================
 // NUEVOS ENUMS PARA RAMAS
 // =====================================================
 
@@ -475,8 +470,6 @@ enum RepositoryType {
   FRONTEND
   BACKEND
 }
-
-
 
 // =====================================================
 // NUEVA TABLA: MÚLTIPLES RAMAS POR SOLICITUD
@@ -519,8 +512,6 @@ model SolicitudRama {
 // NUEVOS ENUMS PARA RAMAS
 // =====================================================
 
-
-
 enum PRStatus {
   PENDING     // Rama creada, sin PR
   OPEN        // PR abierto, esperando revisión
@@ -528,7 +519,6 @@ enum PRStatus {
   APPROVED    // PR aprobado por el Master
   REJECTED    // PR rechazado por el Master
   MERGED      // PR mergeado exitosamente
-
 }
 
 enum TipoCambio {

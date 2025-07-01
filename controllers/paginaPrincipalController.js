@@ -239,7 +239,7 @@ const getEventosCursosPublicos = async (req, res) => {
 // Obtener eventos y cursos para ESTUDIANTES (por carrera + públicos)
 const getEventosCursosCarrera = async (req, res) => {
   try {
-    const userId = req.user.id_usu;
+    const userId = req.uid;
     console.log('ID de usuario ESTUDIANTE:', userId);
 
     // Obtener la carrera del usuario
