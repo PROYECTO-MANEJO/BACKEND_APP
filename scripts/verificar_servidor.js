@@ -28,7 +28,7 @@ const verificarConexion = async () => {
       console.log('   1. Inicia el servidor backend:');
       console.log('      cd BACKEND_APP');
       console.log('      npm run dev');
-      console.log('   2. Verifica que esté ejecutándose en el puerto 5000');
+      console.log('   2. Verifica que esté ejecutándose en el puerto 3000');
     } else if (error.code === 'ENOTFOUND') {
       console.log('🌐 No se puede resolver la dirección del servidor');
     } else if (error.response) {
