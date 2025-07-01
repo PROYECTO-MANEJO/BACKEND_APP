@@ -1,5 +1,5 @@
 const axios = require('axios');
-import { Octokit } from '@octokit/rest';
+const { Octokit } = require('@octokit/rest');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const config = require('../config/github');
