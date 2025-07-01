@@ -177,12 +177,34 @@ const getEventosCursosPublicos = async (req, res) => {
         des_eve: true,
         fec_ini_eve: true,
         fec_fin_eve: true,
+        hor_ini_eve: true,
+        hor_fin_eve: true,
+        ubi_eve: true,
+        dur_eve: true,
+        capacidad_max_eve: true,
         es_gratuito: true,
         precio: true,
         tipo_audiencia_eve: true,
         categoria: {
           select: {
             nom_cat: true
+          }
+        },
+        eventosPorCarrera: {
+          select: {
+            carrera: {
+              select: {
+                nom_car: true
+              }
+            }
+          }
+        },
+        inscripciones: {
+          where: {
+            estado_pago: 'APROBADO'
+          },
+          select: {
+            id_ins: true
           }
         }
       },
@@ -203,12 +225,32 @@ const getEventosCursosPublicos = async (req, res) => {
         des_cur: true,
         fec_ini_cur: true,
         fec_fin_cur: true,
+        dur_cur: true,
+        capacidad_max_cur: true,
         es_gratuito: true,
         precio: true,
         tipo_audiencia_cur: true,
+        requiere_verificacion_docs: true,
         categoria: {
           select: {
             nom_cat: true
+          }
+        },
+        cursosPorCarrera: {
+          select: {
+            carrera: {
+              select: {
+                nom_car: true
+              }
+            }
+          }
+        },
+        inscripcionesCurso: {
+          where: {
+            estado_pago_cur: 'APROBADO'
+          },
+          select: {
+            id_ins_cur: true
           }
         }
       },
