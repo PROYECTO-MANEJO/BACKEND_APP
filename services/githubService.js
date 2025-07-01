@@ -1,8 +1,7 @@
-const axios = require('axios');
-const { Octokit } = require('@octokit/rest');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
-const config = require('../config/github');
+import axios from 'axios';
+import { Octokit } from '@octokit/rest';
+import { PrismaClient } from '@prisma/client';
+import config from '../config/github';
 
 class GitHubService {
   constructor() {
