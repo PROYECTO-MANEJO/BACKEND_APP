@@ -463,17 +463,13 @@ model SolicitudCambio {
 }
 
 // =====================================================
-// NUEVOS ENUMS PARA RAMAS
+// ENUMS Y TIPOS PARA SOLICITUDES DE CAMBIO
 // =====================================================
 
 enum RepositoryType {
   FRONTEND
   BACKEND
 }
-
-// =====================================================
-// NUEVA TABLA: MÚLTIPLES RAMAS POR SOLICITUD
-// =====================================================
 
 model SolicitudRama {
   id                          String        @id @default(uuid()) @map("ID") @db.Uuid
@@ -507,10 +503,6 @@ model SolicitudRama {
   @@unique([id_solicitud, repository_type])
   @@map("SOLICITUDES_RAMAS")
 }
-
-// =====================================================
-// NUEVOS ENUMS PARA RAMAS
-// =====================================================
 
 enum PRStatus {
   PENDING     // Rama creada, sin PR
