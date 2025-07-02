@@ -221,6 +221,7 @@ const obtenerMisInscripcionesCurso = async (req, res) => {
             fec_ini_cur: true,
             fec_fin_cur: true,
             tipo_audiencia_cur: true,
+            estado: true,
             categoria: { select: { nom_cat: true } }
           }
         }

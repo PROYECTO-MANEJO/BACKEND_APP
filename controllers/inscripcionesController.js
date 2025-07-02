@@ -226,6 +226,7 @@ const obtenerMisInscripcionesEvento = async (req, res) => {
             hor_fin_eve: true,
             ubi_eve: true,
             tipo_audiencia_eve: true,
+            estado: true,
             categoria: {
               select: { nom_cat: true }
             }
