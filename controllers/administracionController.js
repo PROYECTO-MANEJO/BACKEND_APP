@@ -278,6 +278,7 @@ const obtenerDetallesEventoAdmin = async (req, res) => {
       metodo_pago: inscripcion.met_pag_ins,
       fecha_aprobacion: inscripcion.fec_aprobacion,
       tiene_comprobante: !!inscripcion.comprobante_pago_pdf,
+      carta_motivacion: inscripcion.carta_motivacion, // 🎯 AGREGAR CARTA DE MOTIVACIÓN PARA EVENTOS
       comprobante_info: inscripcion.comprobante_pago_pdf ? {
         filename: inscripcion.comprobante_filename,
         size: inscripcion.comprobante_size,
@@ -424,6 +425,7 @@ const obtenerDetallesCursoAdmin = async (req, res) => {
       metodo_pago: inscripcion.met_pag_ins_cur,
       fecha_aprobacion: inscripcion.fec_aprobacion_cur,
       tiene_comprobante: !!inscripcion.comprobante_pago_pdf,
+      carta_motivacion: inscripcion.carta_motivacion, // 🎯 AGREGAR CARTA DE MOTIVACIÓN
       comprobante_info: inscripcion.comprobante_pago_pdf ? {
         filename: inscripcion.comprobante_filename,
         size: inscripcion.comprobante_size,
