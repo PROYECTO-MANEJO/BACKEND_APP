@@ -1013,8 +1013,12 @@ const generarPDFCertificadoCurso = async (inscripcion, participacion) => {
   try {
     console.log('🔄 Iniciando generación PDF curso...');
     
-    // Crear documento con configuración mínima
-    const doc = new PDFDocument();
+    // Crear documento con configuración para certificado profesional
+    const doc = new PDFDocument({
+      size: 'A4',
+      layout: 'landscape',
+      margin: 40
+    });
 
     const stream = new PassThrough();
     const bufferPromise = getStream.buffer(stream);
@@ -1022,35 +1026,159 @@ const generarPDFCertificadoCurso = async (inscripcion, participacion) => {
 
     console.log('📄 Documento PDF inicializado correctamente');
 
-    // Contenido super simple para probar
-    doc.fontSize(20)
-       .text('CERTIFICADO DE APROBACION', 50, 50);
+    // Definir colores
+    const colorRojo = '#dc2626'; // Color rojo principal de la aplicación
+    const colorRojoClaro = '#fef2f2'; // Fondo rojo muy claro
+    const colorGris = '#374151';
+    const colorGrisClaro = '#9ca3af';
 
-    doc.fontSize(16)
-       .text('Se certifica que:', 50, 100);
+    // Fondo sutil
+    doc.rect(0, 0, 842, 595).fill(colorRojoClaro);
 
-    // Nombre del participante
-    const nombreCompleto = `${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.ape_usu1}`;
-    doc.fontSize(18)
-       .text(nombreCompleto, 50, 130);
+    // Marco principal decorativo
+    doc.strokeColor(colorRojo).lineWidth(3);
+    doc.rect(30, 30, 782, 535).stroke();
 
-    doc.fontSize(16)
-       .text('ha aprobado satisfactoriamente el curso:', 50, 160);
+    // Marco interno decorativo
+    doc.strokeColor(colorRojo).lineWidth(1);
+    doc.rect(50, 50, 742, 495).stroke();
 
-    // Nombre del curso
-    doc.fontSize(18)
-       .text(inscripcion.curso.nom_cur, 50, 190);
+    // Header con fondo rojo
+    doc.rect(60, 60, 722, 80).fill(colorRojo);
 
-    // Información básica
-    doc.fontSize(14)
-       .text(`Nota final: ${participacion.nota_final}/100`, 50, 230);
+    // Título principal en blanco
+    doc.fillColor('white').fontSize(28).font('Times-Bold')
+       .text('CERTIFICADO DE APROBACIÓN', 70, 85, {
+         width: 702,
+         align: 'center'
+       });
 
-    doc.text(`Asistencia: ${participacion.asistencia_porcentaje}%`, 50, 250);
+    // Línea decorativa dorada
+    doc.strokeColor('#fbbf24').lineWidth(2);
+    doc.moveTo(100, 170).lineTo(742, 170).stroke();
 
-    // Fecha de emisión
+    // Texto "Se certifica que" elegante
+    doc.fillColor(colorGris).fontSize(18).font('Times-Italic')
+       .text('Por medio del presente se certifica que', 70, 190, {
+         width: 702,
+         align: 'center'
+       });
+
+    // Nombre del participante con estilo destacado
+    const nombreCompleto = `${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.nom_usu2 || ''} ${inscripcion.usuario.ape_usu1} ${inscripcion.usuario.ape_usu2 || ''}`.trim();
+    
+    // Fondo sutil para el nombre
+    doc.rect(120, 215, 602, 40).fill('#f9fafb');
+    doc.strokeColor(colorRojo).lineWidth(1).rect(120, 215, 602, 40).stroke();
+    
+    doc.fillColor(colorRojo).fontSize(24).font('Times-Bold')
+       .text(nombreCompleto.toUpperCase(), 130, 230, {
+         width: 582,
+         align: 'center'
+       });
+
+    // Texto descriptivo
+    doc.fillColor(colorGris).fontSize(16).font('Times-Roman')
+       .text('ha completado exitosamente y obtenido la aprobación en el curso:', 70, 280, {
+         width: 702,
+         align: 'center'
+       });
+
+    // Nombre del curso con fondo destacado
+    doc.rect(100, 300, 642, 35).fill('#fef2f2');
+    doc.strokeColor(colorRojo).lineWidth(1).rect(100, 300, 642, 35).stroke();
+    
+    doc.fillColor(colorRojo).fontSize(20).font('Times-Bold')
+       .text(`"${inscripcion.curso.nom_cur}"`, 110, 312, {
+         width: 622,
+         align: 'center'
+       });
+
+    // Información del curso y fechas
+    const fechaInicio = new Date(inscripcion.curso.fec_ini_cur).toLocaleDateString('es-ES');
+    const fechaFin = inscripcion.curso.fec_fin_cur ? 
+      new Date(inscripcion.curso.fec_fin_cur).toLocaleDateString('es-ES') : fechaInicio;
+    
+    const fechasTexto = fechaInicio === fechaFin ? 
+      `Realizado el ${fechaInicio}` : 
+      `Realizado del ${fechaInicio} al ${fechaFin}`;
+
+    doc.fillColor(colorGris).fontSize(14).font('Times-Roman')
+       .text(fechasTexto, 70, 355, {
+         width: 702,
+         align: 'center'
+       });
+
+    if (inscripcion.curso.categoria) {
+      doc.text(`Categoría: ${inscripcion.curso.categoria.nom_cat}`, 70, 375, {
+        width: 702,
+        align: 'center'
+      });
+    }
+
+    // Calificaciones en cajas destacadas
+    const yPos = 410;
+    
+    // Caja para nota final
+    doc.rect(200, yPos, 180, 50).fill('#fef2f2');
+    doc.strokeColor(colorRojo).lineWidth(1).rect(200, yPos, 180, 50).stroke();
+    doc.fillColor(colorRojo).fontSize(12).font('Times-Bold')
+       .text('NOTA FINAL', 210, yPos + 8, { width: 160, align: 'center' });
+    doc.fontSize(20).font('Times-Bold')
+       .text(`${participacion.nota_final}/100`, 210, yPos + 25, { width: 160, align: 'center' });
+
+    // Caja para asistencia
+    doc.rect(462, yPos, 180, 50).fill('#fef2f2');
+    doc.strokeColor(colorRojo).lineWidth(1).rect(462, yPos, 180, 50).stroke();
+    doc.fillColor(colorRojo).fontSize(12).font('Times-Bold')
+       .text('ASISTENCIA', 472, yPos + 8, { width: 160, align: 'center' });
+    doc.fontSize(20).font('Times-Bold')
+       .text(`${participacion.asistencia_porcentaje}%`, 472, yPos + 25, { width: 160, align: 'center' });
+
+    // Organizador si existe
+    if (inscripcion.curso.organizador) {
+      const organizador = inscripcion.curso.organizador;
+      const nombreOrganizador = `${organizador.tit_aca_org || ''} ${organizador.nom_org1} ${organizador.nom_org2 || ''} ${organizador.ape_org1} ${organizador.ape_org2 || ''}`.trim();
+      
+      doc.fillColor(colorGrisClaro).fontSize(12).font('Times-Roman')
+         .text('Organizado por:', 70, 485, {
+           width: 702,
+           align: 'center'
+         });
+
+      doc.fillColor(colorGris).fontSize(14).font('Times-Bold')
+         .text(nombreOrganizador, 70, 500, {
+           width: 702,
+           align: 'center'
+         });
+    }
+
+    // Footer con información del certificado
+    doc.rect(60, 520, 722, 25).fill('#f3f4f6');
+    
     const fechaEmision = new Date().toLocaleDateString('es-ES');
-    doc.fontSize(12)
-       .text(`Emitido el: ${fechaEmision}`, 50, 290);
+    const numeroSerie = `CUR-${inscripcion.id_ins_cur.slice(-8).toUpperCase()}-${Date.now().toString().slice(-6)}`;
+    
+    doc.fillColor(colorGrisClaro).fontSize(10).font('Times-Roman')
+       .text(`Certificado emitido el ${fechaEmision} | Número de serie: ${numeroSerie}`, 70, 528, {
+         width: 702,
+         align: 'center'
+       });
+
+    // Línea decorativa final
+    doc.strokeColor('#fbbf24').lineWidth(2);
+    doc.moveTo(100, 510).lineTo(742, 510).stroke();
+
+    // Sellos/marcas decorativas en las esquinas
+    doc.fillColor(colorRojo).fontSize(8).font('Times-Bold');
+    
+    // Esquina superior izquierda
+    doc.text('CERTIFICADO', 70, 70, { rotate: 0 });
+    doc.text('OFICIAL', 70, 82, { rotate: 0 });
+    
+    // Esquina superior derecha
+    doc.text('APROBADO', 750, 70, { rotate: 0, width: 50, align: 'right' });
+    doc.text('✓', 770, 82, { rotate: 0 });
 
     console.log('✅ Contenido del PDF generado, finalizando...');
     doc.end();
