@@ -986,45 +986,72 @@ const generarPDFCertificadoEvento = async (inscripcion, participacion) => {
 
     console.log('📄 Documento PDF inicializado correctamente');
 
-    // Marco decorativo
-    doc.rect(40, 40, 755, 515).stroke();
+    // Definir colores
+    const colorRojo = '#dc2626'; // Color rojo principal de la aplicación
+    const colorRojoClaro = '#fef2f2'; // Fondo rojo muy claro
+    const colorDorado = '#fbbf24'; // Color dorado para detalles
+    const colorGris = '#374151';
+    const colorGrisClaro = '#9ca3af';
 
-    // Título principal
-    doc.fontSize(32).font('Times-Bold')
-       .text('CERTIFICADO DE PARTICIPACIÓN', 50, 80, {
-         width: 742,
+    // Fondo sutil
+    doc.rect(0, 0, 842, 595).fill(colorRojoClaro);
+
+    // Marco principal decorativo
+    doc.strokeColor(colorRojo).lineWidth(3);
+    doc.rect(30, 30, 782, 535).stroke();
+
+    // Marco interno decorativo
+    doc.strokeColor(colorRojo).lineWidth(1);
+    doc.rect(50, 50, 742, 495).stroke();
+
+    // Header con fondo rojo
+    doc.rect(60, 60, 722, 80).fill(colorRojo);
+
+    // Título principal en blanco
+    doc.fillColor('white').fontSize(32).font('Times-Bold')
+       .text('CERTIFICADO DE PARTICIPACIÓN', 70, 85, {
+         width: 702,
          align: 'center'
        });
 
-    // Línea decorativa
-    doc.moveTo(100, 140).lineTo(692, 140).stroke();
+    // Línea decorativa dorada
+    doc.strokeColor(colorDorado).lineWidth(2);
+    doc.moveTo(150, 170).lineTo(692, 170).stroke();
 
     // Texto "Se certifica que"
-    doc.fontSize(16).font('Times-Roman')
-       .text('Se certifica que', 50, 170, {
+    doc.fillColor(colorGris).fontSize(18).font('Times-Italic')
+       .text('Se certifica que', 50, 190, {
          width: 742,
          align: 'center'
        });
 
     // Nombre del participante
     const nombreCompleto = `${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.nom_usu2 || ''} ${inscripcion.usuario.ape_usu1} ${inscripcion.usuario.ape_usu2 || ''}`.trim();
-    doc.fontSize(24).font('Times-Bold')
-       .text(nombreCompleto.toUpperCase(), 50, 200, {
-         width: 742,
+    
+    // Fondo sutil para el nombre
+    doc.rect(120, 215, 602, 40).fill('#f9fafb');
+    doc.strokeColor(colorRojo).lineWidth(1).rect(120, 215, 602, 40).stroke();
+    
+    doc.fillColor(colorRojo).fontSize(28).font('Times-Bold')
+       .text(nombreCompleto.toUpperCase(), 130, 225, {
+         width: 582,
          align: 'center'
        });
 
     // Texto de participación
-    doc.fontSize(16).font('Times-Roman')
-       .text('participó exitosamente en el evento', 50, 240, {
+    doc.fillColor(colorGris).fontSize(16).font('Times-Roman')
+       .text('participó exitosamente en el evento', 50, 280, {
          width: 742,
          align: 'center'
        });
 
-    // Nombre del evento
-    doc.fontSize(20).font('Times-Bold')
-       .text(`"${inscripcion.evento.nom_eve}"`, 50, 270, {
-         width: 742,
+    // Nombre del evento con fondo destacado
+    doc.rect(100, 300, 642, 35).fill('#fef2f2');
+    doc.strokeColor(colorRojo).lineWidth(1).rect(100, 300, 642, 35).stroke();
+    
+    doc.fillColor(colorRojo).fontSize(22).font('Times-Bold')
+       .text(`"${inscripcion.evento.nom_eve}"`, 110, 308, {
+         width: 622,
          align: 'center'
        });
 
@@ -1037,62 +1064,78 @@ const generarPDFCertificadoEvento = async (inscripcion, participacion) => {
       `realizado el ${fechaInicio}` : 
       `realizado del ${fechaInicio} al ${fechaFin}`;
 
-    doc.fontSize(14).font('Times-Roman')
-       .text(fechasTexto, 50, 310, {
+    doc.fillColor(colorGris).fontSize(14).font('Times-Roman')
+       .text(fechasTexto, 50, 355, {
          width: 742,
          align: 'center'
        });
 
-    doc.text(`Categoría: ${inscripcion.evento.categoria.nom_cat}`, 50, 330, {
-      width: 742,
-      align: 'center'
-    });
+    // Categoría y asistencia
+    if (inscripcion.evento.categoria) {
+      doc.text(`Categoría: ${inscripcion.evento.categoria.nom_cat}`, 50, 375, {
+        width: 742,
+        align: 'center'
+      });
+    }
 
-    doc.text(`Porcentaje de asistencia: ${participacion.asi_par}%`, 50, 350, {
-      width: 742,
-      align: 'center'
-    });
+    // Caja para asistencia
+    const yPos = 400;
+    doc.rect(331, yPos, 180, 50).fill('#fef2f2');
+    doc.strokeColor(colorRojo).lineWidth(1).rect(331, yPos, 180, 50).stroke();
+    doc.fillColor(colorRojo).fontSize(12).font('Times-Bold')
+       .text('ASISTENCIA', 341, yPos + 8, { width: 160, align: 'center' });
+    doc.fontSize(20).font('Times-Bold')
+       .text(`${participacion.asi_par}%`, 341, yPos + 25, { width: 160, align: 'center' });
 
     // Organizador
     const organizador = inscripcion.evento.organizador;
     const nombreOrganizador = `${organizador.tit_aca_org || ''} ${organizador.nom_org1} ${organizador.nom_org2 || ''} ${organizador.ape_org1} ${organizador.ape_org2 || ''}`.trim();
     
-    doc.fontSize(12).font('Times-Roman')
-       .text('Organizado por:', 50, 390, {
+    doc.fillColor(colorGrisClaro).fontSize(12).font('Times-Roman')
+       .text('Organizado por:', 50, 470, {
          width: 742,
          align: 'center'
        });
 
-    doc.text(nombreOrganizador, 50, 410, {
-      width: 742,
-      align: 'center'
-    });
+    doc.fillColor(colorGris).fontSize(16).font('Times-Bold')
+       .text(nombreOrganizador, 50, 490, {
+         width: 742,
+         align: 'center'
+       });
 
+    // Footer con información del certificado
+    doc.rect(60, 520, 722, 25).fill('#f3f4f6');
+    
     // Fecha de emisión y número de certificado
     const fechaEmision = new Date().toLocaleDateString('es-ES');
-    doc.fontSize(10).font('Times-Italic')
-       .text(`Certificado emitido el ${fechaEmision}`, 50, 450, {
-         width: 742,
+    const numeroSerie = `EVT-${inscripcion.id_ins.slice(-8).toUpperCase()}`;
+    
+    doc.fillColor(colorGrisClaro).fontSize(10).font('Times-Roman')
+       .text(`Certificado emitido el ${fechaEmision} | Número de certificado: ${numeroSerie}`, 70, 528, {
+         width: 702,
          align: 'center'
        });
 
-    doc.text(`Número de certificado: EVT-${inscripcion.id_ins.slice(-8).toUpperCase()}`, 50, 470, {
-      width: 742,
-      align: 'center'
-    });
+    // Sellos/marcas decorativas en las esquinas
+    doc.fillColor(colorRojo).fontSize(8).font('Times-Bold');
+    
+    // Esquina superior izquierda
+    doc.text('CERTIFICADO', 70, 70, { rotate: 0 });
+    doc.text('OFICIAL', 70, 82, { rotate: 0 });
+    
+    // Esquina superior derecha
+    doc.text('APROBADO', 750, 70, { rotate: 0, width: 50, align: 'right' });
+    doc.text('✓', 770, 82, { rotate: 0 });
 
-    // Línea final decorativa
-    doc.moveTo(100, 500).lineTo(692, 500).stroke();
-
-    console.log('✅ Contenido del PDF generado, finalizando...');
+    // Finalizar documento
     doc.end();
-
-    const buffer = await bufferPromise;
-    console.log('✅ Buffer PDF generado exitosamente, tamaño:', buffer.length);
-    return buffer;
-
+    
+    console.log('✅ Documento PDF generado correctamente');
+    
+    // Devolver el buffer del documento
+    return await bufferPromise;
   } catch (error) {
-    console.error('❌ Error generando PDF evento:', error);
+    console.error('❌ Error al generar PDF de certificado evento:', error);
     throw error;
   }
 };
