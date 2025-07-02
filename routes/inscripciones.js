@@ -10,17 +10,12 @@ const {
 } = require('../controllers/inscripcionesController');
 
 const { validateJWT } = require('../middlewares/validateJWT');
-const { upload, handleMulterError } = require('../middlewares/uploadMiddleware');
+const { uploadComprobante } = require('../middlewares/uploadMiddleware');
 
 // ======================= EVENTOS ============================
 
-// Inscribir a un evento (con posible comprobante de pago PDF)
-router.post('/eventos', 
-  validateJWT,
-  upload.single('comprobante_pago'),
-  handleMulterError,
-  inscribirUsuarioEvento
-);
+// Inscribir usuario a evento (con archivo PDF)
+router.post('/', validateJWT, uploadComprobante, inscribirUsuarioEvento);
 
 // Obtener mis inscripciones
 router.get('/evento/mis-inscripciones', validateJWT, obtenerMisInscripcionesEvento);

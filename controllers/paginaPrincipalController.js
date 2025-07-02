@@ -177,12 +177,34 @@ const getEventosCursosPublicos = async (req, res) => {
         des_eve: true,
         fec_ini_eve: true,
         fec_fin_eve: true,
+        hor_ini_eve: true,
+        hor_fin_eve: true,
+        ubi_eve: true,
+        dur_eve: true,
+        capacidad_max_eve: true,
         es_gratuito: true,
         precio: true,
         tipo_audiencia_eve: true,
         categoria: {
           select: {
             nom_cat: true
+          }
+        },
+        eventosPorCarrera: {
+          select: {
+            carrera: {
+              select: {
+                nom_car: true
+              }
+            }
+          }
+        },
+        inscripciones: {
+          where: {
+            estado_pago: 'APROBADO'
+          },
+          select: {
+            id_ins: true
           }
         }
       },
@@ -203,12 +225,32 @@ const getEventosCursosPublicos = async (req, res) => {
         des_cur: true,
         fec_ini_cur: true,
         fec_fin_cur: true,
+        dur_cur: true,
+        capacidad_max_cur: true,
         es_gratuito: true,
         precio: true,
         tipo_audiencia_cur: true,
+        requiere_verificacion_docs: true,
         categoria: {
           select: {
             nom_cat: true
+          }
+        },
+        cursosPorCarrera: {
+          select: {
+            carrera: {
+              select: {
+                nom_car: true
+              }
+            }
+          }
+        },
+        inscripcionesCurso: {
+          where: {
+            estado_pago_cur: 'APROBADO'
+          },
+          select: {
+            id_ins_cur: true
           }
         }
       },
@@ -264,13 +306,33 @@ const getEventosCursosCarrera = async (req, res) => {
       });
     }
 
-    // Obtener eventos para el estudiante
+    // Verificar eventos específicos para esta carrera (para debugging)
+    const eventosPorCarreraEspecifica = await prisma.eventoPorCarrera.findMany({
+      where: {
+        id_car_per: usuario.id_car_per
+      },
+      select: {
+        id_eve_per: true,
+        evento: {
+          select: {
+            nom_eve: true,
+            estado: true,
+            tipo_audiencia_eve: true
+          }
+        }
+      }
+    });
+    
+    console.log('Eventos específicos para esta carrera encontrados:', eventosPorCarreraEspecifica.length);
+    eventosPorCarreraEspecifica.forEach(e => {
+      console.log(`- Evento: ${e.evento.nom_eve}, Estado: ${e.evento.estado}, Audiencia: ${e.evento.tipo_audiencia_eve}`);
+    });
+    
+    // Obtener eventos para el estudiante - SIN FILTRO DE FECHA para debugging
     const eventos = await prisma.evento.findMany({
       where: {
         estado: 'ACTIVO',
-        fec_ini_eve: {
-          gte: new Date() // Solo eventos futuros
-        },
+        // Quitamos temporalmente el filtro de fecha
         OR: [
           // Eventos públicos para todos
           { tipo_audiencia_eve: 'PUBLICO_GENERAL' },
@@ -297,12 +359,34 @@ const getEventosCursosCarrera = async (req, res) => {
         des_eve: true,
         fec_ini_eve: true,
         fec_fin_eve: true,
+        hor_ini_eve: true,
+        hor_fin_eve: true,
+        ubi_eve: true,
+        dur_eve: true,
+        capacidad_max_eve: true,
         es_gratuito: true,
         precio: true,
         tipo_audiencia_eve: true,
         categoria: {
           select: {
             nom_cat: true
+          }
+        },
+        eventosPorCarrera: {
+          select: {
+            carrera: {
+              select: {
+                nom_car: true
+              }
+            }
+          }
+        },
+        inscripciones: {
+          where: {
+            estado_pago: 'APROBADO'
+          },
+          select: {
+            id_ins: true
           }
         }
       },
@@ -311,13 +395,35 @@ const getEventosCursosCarrera = async (req, res) => {
       }
     });
 
-    // Obtener cursos para el estudiante
+    console.log('Carrera del usuario:', usuario.id_car_per, usuario.carrera?.nom_car);
+    
+    // Verificar cursos específicos para esta carrera (para debugging)
+    const cursosPorCarreraEspecifica = await prisma.cursoPorCarrera.findMany({
+      where: {
+        id_car_per: usuario.id_car_per
+      },
+      select: {
+        id_cur_per: true,
+        curso: {
+          select: {
+            nom_cur: true,
+            estado: true,
+            tipo_audiencia_cur: true
+          }
+        }
+      }
+    });
+    
+    console.log('Cursos específicos para esta carrera encontrados:', cursosPorCarreraEspecifica.length);
+    cursosPorCarreraEspecifica.forEach(c => {
+      console.log(`- Curso: ${c.curso.nom_cur}, Estado: ${c.curso.estado}, Audiencia: ${c.curso.tipo_audiencia_cur}`);
+    });
+    
+    // Obtener cursos para el estudiante - SIN FILTRO DE FECHA para debugging
     const cursos = await prisma.curso.findMany({
       where: {
         estado: 'ACTIVO',
-        fec_ini_cur: {
-          gte: new Date() // Solo cursos futuros
-        },
+        // Quitamos temporalmente el filtro de fecha para ver todos los cursos
         OR: [
           // Cursos públicos para todos
           { tipo_audiencia_cur: 'PUBLICO_GENERAL' },
@@ -344,12 +450,32 @@ const getEventosCursosCarrera = async (req, res) => {
         des_cur: true,
         fec_ini_cur: true,
         fec_fin_cur: true,
+        dur_cur: true,
+        capacidad_max_cur: true,
         es_gratuito: true,
         precio: true,
         tipo_audiencia_cur: true,
+        requiere_verificacion_docs: true,
         categoria: {
           select: {
             nom_cat: true
+          }
+        },
+        cursosPorCarrera: {
+          select: {
+            carrera: {
+              select: {
+                nom_car: true
+              }
+            }
+          }
+        },
+        inscripcionesCurso: {
+          where: {
+            estado_pago_cur: 'APROBADO'
+          },
+          select: {
+            id_ins_cur: true
           }
         }
       },
@@ -360,6 +486,16 @@ const getEventosCursosCarrera = async (req, res) => {
 
     console.log(`Eventos encontrados para estudiante: ${eventos.length}`);
     console.log(`Cursos encontrados para estudiante: ${cursos.length}`);
+    
+    // Mostrar detalles de los cursos encontrados
+    cursos.forEach(c => {
+      console.log(`- Curso encontrado: ${c.nom_cur}, Audiencia: ${c.tipo_audiencia_cur}`);
+    });
+    
+    // Mostrar detalles de los eventos encontrados
+    eventos.forEach(e => {
+      console.log(`- Evento encontrado: ${e.nom_eve}, Audiencia: ${e.tipo_audiencia_eve}`);
+    });
 
     res.json({
       success: true,
@@ -397,12 +533,34 @@ const getEventosCursosDisponibles = async (req, res) => {
         des_eve: true,
         fec_ini_eve: true,
         fec_fin_eve: true,
+        hor_ini_eve: true,
+        hor_fin_eve: true,
+        ubi_eve: true,
+        dur_eve: true,
+        capacidad_max_eve: true,
         es_gratuito: true,
         precio: true,
         tipo_audiencia_eve: true,
         categoria: {
           select: {
             nom_cat: true
+          }
+        },
+        eventosPorCarrera: {
+          select: {
+            carrera: {
+              select: {
+                nom_car: true
+              }
+            }
+          }
+        },
+        inscripciones: {
+          where: {
+            estado_pago: 'APROBADO'
+          },
+          select: {
+            id_ins: true
           }
         }
       },
@@ -426,12 +584,32 @@ const getEventosCursosDisponibles = async (req, res) => {
         des_cur: true,
         fec_ini_cur: true,
         fec_fin_cur: true,
+        dur_cur: true,
+        capacidad_max_cur: true,
         es_gratuito: true,
         precio: true,
         tipo_audiencia_cur: true,
+        requiere_verificacion_docs: true,
         categoria: {
           select: {
             nom_cat: true
+          }
+        },
+        cursosPorCarrera: {
+          select: {
+            carrera: {
+              select: {
+                nom_car: true
+              }
+            }
+          }
+        },
+        inscripcionesCurso: {
+          where: {
+            estado_pago_cur: 'APROBADO'
+          },
+          select: {
+            id_ins_cur: true
           }
         }
       },
