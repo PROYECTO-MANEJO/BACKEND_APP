@@ -1,5 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const PDFDocument = require('pdfkit');
+const getStream = require('get-stream');
+const { PassThrough } = require('stream');
 
 const prisma = new PrismaClient();
 
@@ -8,12 +10,129 @@ const prisma = new PrismaClient();
 // =====================================================
 
 /**
+ * Generar certificado usando solo ID de participación de evento
+ */
+const generarCertificadoEventoPorParticipacion = async (req, res) => {
+  try {
+    const { idParticipacion } = req.params;
+    const userId = req.uid;
+
+    console.log('🔍 Generando certificado por participación evento:', { idParticipacion, userId });
+
+    // Buscar la participación con toda la información necesaria
+    const participacion = await prisma.participacion.findFirst({
+      where: {
+        id_par: idParticipacion,
+        inscripcion: {
+          id_usu_ins: userId
+        }
+      },
+      include: {
+        inscripcion: {
+          include: {
+            evento: {
+              include: {
+                categoria: true,
+                organizador: true
+              }
+            },
+            usuario: {
+              select: {
+                nom_usu1: true,
+                nom_usu2: true,
+                ape_usu1: true,
+                ape_usu2: true,
+                ced_usu: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!participacion) {
+      return res.status(404).json({
+        success: false,
+        message: 'Participación no encontrada'
+      });
+    }
+
+    const inscripcion = participacion.inscripcion;
+
+    // Verificar que el usuario está aprobado en el pago (si no es gratuito)
+    if (!inscripcion.evento.es_gratuito && inscripcion.estado_pago !== 'APROBADO') {
+      return res.status(400).json({
+        success: false,
+        message: 'El pago de la inscripción debe estar aprobado para generar el certificado'
+      });
+    }
+
+    // Verificar que está aprobado
+    if (!participacion.aprobado) {
+      return res.status(400).json({
+        success: false,
+        message: 'El participante no ha sido aprobado en el evento. Se requiere al menos 70% de asistencia.'
+      });
+    }
+
+    // Generar el certificado PDF (sobreescribir si ya existe)
+    const certificadoBuffer = await generarPDFCertificadoEvento(inscripcion, participacion);
+    
+    // Generar nombre único para el archivo
+    const nombreArchivo = `certificado_evento_${inscripcion.id_eve_ins}_${inscripcion.id_ins}_${Date.now()}.pdf`;
+    
+    // Actualizar la participación con el certificado como datos binarios
+    await prisma.participacion.update({
+      where: { id_par: participacion.id_par },
+      data: {
+        certificado_pdf: certificadoBuffer,
+        certificado_filename: nombreArchivo,
+        certificado_size: certificadoBuffer.length,
+        fec_cer_par: new Date()
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Certificado generado exitosamente',
+      data: {
+        certificado_filename: nombreArchivo,
+        certificado_size: certificadoBuffer.length,
+        evento: inscripcion.evento.nom_eve,
+        participante: `${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.ape_usu1}`,
+        fecha_generacion: new Date(),
+        asistencia: participacion.asi_par
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error al generar certificado de evento por participación:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
  * Generar certificado para evento aprobado
  */
 const generarCertificadoEvento = async (req, res) => {
   try {
     const { idEvento, idInscripcion } = req.params;
     const userId = req.uid;
+
+    console.log('🔍 Parámetros recibidos para evento:', { idEvento, idInscripcion, userId });
+
+    // Validar que los parámetros no sean undefined
+    if (!idEvento || !idInscripcion) {
+      return res.status(400).json({
+        success: false,
+        message: 'Parámetros idEvento e idInscripcion son requeridos',
+        recibido: { idEvento, idInscripcion }
+      });
+    }
 
     // Verificar que la inscripción pertenece al usuario o es admin
     const inscripcion = await prisma.inscripcion.findFirst({
@@ -126,12 +245,235 @@ const generarCertificadoEvento = async (req, res) => {
 };
 
 /**
+ * Generar certificado usando solo ID de participación de curso
+ */
+const generarCertificadoCursoPorParticipacion = async (req, res) => {
+  try {
+    const { idParticipacion } = req.params;
+    const userId = req.uid;
+
+    console.log('🔍 Generando certificado por participación curso:', { idParticipacion, userId });
+
+    // Buscar la participación con toda la información necesaria
+    const participacion = await prisma.participacionCurso.findFirst({
+      where: {
+        id_par_cur: idParticipacion,
+        inscripcionCurso: {
+          id_usu_ins_cur: userId
+        }
+      },
+      include: {
+        inscripcionCurso: {
+          include: {
+            curso: {
+              include: {
+                categoria: true,
+                organizador: true
+              }
+            },
+            usuario: {
+              select: {
+                nom_usu1: true,
+                nom_usu2: true,
+                ape_usu1: true,
+                ape_usu2: true,
+                ced_usu: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!participacion) {
+      return res.status(404).json({
+        success: false,
+        message: 'Participación no encontrada'
+      });
+    }
+
+    const inscripcion = participacion.inscripcionCurso;
+
+    // Verificar que el usuario está aprobado en el pago (si no es gratuito)
+    if (!inscripcion.curso.es_gratuito && inscripcion.estado_pago_cur !== 'APROBADO') {
+      return res.status(400).json({
+        success: false,
+        message: 'El pago de la inscripción debe estar aprobado para generar el certificado'
+      });
+    }
+
+    // Verificar que está aprobado
+    if (!participacion.aprobado) {
+      return res.status(400).json({
+        success: false,
+        message: 'El participante no ha sido aprobado en el curso. Se requiere nota >= 70 y asistencia >= 70%.'
+      });
+    }
+
+    // Generar el certificado PDF (sobreescribir si ya existe)
+    const certificadoBuffer = await generarPDFCertificadoCurso(inscripcion, participacion);
+    
+    // Generar nombre único para el archivo
+    const nombreArchivo = `certificado_curso_${inscripcion.id_cur_ins}_${inscripcion.id_ins_cur}_${Date.now()}.pdf`;
+    
+    // Actualizar la participación con el certificado como datos binarios
+    await prisma.participacionCurso.update({
+      where: { id_par_cur: participacion.id_par_cur },
+      data: {
+        certificado_pdf: certificadoBuffer,
+        certificado_filename: nombreArchivo,
+        certificado_size: certificadoBuffer.length,
+        fec_cer_par_cur: new Date()
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Certificado generado exitosamente',
+      data: {
+        certificado_filename: nombreArchivo,
+        certificado_size: certificadoBuffer.length,
+        curso: inscripcion.curso.nom_cur,
+        participante: `${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.ape_usu1}`,
+        fecha_generacion: new Date(),
+        nota_final: participacion.nota_final,
+        asistencia: participacion.asistencia_porcentaje
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error al generar certificado de curso por participación:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
+ * Endpoint de prueba para verificar conectividad
+ */
+const testConectividad = async (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Endpoint funcionando correctamente',
+    timestamp: new Date().toISOString(),
+    params: req.params,
+    query: req.query,
+    userId: req.uid
+  });
+};
+
+/**
+ * Visualizar certificado en navegador (en lugar de descargar)
+ */
+const visualizarCertificadoCursoPorParticipacion = async (req, res) => {
+  try {
+    console.log('🔍 ENTRADA - Visualizar certificado curso');
+    console.log('📥 Parámetros recibidos:', req.params);
+    console.log('📥 Query params:', req.query);
+    console.log('📥 Headers:', Object.keys(req.headers));
+    
+    const { idParticipacion } = req.params;
+    // El userId viene del middleware de autenticación (token en query o header)
+    const userId = req.uid;
+
+    console.log('🔍 Procesando certificado - ID participación:', idParticipacion);
+    console.log('🔍 Usuario autenticado ID:', userId);
+
+    // Buscar la participación con toda la información necesaria
+    const participacion = await prisma.participacionCurso.findFirst({
+      where: {
+        id_par_cur: idParticipacion,
+        inscripcionCurso: {
+          id_usu_ins_cur: userId
+        }
+      },
+      include: {
+        inscripcionCurso: {
+          include: {
+            curso: {
+              include: {
+                categoria: true,
+                organizador: true
+              }
+            },
+            usuario: {
+              select: {
+                nom_usu1: true,
+                nom_usu2: true,
+                ape_usu1: true,
+                ape_usu2: true,
+                ced_usu: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!participacion) {
+      return res.status(404).json({
+        success: false,
+        message: 'Participación no encontrada'
+      });
+    }
+
+    const inscripcion = participacion.inscripcionCurso;
+
+    // Verificar que está aprobado
+    if (!participacion.aprobado) {
+      return res.status(400).json({
+        success: false,
+        message: 'El participante no ha sido aprobado en el curso.'
+      });
+    }
+
+    console.log('📄 Generando PDF...');
+    
+    // Generar el certificado PDF en tiempo real
+    const certificadoBuffer = await generarPDFCertificadoCurso(inscripcion, participacion);
+    
+    console.log('✅ PDF generado, tamaño:', certificadoBuffer.length);
+    
+    // Configurar headers para visualización en navegador
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline; filename="certificado.pdf"');
+    res.setHeader('Content-Length', certificadoBuffer.length);
+    res.setHeader('Cache-Control', 'no-cache');
+    
+    console.log('📤 Enviando PDF al navegador...');
+    res.send(certificadoBuffer);
+
+  } catch (error) {
+    console.error('❌ Error al visualizar certificado de curso:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
  * Generar certificado para curso aprobado
  */
 const generarCertificadoCurso = async (req, res) => {
   try {
     const { idCurso, idInscripcion } = req.params;
     const userId = req.uid;
+
+    console.log('🔍 Parámetros recibidos:', { idCurso, idInscripcion, userId });
+
+    // Validar que los parámetros no sean undefined
+    if (!idCurso || !idInscripcion) {
+      return res.status(400).json({
+        success: false,
+        message: 'Parámetros idCurso e idInscripcion son requeridos',
+        recibido: { idCurso, idInscripcion }
+      });
+    }
 
     // Verificar que la inscripción pertenece al usuario
     const inscripcion = await prisma.inscripcionCurso.findFirst({
@@ -537,214 +879,190 @@ const debugCertificados = async (req, res) => {
  * Generar PDF del certificado para evento
  */
 const generarPDFCertificadoEvento = async (inscripcion, participacion) => {
-  return new Promise((resolve, reject) => {
-    try {
-      const doc = new PDFDocument({
-        layout: 'landscape',
-        size: 'A4'
-      });
+  try {
+    console.log('🔄 Iniciando generación PDF evento...');
+    
+    // Crear documento usando el patrón exitoso de reportesController
+    const doc = new PDFDocument({
+      size: 'A4',
+      layout: 'landscape',
+      margin: 50
+    });
 
-      const buffers = [];
-      doc.on('data', buffers.push.bind(buffers));
-      doc.on('end', () => {
-        const pdfData = Buffer.concat(buffers);
-        resolve(pdfData);
-      });
+    const stream = new PassThrough();
+    const bufferPromise = getStream.buffer(stream);
+    doc.pipe(stream);
 
-      // Configuración de colores
-      const colorPrincipal = '#2C3E50';
-      const colorSecundario = '#3498DB';
-      const colorDorado = '#F39C12';
+    console.log('📄 Documento PDF inicializado correctamente');
 
-      // Título principal
-      doc.font('Helvetica-Bold')
-         .fontSize(36)
-         .fillColor(colorPrincipal)
-         .text('CERTIFICADO DE PARTICIPACIÓN', 50, 80, { align: 'center' });
+    // Marco decorativo
+    doc.rect(40, 40, 755, 515).stroke();
 
-      // Línea decorativa
-      doc.moveTo(100, 140).lineTo(700, 140).stroke(colorDorado);
+    // Título principal
+    doc.fontSize(32).font('Times-Bold')
+       .text('CERTIFICADO DE PARTICIPACIÓN', 50, 80, {
+         width: 742,
+         align: 'center'
+       });
 
-      // Texto principal
-      doc.font('Helvetica')
-         .fontSize(18)
-         .fillColor('#2C3E50')
-         .text('Se certifica que', 50, 180, { align: 'center' });
+    // Línea decorativa
+    doc.moveTo(100, 140).lineTo(692, 140).stroke();
 
-      // Nombre del participante
-      const nombreCompleto = `${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.nom_usu2 || ''} ${inscripcion.usuario.ape_usu1} ${inscripcion.usuario.ape_usu2 || ''}`.trim();
-      doc.font('Helvetica-Bold')
-         .fontSize(28)
-         .fillColor(colorSecundario)
-         .text(nombreCompleto.toUpperCase(), 50, 220, { align: 'center' });
+    // Texto "Se certifica que"
+    doc.fontSize(16).font('Times-Roman')
+       .text('Se certifica que', 50, 170, {
+         width: 742,
+         align: 'center'
+       });
 
-      // Texto de participación
-      doc.font('Helvetica')
-         .fontSize(18)
-         .fillColor('#2C3E50')
-         .text('participó exitosamente en el evento', 50, 270, { align: 'center' });
+    // Nombre del participante
+    const nombreCompleto = `${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.nom_usu2 || ''} ${inscripcion.usuario.ape_usu1} ${inscripcion.usuario.ape_usu2 || ''}`.trim();
+    doc.fontSize(24).font('Times-Bold')
+       .text(nombreCompleto.toUpperCase(), 50, 200, {
+         width: 742,
+         align: 'center'
+       });
 
-      // Nombre del evento
-      doc.font('Helvetica-Bold')
-         .fontSize(24)
-         .fillColor(colorPrincipal)
-         .text(`"${inscripcion.evento.nom_eve}"`, 50, 310, { align: 'center' });
+    // Texto de participación
+    doc.fontSize(16).font('Times-Roman')
+       .text('participó exitosamente en el evento', 50, 240, {
+         width: 742,
+         align: 'center'
+       });
 
-      // Información del evento
-      const fechaInicio = new Date(inscripcion.evento.fec_ini_eve).toLocaleDateString('es-ES');
-      const fechaFin = inscripcion.evento.fec_fin_eve ? 
-        new Date(inscripcion.evento.fec_fin_eve).toLocaleDateString('es-ES') : fechaInicio;
-      
-      const fechasTexto = fechaInicio === fechaFin ? 
-        `realizado el ${fechaInicio}` : 
-        `realizado del ${fechaInicio} al ${fechaFin}`;
+    // Nombre del evento
+    doc.fontSize(20).font('Times-Bold')
+       .text(`"${inscripcion.evento.nom_eve}"`, 50, 270, {
+         width: 742,
+         align: 'center'
+       });
 
-      doc.font('Helvetica')
-         .fontSize(16)
-         .text(fechasTexto, 50, 360, { align: 'center' });
+    // Información del evento
+    const fechaInicio = new Date(inscripcion.evento.fec_ini_eve).toLocaleDateString('es-ES');
+    const fechaFin = inscripcion.evento.fec_fin_eve ? 
+      new Date(inscripcion.evento.fec_fin_eve).toLocaleDateString('es-ES') : fechaInicio;
+    
+    const fechasTexto = fechaInicio === fechaFin ? 
+      `realizado el ${fechaInicio}` : 
+      `realizado del ${fechaInicio} al ${fechaFin}`;
 
-      doc.text(`Categoría: ${inscripcion.evento.categoria.nom_cat}`, 50, 385, { align: 'center' });
-      doc.text(`Porcentaje de asistencia: ${participacion.asi_par}%`, 50, 410, { align: 'center' });
+    doc.fontSize(14).font('Times-Roman')
+       .text(fechasTexto, 50, 310, {
+         width: 742,
+         align: 'center'
+       });
 
-      // Organizador
-      const organizador = inscripcion.evento.organizador;
-      const nombreOrganizador = `${organizador.tit_aca_org || ''} ${organizador.nom_org1} ${organizador.nom_org2 || ''} ${organizador.ape_org1} ${organizador.ape_org2 || ''}`.trim();
-      
-      doc.font('Helvetica-Bold')
-         .fontSize(14)
-         .text('Organizado por:', 50, 450, { align: 'center' });
-      
-      doc.font('Helvetica')
-         .fontSize(16)
-         .text(nombreOrganizador, 50, 470, { align: 'center' });
+    doc.text(`Categoría: ${inscripcion.evento.categoria.nom_cat}`, 50, 330, {
+      width: 742,
+      align: 'center'
+    });
 
-      // Fecha de emisión y número de certificado
-      const fechaEmision = new Date().toLocaleDateString('es-ES');
-      doc.font('Helvetica')
-         .fontSize(12)
-         .fillColor('#7F8C8D')
-         .text(`Certificado emitido el ${fechaEmision}`, 50, 520, { align: 'center' });
+    doc.text(`Porcentaje de asistencia: ${participacion.asi_par}%`, 50, 350, {
+      width: 742,
+      align: 'center'
+    });
 
-      doc.text(`Número de certificado: EVT-${inscripcion.id_ins.slice(-8).toUpperCase()}`, 50, 540, { align: 'center' });
+    // Organizador
+    const organizador = inscripcion.evento.organizador;
+    const nombreOrganizador = `${organizador.tit_aca_org || ''} ${organizador.nom_org1} ${organizador.nom_org2 || ''} ${organizador.ape_org1} ${organizador.ape_org2 || ''}`.trim();
+    
+    doc.fontSize(12).font('Times-Roman')
+       .text('Organizado por:', 50, 390, {
+         width: 742,
+         align: 'center'
+       });
 
-      // Línea final decorativa
-      doc.moveTo(100, 570).lineTo(700, 570).stroke(colorDorado);
+    doc.text(nombreOrganizador, 50, 410, {
+      width: 742,
+      align: 'center'
+    });
 
-      doc.end();
+    // Fecha de emisión y número de certificado
+    const fechaEmision = new Date().toLocaleDateString('es-ES');
+    doc.fontSize(10).font('Times-Italic')
+       .text(`Certificado emitido el ${fechaEmision}`, 50, 450, {
+         width: 742,
+         align: 'center'
+       });
 
-    } catch (error) {
-      reject(error);
-    }
-  });
+    doc.text(`Número de certificado: EVT-${inscripcion.id_ins.slice(-8).toUpperCase()}`, 50, 470, {
+      width: 742,
+      align: 'center'
+    });
+
+    // Línea final decorativa
+    doc.moveTo(100, 500).lineTo(692, 500).stroke();
+
+    console.log('✅ Contenido del PDF generado, finalizando...');
+    doc.end();
+
+    const buffer = await bufferPromise;
+    console.log('✅ Buffer PDF generado exitosamente, tamaño:', buffer.length);
+    return buffer;
+
+  } catch (error) {
+    console.error('❌ Error generando PDF evento:', error);
+    throw error;
+  }
 };
 
 /**
  * Generar PDF del certificado para curso
  */
 const generarPDFCertificadoCurso = async (inscripcion, participacion) => {
-  return new Promise((resolve, reject) => {
-    try {
-      const doc = new PDFDocument({
-        layout: 'landscape',
-        size: 'A4'
-      });
+  try {
+    console.log('🔄 Iniciando generación PDF curso...');
+    
+    // Crear documento con configuración mínima
+    const doc = new PDFDocument();
 
-      const buffers = [];
-      doc.on('data', buffers.push.bind(buffers));
-      doc.on('end', () => {
-        const pdfData = Buffer.concat(buffers);
-        resolve(pdfData);
-      });
+    const stream = new PassThrough();
+    const bufferPromise = getStream.buffer(stream);
+    doc.pipe(stream);
 
-      // Configuración de colores
-      const colorPrincipal = '#2C3E50';
-      const colorSecundario = '#27AE60';
-      const colorDorado = '#F39C12';
+    console.log('📄 Documento PDF inicializado correctamente');
 
-      // Título principal
-      doc.font('Helvetica-Bold')
-         .fontSize(36)
-         .fillColor(colorPrincipal)
-         .text('CERTIFICADO DE APROBACIÓN', 50, 80, { align: 'center' });
+    // Contenido super simple para probar
+    doc.fontSize(20)
+       .text('CERTIFICADO DE APROBACION', 50, 50);
 
-      // Línea decorativa
-      doc.moveTo(100, 140).lineTo(700, 140).stroke(colorDorado);
+    doc.fontSize(16)
+       .text('Se certifica que:', 50, 100);
 
-      // Texto principal
-      doc.font('Helvetica')
-         .fontSize(18)
-         .fillColor('#2C3E50')
-         .text('Se certifica que', 50, 180, { align: 'center' });
+    // Nombre del participante
+    const nombreCompleto = `${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.ape_usu1}`;
+    doc.fontSize(18)
+       .text(nombreCompleto, 50, 130);
 
-      // Nombre del participante
-      const nombreCompleto = `${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.nom_usu2 || ''} ${inscripcion.usuario.ape_usu1} ${inscripcion.usuario.ape_usu2 || ''}`.trim();
-      doc.font('Helvetica-Bold')
-         .fontSize(28)
-         .fillColor(colorSecundario)
-         .text(nombreCompleto.toUpperCase(), 50, 220, { align: 'center' });
+    doc.fontSize(16)
+       .text('ha aprobado satisfactoriamente el curso:', 50, 160);
 
-      // Texto de aprobación
-      doc.font('Helvetica')
-         .fontSize(18)
-         .fillColor('#2C3E50')
-         .text('ha aprobado satisfactoriamente el curso', 50, 270, { align: 'center' });
+    // Nombre del curso
+    doc.fontSize(18)
+       .text(inscripcion.curso.nom_cur, 50, 190);
 
-      // Nombre del curso
-      doc.font('Helvetica-Bold')
-         .fontSize(24)
-         .fillColor(colorPrincipal)
-         .text(`"${inscripcion.curso.nom_cur}"`, 50, 310, { align: 'center' });
+    // Información básica
+    doc.fontSize(14)
+       .text(`Nota final: ${participacion.nota_final}/100`, 50, 230);
 
-      // Información del curso
-      const fechaInicio = new Date(inscripcion.curso.fec_ini_cur).toLocaleDateString('es-ES');
-      const fechaFin = new Date(inscripcion.curso.fec_fin_cur).toLocaleDateString('es-ES');
-      
-      doc.font('Helvetica')
-         .fontSize(16)
-         .text(`realizado del ${fechaInicio} al ${fechaFin}`, 50, 350, { align: 'center' });
+    doc.text(`Asistencia: ${participacion.asistencia_porcentaje}%`, 50, 250);
 
-      doc.text(`Categoría: ${inscripcion.curso.categoria.nom_cat}`, 50, 375, { align: 'center' });
-      doc.text(`Duración: ${inscripcion.curso.dur_cur} horas académicas`, 50, 400, { align: 'center' });
+    // Fecha de emisión
+    const fechaEmision = new Date().toLocaleDateString('es-ES');
+    doc.fontSize(12)
+       .text(`Emitido el: ${fechaEmision}`, 50, 290);
 
-      // Calificaciones
-      doc.font('Helvetica-Bold')
-         .fontSize(16)
-         .fillColor(colorSecundario)
-         .text(`Nota final: ${participacion.nota_final}/100`, 50, 430, { align: 'center' });
-      
-      doc.text(`Porcentaje de asistencia: ${participacion.asistencia_porcentaje}%`, 50, 455, { align: 'center' });
+    console.log('✅ Contenido del PDF generado, finalizando...');
+    doc.end();
 
-      // Organizador
-      const organizador = inscripcion.curso.organizador;
-      const nombreOrganizador = `${organizador.tit_aca_org || ''} ${organizador.nom_org1} ${organizador.nom_org2 || ''} ${organizador.ape_org1} ${organizador.ape_org2 || ''}`.trim();
-      
-      doc.font('Helvetica-Bold')
-         .fontSize(14)
-         .fillColor('#2C3E50')
-         .text('Organizado por:', 50, 485, { align: 'center' });
-      
-      doc.font('Helvetica')
-         .fontSize(16)
-         .text(nombreOrganizador, 50, 505, { align: 'center' });
+    const buffer = await bufferPromise;
+    console.log('✅ Buffer PDF generado exitosamente, tamaño:', buffer.length);
+    return buffer;
 
-      // Fecha de emisión y número de certificado
-      const fechaEmision = new Date().toLocaleDateString('es-ES');
-      doc.font('Helvetica')
-         .fontSize(12)
-         .fillColor('#7F8C8D')
-         .text(`Certificado emitido el ${fechaEmision}`, 50, 540, { align: 'center' });
-
-      doc.text(`Número de certificado: CUR-${inscripcion.id_ins_cur.slice(-8).toUpperCase()}`, 50, 560, { align: 'center' });
-
-      // Línea final decorativa
-      doc.moveTo(100, 580).lineTo(700, 580).stroke(colorDorado);
-
-      doc.end();
-
-    } catch (error) {
-      reject(error);
-    }
-  });
+  } catch (error) {
+    console.error('❌ Error generando PDF curso:', error);
+    throw error;
+  }
 };
 
 // =====================================================
@@ -1055,10 +1373,17 @@ const obtenerParticipacionesCompletas = async (req, res) => {
 module.exports = {
   generarCertificadoEvento,
   generarCertificadoCurso,
+  generarCertificadoEventoPorParticipacion,
+  generarCertificadoCursoPorParticipacion,
+  visualizarCertificadoCursoPorParticipacion,
+  testConectividad,
   descargarCertificado,
   obtenerMisCertificados,
   regenerarCertificado,
   debugCertificados,
   obtenerParticipacionesTerminadas,
-  obtenerParticipacionesCompletas
+  obtenerParticipacionesCompletas,
+  // Exportar funciones de generación de PDF para uso del helper
+  generarPDFCertificadoEvento,
+  generarPDFCertificadoCurso
 };
