@@ -457,6 +457,97 @@ const visualizarCertificadoCursoPorParticipacion = async (req, res) => {
 };
 
 /**
+ * Visualizar certificado de evento en navegador (en lugar de descargar)
+ */
+const visualizarCertificadoEventoPorParticipacion = async (req, res) => {
+  try {
+    console.log('🔍 ENTRADA - Visualizar certificado evento');
+    console.log('📥 Parámetros recibidos:', req.params);
+    console.log('📥 Query params:', req.query);
+    console.log('📥 Headers:', Object.keys(req.headers));
+    
+    const { idParticipacion } = req.params;
+    // El userId viene del middleware de autenticación (token en query o header)
+    const userId = req.uid;
+
+    console.log('🔍 Procesando certificado - ID participación:', idParticipacion);
+    console.log('🔍 Usuario autenticado ID:', userId);
+
+    // Buscar la participación con toda la información necesaria
+    const participacion = await prisma.participacion.findFirst({
+      where: {
+        id_par: idParticipacion,
+        inscripcion: {
+          id_usu_ins: userId
+        }
+      },
+      include: {
+        inscripcion: {
+          include: {
+            evento: {
+              include: {
+                categoria: true,
+                organizador: true
+              }
+            },
+            usuario: {
+              select: {
+                nom_usu1: true,
+                nom_usu2: true,
+                ape_usu1: true,
+                ape_usu2: true,
+                ced_usu: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!participacion) {
+      return res.status(404).json({
+        success: false,
+        message: 'Participación no encontrada'
+      });
+    }
+
+    const inscripcion = participacion.inscripcion;
+
+    // Verificar que está aprobado
+    if (!participacion.aprobado) {
+      return res.status(400).json({
+        success: false,
+        message: 'El participante no ha sido aprobado en el evento.'
+      });
+    }
+
+    console.log('📄 Generando PDF...');
+    
+    // Generar el certificado PDF en tiempo real
+    const certificadoBuffer = await generarPDFCertificadoEvento(inscripcion, participacion);
+    
+    console.log('✅ PDF generado, tamaño:', certificadoBuffer.length);
+    
+    // Configurar headers para visualización en navegador
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline; filename="certificado.pdf"');
+    res.setHeader('Content-Length', certificadoBuffer.length);
+    res.setHeader('Cache-Control', 'no-cache');
+    
+    console.log('📤 Enviando PDF al navegador...');
+    res.send(certificadoBuffer);
+
+  } catch (error) {
+    console.error('❌ Error al visualizar certificado de evento:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
  * Generar certificado para curso aprobado
  */
 const generarCertificadoCurso = async (req, res) => {
@@ -1504,6 +1595,7 @@ module.exports = {
   generarCertificadoEventoPorParticipacion,
   generarCertificadoCursoPorParticipacion,
   visualizarCertificadoCursoPorParticipacion,
+  visualizarCertificadoEventoPorParticipacion,
   testConectividad,
   descargarCertificado,
   obtenerMisCertificados,

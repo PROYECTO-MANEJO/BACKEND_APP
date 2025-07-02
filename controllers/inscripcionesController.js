@@ -306,8 +306,10 @@ async function descargarComprobantePagoEvento(req, res) {
 
     // Validar ID
     if (!inscripcionId) {
-      res.status(400);
-      return res.send('Error: ID de inscripción es obligatorio');
+      return res.status(400).json({
+        success: false,
+        message: 'ID de inscripción es obligatorio'
+      });
     }
 
     // Verificar que el usuario solicitante es admin
@@ -325,8 +327,10 @@ async function descargarComprobantePagoEvento(req, res) {
     const isAdmin = ['ADMINISTRADOR', 'MASTER'].includes(currentUser.cuentas[0]?.rol_cue);
     
     if (!isAdmin) {
-      res.status(403);
-      return res.send('Error: No autorizado para descargar comprobantes de pago');
+      return res.status(403).json({
+        success: false,
+        message: 'No autorizado para descargar comprobantes de pago'
+      });
     }
 
     // Obtener la inscripción con el comprobante
@@ -352,13 +356,17 @@ async function descargarComprobantePagoEvento(req, res) {
     });
 
     if (!inscripcion) {
-      res.status(404);
-      return res.send('Error: Inscripción no encontrada');
+      return res.status(404).json({
+        success: false,
+        message: 'Inscripción no encontrada'
+      });
     }
 
     if (!inscripcion.comprobante_pago_pdf) {
-      res.status(404);
-      return res.send('Error: Comprobante de pago no encontrado para esta inscripción');
+      return res.status(404).json({
+        success: false,
+        message: 'Comprobante de pago no encontrado para esta inscripción'
+      });
     }
 
     // Verificar que el comprobante tiene datos
@@ -368,13 +376,17 @@ async function descargarComprobantePagoEvento(req, res) {
     console.log('- Longitud:', inscripcion.comprobante_pago_pdf ? inscripcion.comprobante_pago_pdf.length : 'null');
 
     if (!inscripcion.comprobante_pago_pdf) {
-      res.status(500);
-      return res.send('Error: El comprobante_pago_pdf es null o undefined');
+      return res.status(500).json({
+        success: false,
+        message: 'El comprobante_pago_pdf es null o undefined'
+      });
     }
 
     if (inscripcion.comprobante_pago_pdf.length === 0) {
-      res.status(500);
-      return res.send('Error: El archivo del comprobante tiene longitud 0');
+      return res.status(500).json({
+        success: false,
+        message: 'El archivo del comprobante tiene longitud 0'
+      });
     }
 
     // Convertir a Buffer si no lo es (puede venir como Uint8Array de Prisma)
@@ -385,8 +397,10 @@ async function descargarComprobantePagoEvento(req, res) {
       bufferComprobante = Buffer.from(inscripcion.comprobante_pago_pdf);
       console.log('✅ Convertido de Uint8Array a Buffer');
     } else {
-      res.status(500);
-      return res.send(`Error: Tipo de dato no soportado: ${typeof inscripcion.comprobante_pago_pdf}`);
+      return res.status(500).json({
+        success: false,
+        message: `Tipo de dato no soportado: ${typeof inscripcion.comprobante_pago_pdf}`
+      });
     }
 
     // Generar nombre del archivo
@@ -396,14 +410,30 @@ async function descargarComprobantePagoEvento(req, res) {
     // Log para debugging
     console.log(`📄 Descargando comprobante evento: ${fileName}, Tamaño: ${bufferComprobante.length} bytes`);
 
-    // Configurar headers para descarga de PDF
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    res.setHeader('Content-Length', bufferComprobante.length);
-    res.setHeader('Cache-Control', 'no-cache');
+    try {
+      // Configurar headers para visualización de PDF en navegador
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+      res.setHeader('Content-Length', bufferComprobante.length);
+      res.setHeader('Cache-Control', 'no-cache');
 
-    // Enviar el archivo binario
-    return res.end(bufferComprobante);
+      // Log para debugging
+      console.log('🔄 Enviando buffer al cliente, tamaño:', bufferComprobante.length);
+      
+      // Enviar el archivo binario directamente
+      res.end(bufferComprobante);
+      return;
+    } catch (sendError) {
+      console.error('❌ Error al enviar el buffer:', sendError);
+      if (!res.headersSent) {
+        return res.status(500).json({
+          success: false,
+          message: `Error al enviar el PDF: ${sendError.message}`
+        });
+      } else {
+        return res.end();
+      }
+    }
 
   } catch (error) {
     console.error('❌ Error en descargarComprobantePagoEvento:', error);
@@ -413,8 +443,10 @@ async function descargarComprobantePagoEvento(req, res) {
       return res.end();
     }
     
-    res.status(500);
-    return res.send(`Error interno del servidor: ${error.message}`);
+    return res.status(500).json({
+      success: false,
+      message: `Error interno del servidor: ${error.message}`
+    });
   }
 }
 

@@ -8,6 +8,7 @@ const {
   generarCertificadoEventoPorParticipacion,
   generarCertificadoCursoPorParticipacion,
   visualizarCertificadoCursoPorParticipacion,
+  visualizarCertificadoEventoPorParticipacion,
   testConectividad,
   descargarCertificado,
   obtenerMisCertificados,
@@ -103,6 +104,15 @@ router.get('/test/:id', [
 router.get('/visualizar-curso/:idParticipacion', [
   validateJWT
 ], visualizarCertificadoCursoPorParticipacion);
+
+/**
+ * GET /api/certificados/visualizar-evento/:idParticipacion
+ * Visualizar certificado de evento en el navegador (para modal)
+ * Requiere: Autenticación + Participación aprobada
+ */
+router.get('/visualizar-evento/:idParticipacion', [
+  validateJWT
+], visualizarCertificadoEventoPorParticipacion);
 
 /**
  * GET /api/certificados/descargar/:tipo/:idParticipacion
