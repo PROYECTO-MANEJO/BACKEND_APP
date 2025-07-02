@@ -7,13 +7,14 @@ async function inscribirUsuarioEvento(req, res) {
   try {
     console.log('📝 Iniciando inscripción en evento...');
     
-    const { idUsuario, idEvento, metodoPago } = req.body;
+    const { idUsuario, idEvento, metodoPago, cartaMotivacion } = req.body;
     const comprobantePago = req.file;
 
     console.log('Datos recibidos:', {
       idUsuario,
       idEvento,
       metodoPago,
+      tieneCarta: !!cartaMotivacion,
       archivoRecibido: !!comprobantePago
     });
 
@@ -70,6 +71,13 @@ async function inscribirUsuarioEvento(req, res) {
       });
     }
 
+    // Verificar si el evento requiere carta de motivación
+    if (evento.requiere_carta_motivacion && !cartaMotivacion) {
+      return res.status(400).json({
+        message: 'Este evento requiere una carta de motivación'
+      });
+    }
+
     // Verificar si ya está inscrito
     const inscripcionExistente = await prisma.inscripcion.findUnique({
       where: {
@@ -94,7 +102,7 @@ async function inscribirUsuarioEvento(req, res) {
       }
     });
 
-    if (inscripcionesActuales >= evento.cap_eve) {
+    if (inscripcionesActuales >= evento.capacidad_max_eve) {
       return res.status(400).json({ 
         message: 'El evento ha alcanzado su capacidad máxima' 
       });
@@ -104,7 +112,8 @@ async function inscribirUsuarioEvento(req, res) {
     const datosInscripcion = {
       id_usu_ins: idUsuario,
       id_eve_ins: idEvento,
-      fec_ins: new Date()
+      fec_ins: new Date(),
+      carta_motivacion: evento.requiere_carta_motivacion ? cartaMotivacion : null
     };
 
     if (evento.es_gratuito) {
@@ -193,7 +202,8 @@ async function inscribirUsuarioEvento(req, res) {
         estado: nuevaInscripcion.estado_pago,
         esGratuito: evento.es_gratuito,
         precio: evento.precio,
-        tieneComprobante: !!nuevaInscripcion.comprobante_pago_pdf
+        tieneComprobante: !!nuevaInscripcion.comprobante_pago_pdf,
+        tieneCartaMotivacion: !!nuevaInscripcion.carta_motivacion
       }
     });
 

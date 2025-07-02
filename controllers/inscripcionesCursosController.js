@@ -6,13 +6,14 @@ async function inscribirUsuarioCurso(req, res) {
   try {
     console.log('📝 Iniciando inscripción en curso...');
     
-    const { idUsuario, idCurso, metodoPago } = req.body;
+    const { idUsuario, idCurso, metodoPago, cartaMotivacion } = req.body;
     const comprobantePago = req.file;
 
     console.log('Datos recibidos:', {
       idUsuario,
       idCurso,
       metodoPago,
+      tieneCarta: !!cartaMotivacion,
       archivoRecibido: !!comprobantePago
     });
 
@@ -69,6 +70,13 @@ async function inscribirUsuarioCurso(req, res) {
       });
     }
 
+    // Verificar si el curso requiere carta de motivación
+    if (curso.requiere_carta_motivacion && !cartaMotivacion) {
+      return res.status(400).json({
+        message: 'Este curso requiere una carta de motivación'
+      });
+    }
+
     // Verificar si ya está inscrito
     const inscripcionExistente = await prisma.inscripcionCurso.findUnique({
       where: {
@@ -93,7 +101,7 @@ async function inscribirUsuarioCurso(req, res) {
       }
     });
 
-    if (inscripcionesActuales >= curso.cap_cur) {
+    if (inscripcionesActuales >= curso.capacidad_max_cur) {
       return res.status(400).json({ 
         message: 'El curso ha alcanzado su capacidad máxima' 
       });
@@ -103,7 +111,8 @@ async function inscribirUsuarioCurso(req, res) {
     const datosInscripcion = {
       id_usu_ins_cur: idUsuario,
       id_cur_ins: idCurso,
-      fec_ins_cur: new Date()
+      fec_ins_cur: new Date(),
+      carta_motivacion: curso.requiere_carta_motivacion ? cartaMotivacion : null
     };
 
     if (curso.es_gratuito) {
@@ -192,7 +201,8 @@ async function inscribirUsuarioCurso(req, res) {
         estado: nuevaInscripcion.estado_pago_cur,
         esGratuito: curso.es_gratuito,
         precio: curso.precio,
-        tieneComprobante: !!nuevaInscripcion.comprobante_pago_pdf
+        tieneComprobante: !!nuevaInscripcion.comprobante_pago_pdf,
+        tieneCartaMotivacion: !!nuevaInscripcion.carta_motivacion
       }
     });
 

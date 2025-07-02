@@ -169,6 +169,7 @@ const crearCurso = async (req, res) => {
           capacidad_max_cur: capacidad,
           tipo_audiencia_cur: tipo_audiencia_cur || 'PUBLICO_GENERAL',
           requiere_verificacion_docs: requiere_verificacion_docs !== undefined ? requiere_verificacion_docs : true,
+          requiere_carta_motivacion: req.body.requiere_carta_motivacion !== undefined ? Boolean(req.body.requiere_carta_motivacion) : true,
           es_gratuito: esGratuito,
           precio: precioCurso,
           porcentaje_asistencia_aprobacion: porcentajeAsistencia,
@@ -298,7 +299,9 @@ const obtenerCursos = async (req, res) => {
       // 🎯 INFORMACIÓN DE PRECIO
       es_gratuito: curso.es_gratuito,
       precio: curso.precio,
-      plazas_disponibles: curso.capacidad_max_cur - curso._count.inscripcionesCurso
+      plazas_disponibles: curso.capacidad_max_cur - curso._count.inscripcionesCurso,
+      // 🎯 INFORMACIÓN DE REQUISITOS
+      requiere_carta_motivacion: curso.requiere_carta_motivacion
     }));
 
     res.json({ 
@@ -442,6 +445,11 @@ const actualizarCurso = async (req, res) => {
     // Campos booleanos
     if (data.requiere_verificacion_docs !== undefined) {
       datosActualizacion.requiere_verificacion_docs = Boolean(data.requiere_verificacion_docs);
+    }
+
+    // Campo requiere_carta_motivacion
+    if (data.requiere_carta_motivacion !== undefined) {
+      datosActualizacion.requiere_carta_motivacion = Boolean(data.requiere_carta_motivacion);
     }
 
     // 🎯 VALIDAR CONFIGURACIÓN DE PRECIO
@@ -805,7 +813,8 @@ const obtenerCursosDisponibles = async (req, res) => {
           nombre: cc.carrera.nom_car
         })),
         total_inscripciones: curso._count.inscripcionesCurso,
-        estado: obtenerEstadoCurso(curso.fec_ini_cur, curso.fec_fin_cur)
+        estado: obtenerEstadoCurso(curso.fec_ini_cur, curso.fec_fin_cur),
+        requiere_carta_motivacion: curso.requiere_carta_motivacion
       };
     });
 
@@ -887,9 +896,12 @@ const obtenerMisCursos = async (req, res) => {
       const nombreCompleto = organizador
         ? `${organizador.tit_aca_org || ''} ${organizador.nom_org1} ${organizador.nom_org2 || ''} ${organizador.ape_org1} ${organizador.ape_org2 || ''}`.trim()
         : 'Sin organizador';
-
+      
       return {
         ...curso,
+        id_inscripcion: inscripcion.id_ins_cur,
+        fecha_inscripcion: inscripcion.fec_ins_cur,
+        estado_inscripcion: inscripcion.estado_pago_cur,
         categoria_nombre: curso.categoria?.nom_cat || 'Sin categoría',
         organizador_nombre: nombreCompleto,
         carreras: curso.cursosPorCarrera.map(cc => ({
@@ -898,13 +910,7 @@ const obtenerMisCursos = async (req, res) => {
         })),
         total_inscripciones: curso._count.inscripcionesCurso,
         estado: obtenerEstadoCurso(curso.fec_ini_cur, curso.fec_fin_cur),
-        // Información de la inscripción
-        estado_inscripcion: inscripcion.estado_pago_cur,
-        fecha_inscripcion: inscripcion.fec_ins_cur,
-        metodo_pago: inscripcion.met_pag_ins_cur,
-        valor_pagado: inscripcion.val_ins_cur,
-        enlace_pago: inscripcion.enl_ord_pag_ins_cur,
-        fecha_aprobacion: inscripcion.fec_aprobacion_cur
+        requiere_carta_motivacion: curso.requiere_carta_motivacion
       };
     });
 

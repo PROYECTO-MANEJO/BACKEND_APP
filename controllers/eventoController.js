@@ -234,6 +234,8 @@ const crearEvento = async (req, res) => {
           es_gratuito: esGratuito,
           precio: precioEvento,
           porcentaje_asistencia_aprobacion: porcentajeAsistencia,
+          requiere_carta_motivacion: req.body.requiere_carta_motivacion !== undefined ? Boolean(req.body.requiere_carta_motivacion) : true,
+          requiere_verificacion_docs: req.body.requiere_verificacion_docs !== undefined ? Boolean(req.body.requiere_verificacion_docs) : false,
           estado: req.body.estado || 'ACTIVO'
         }
       });
@@ -501,13 +503,24 @@ const actualizarEvento = async (req, res) => {
       if (isNaN(porcentaje) || porcentaje < 0 || porcentaje > 100) {
         return res.status(400).json({ 
           success: false, 
-          message: 'El porcentaje de asistencia debe estar entre 0 y 100' 
+          message: 'El porcentaje de asistencia debe ser un número entre 0 y 100' 
         });
       }
       datosActualizacion.porcentaje_asistencia_aprobacion = porcentaje;
     }
-
-    if (data.estado !== undefined) {
+    
+    // Actualizar campo requiere_carta_motivacion
+    if (data.requiere_carta_motivacion !== undefined) {
+      datosActualizacion.requiere_carta_motivacion = Boolean(data.requiere_carta_motivacion);
+    }
+    
+    // Actualizar campo requiere_verificacion_docs
+    if (data.requiere_verificacion_docs !== undefined) {
+      datosActualizacion.requiere_verificacion_docs = Boolean(data.requiere_verificacion_docs);
+    }
+    
+    // Actualizar estado si se proporciona
+    if (data.estado) {
       const estadosValidos = ['ACTIVO', 'CERRADO'];
       if (!estadosValidos.includes(data.estado)) {
         return res.status(400).json({ 
@@ -610,7 +623,9 @@ const obtenerEventos = async (req, res) => {
       // 🎯 INFORMACIÓN DE PRECIO
       es_gratuito: evento.es_gratuito,
       precio: evento.precio,
-      plazas_disponibles: evento.capacidad_max_eve - evento._count.inscripciones
+      plazas_disponibles: evento.capacidad_max_eve - evento._count.inscripciones,
+      // 🎯 INFORMACIÓN DE REQUISITOS
+      requiere_carta_motivacion: evento.requiere_carta_motivacion
     }));
 
     res.json({ 
@@ -678,7 +693,8 @@ const obtenerEventoPorId = async (req, res) => {
         })),
         total_inscripciones: evento._count.inscripciones,
         hora_inicio: formatearHora(evento.hor_ini_eve),
-        hora_fin: formatearHora(evento.hor_fin_eve)
+        hora_fin: formatearHora(evento.hor_fin_eve),
+        requiere_carta_motivacion: evento.requiere_carta_motivacion
       }
     });
   } catch (error) {
@@ -878,7 +894,8 @@ const obtenerEventosDisponibles = async (req, res) => {
       })),
       total_inscripciones: evento._count.inscripciones,
       hora_inicio: formatearHora(evento.hor_ini_eve),
-      hora_fin: formatearHora(evento.hor_fin_eve)
+      hora_fin: formatearHora(evento.hor_fin_eve),
+      requiere_carta_motivacion: evento.requiere_carta_motivacion
     }));
 
     res.json({ 
@@ -961,7 +978,8 @@ const obtenerMisEventos = async (req, res) => {
       metodo_pago: inscripcion.met_pag_ins,
       valor_pagado: inscripcion.val_ins,
       enlace_pago: inscripcion.enl_ord_pag_ins,
-      fecha_aprobacion: inscripcion.fec_aprobacion
+      fecha_aprobacion: inscripcion.fec_aprobacion,
+      requiere_carta_motivacion: inscripcion.evento.requiere_carta_motivacion
     }));
 
     res.json({ 
