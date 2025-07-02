@@ -9,15 +9,10 @@ const {
 } = require('../controllers/inscripcionesCursosController');
 
 const { validateJWT } = require('../middlewares/validateJWT');
-const { upload, handleMulterError } = require('../middlewares/uploadMiddleware');
+const { uploadComprobante } = require('../middlewares/uploadMiddleware');
 
-// Inscribirse a un curso (con posible comprobante de pago PDF)
-router.post('/curso', 
-  validateJWT,
-  upload.single('comprobante_pago'),
-  handleMulterError,
-  inscribirUsuarioCurso
-);
+// Inscribir usuario a curso (con archivo PDF)
+router.post('/', validateJWT, uploadComprobante, inscribirUsuarioCurso);
 
 // Ver mis inscripciones a cursos
 router.get('/curso/mis-inscripciones', validateJWT, obtenerMisInscripcionesCurso);

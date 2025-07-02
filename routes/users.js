@@ -3,7 +3,25 @@ const router = express.Router();
 const { check } = require('express-validator');
 const { validateJWT, validateAdmin, validateRoles } = require('../middlewares/validateJWT');
 const { validateFields } = require('../middlewares/validateFields');
-const { upload, handleMulterError } = require('../middlewares/uploadMiddleware');
+const { uploadComprobante } = require('../middlewares/uploadMiddleware');
+const multer = require('multer');
+
+// Configuración específica para documentos de usuarios (cédula y matrícula)
+const storage = multer.memoryStorage();
+const uploadDocsMiddleware = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB máximo
+    files: 2, // Máximo 2 archivos (cédula y matrícula)
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Solo se permiten archivos PDF'), false);
+    }
+  }
+});
 const {
   getUserProfile,
   updateUserProfile,
@@ -48,11 +66,10 @@ router.get('/admins', [validateJWT, validateRoles('MASTER')], getAdminUsers);
 // Subir documentos de verificación
 router.post('/upload-documents', 
   validateJWT,
-  upload.fields([
+  uploadDocsMiddleware.fields([
     { name: 'cedula_pdf', maxCount: 1 },
     { name: 'matricula_pdf', maxCount: 1 }
   ]),
-  handleMulterError,
   uploadDocuments
 );
 
