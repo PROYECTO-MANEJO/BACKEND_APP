@@ -5,11 +5,17 @@ const { validateJWT, validateAdmin } = require('../middlewares/validateJWT');
 const {
   generarCertificadoEvento,
   generarCertificadoCurso,
+  generarCertificadoEventoPorParticipacion,
+  generarCertificadoCursoPorParticipacion,
+  visualizarCertificadoCursoPorParticipacion,
+  visualizarCertificadoEventoPorParticipacion,
+  testConectividad,
   descargarCertificado,
   obtenerMisCertificados,
   regenerarCertificado,
   debugCertificados,
-  obtenerParticipacionesTerminadas
+  obtenerParticipacionesTerminadas,
+  obtenerParticipacionesCompletas
 } = require('../controllers/certificadosController');
 
 // =====================================================
@@ -33,6 +39,9 @@ router.get('/debug', [
 router.get('/mis-certificados', [
   validateJWT
 ], obtenerMisCertificados);
+router.get('/mis-certificados/participaciones-completas', [
+  validateJWT 
+], obtenerParticipacionesCompletas);
 
 /**
  * GET /api/certificados/participaciones-terminadas
@@ -60,6 +69,50 @@ router.post('/evento/:idEvento/:idInscripcion', [
 router.post('/curso/:idCurso/:idInscripcion', [
   validateJWT
 ], generarCertificadoCurso);
+
+/**
+ * POST /api/certificados/generar-curso/:idParticipacion
+ * Generar certificado usando solo ID de participación de curso
+ * Requiere: Autenticación + Participación aprobada
+ */
+router.post('/generar-curso/:idParticipacion', [
+  validateJWT
+], generarCertificadoCursoPorParticipacion);
+
+/**
+ * POST /api/certificados/generar-evento/:idParticipacion
+ * Generar certificado usando solo ID de participación de evento
+ * Requiere: Autenticación + Participación aprobada
+ */
+router.post('/generar-evento/:idParticipacion', [
+  validateJWT
+], generarCertificadoEventoPorParticipacion);
+
+/**
+ * GET /api/certificados/test/:id
+ * Endpoint de prueba para verificar conectividad
+ */
+router.get('/test/:id', [
+  validateJWT
+], testConectividad);
+
+/**
+ * GET /api/certificados/visualizar-curso/:idParticipacion
+ * Visualizar certificado de curso en el navegador (para modal)
+ * Requiere: Autenticación + Participación aprobada
+ */
+router.get('/visualizar-curso/:idParticipacion', [
+  validateJWT
+], visualizarCertificadoCursoPorParticipacion);
+
+/**
+ * GET /api/certificados/visualizar-evento/:idParticipacion
+ * Visualizar certificado de evento en el navegador (para modal)
+ * Requiere: Autenticación + Participación aprobada
+ */
+router.get('/visualizar-evento/:idParticipacion', [
+  validateJWT
+], visualizarCertificadoEventoPorParticipacion);
 
 /**
  * GET /api/certificados/descargar/:tipo/:idParticipacion

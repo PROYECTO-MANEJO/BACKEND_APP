@@ -3,17 +3,20 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 /**
- * Middleware para validar el JWT
+ * Middleware para validar el JWT (con soporte para query parameters)
  */
 const validateJWT = async (req, res, next) => {
   console.log('🔍 Middleware validateJWT ejecutándose...');
   
-  // Leer el token del header
-  const token = req.header('x-token') || req.header('Authorization')?.replace('Bearer ', '');
+  // Leer el token del header o query parameter (para iframes de PDF)
+  const token = req.header('x-token') || 
+                req.header('Authorization')?.replace('Bearer ', '') ||
+                req.query.token;
   
   console.log('📋 Headers recibidos:', {
     'x-token': req.header('x-token'),
     'Authorization': req.header('Authorization'),
+    'query-token': req.query.token ? `${req.query.token.substring(0, 20)}...` : 'undefined',
     'token extraído': token ? `${token.substring(0, 20)}...` : 'undefined'
   });
 

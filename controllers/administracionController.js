@@ -278,6 +278,7 @@ const obtenerDetallesEventoAdmin = async (req, res) => {
       metodo_pago: inscripcion.met_pag_ins,
       fecha_aprobacion: inscripcion.fec_aprobacion,
       tiene_comprobante: !!inscripcion.comprobante_pago_pdf,
+      carta_motivacion: inscripcion.carta_motivacion, // 🎯 AGREGAR CARTA DE MOTIVACIÓN PARA EVENTOS
       comprobante_info: inscripcion.comprobante_pago_pdf ? {
         filename: inscripcion.comprobante_filename,
         size: inscripcion.comprobante_size,
@@ -424,6 +425,7 @@ const obtenerDetallesCursoAdmin = async (req, res) => {
       metodo_pago: inscripcion.met_pag_ins_cur,
       fecha_aprobacion: inscripcion.fec_aprobacion_cur,
       tiene_comprobante: !!inscripcion.comprobante_pago_pdf,
+      carta_motivacion: inscripcion.carta_motivacion, // 🎯 AGREGAR CARTA DE MOTIVACIÓN
       comprobante_info: inscripcion.comprobante_pago_pdf ? {
         filename: inscripcion.comprobante_filename,
         size: inscripcion.comprobante_size,
@@ -969,8 +971,10 @@ const descargarComprobantePago = async (req, res) => {
 
     // Verificar que existe el comprobante
     if (!inscripcion.comprobante_pago_pdf) {
-      res.status(404);
-      return res.send('Error: No hay comprobante de pago disponible para esta inscripción');
+      return res.status(404).json({
+        success: false,
+        message: 'No hay comprobante de pago disponible para esta inscripción'
+      });
     }
 
     // Verificar que el comprobante tiene datos
@@ -981,13 +985,17 @@ const descargarComprobantePago = async (req, res) => {
     console.log('- Primeros bytes:', inscripcion.comprobante_pago_pdf ? inscripcion.comprobante_pago_pdf.slice(0, 10) : 'null');
 
     if (!inscripcion.comprobante_pago_pdf) {
-      res.status(500);
-      return res.send('Error: El comprobante_pago_pdf es null o undefined');
+      return res.status(500).json({
+        success: false,
+        message: 'El comprobante_pago_pdf es null o undefined'
+      });
     }
 
     if (inscripcion.comprobante_pago_pdf.length === 0) {
-      res.status(500);
-      return res.send('Error: El archivo del comprobante tiene longitud 0');
+      return res.status(500).json({
+        success: false,
+        message: 'El archivo del comprobante tiene longitud 0'
+      });
     }
 
     // Convertir a Buffer si no lo es (puede venir como Uint8Array de Prisma)
@@ -1009,14 +1017,30 @@ const descargarComprobantePago = async (req, res) => {
     // Log para debugging
     console.log(`📄 Descargando comprobante: ${filename}, Tamaño: ${bufferComprobante.length} bytes`);
 
-    // Configurar headers para descarga de PDF
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', bufferComprobante.length);
-    res.setHeader('Cache-Control', 'no-cache');
+    try {
+      // Configurar headers para visualización de PDF en navegador
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+      res.setHeader('Content-Length', bufferComprobante.length);
+      res.setHeader('Cache-Control', 'no-cache');
 
-    // Enviar el archivo binario
-    return res.end(bufferComprobante);
+      // Log para debugging
+      console.log('🔄 Enviando buffer al cliente, tamaño:', bufferComprobante.length);
+      
+      // Enviar el archivo binario directamente
+      res.end(bufferComprobante);
+      return;
+    } catch (sendError) {
+      console.error('❌ Error al enviar el buffer:', sendError);
+      if (!res.headersSent) {
+        return res.status(500).json({
+          success: false,
+          message: `Error al enviar el PDF: ${sendError.message}`
+        });
+      } else {
+        return res.end();
+      }
+    }
 
   } catch (error) {
     console.error('❌ Error al descargar comprobante:', error);
@@ -1070,7 +1094,8 @@ const registrarParticipacionEvento = async (req, res) => {
         evento: {
           select: {
             nom_eve: true,
-            es_gratuito: true
+            es_gratuito: true,
+            porcentaje_asistencia_aprobacion: true
           }
         },
         usuario: {
@@ -1097,8 +1122,9 @@ const registrarParticipacionEvento = async (req, res) => {
       });
     }
 
-    // Calcular aprobación automáticamente (70% mínimo para aprobar)
-    const aprobado = asistencia >= 70;
+    // Calcular aprobación usando el criterio específico del evento
+    const asistenciaMinima = inscripcion.evento.porcentaje_asistencia_aprobacion || 80; // Default 80% si no está configurado
+    const aprobado = asistencia >= asistenciaMinima;
 
     // Buscar si ya existe un registro de participación
     let participacion = await prisma.participacion.findFirst({
@@ -1143,14 +1169,19 @@ const registrarParticipacionEvento = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: `Participación de ${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.ape_usu1} registrada exitosamente`,
-      data: {
+              data: {
         participacion,
         evento: inscripcion.evento.nom_eve,
         usuario: `${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.ape_usu1}`,
         asistencia_porcentaje: asistencia,
         aprobado: aprobado,
         estado: aprobado ? 'APROBADO' : 'REPROBADO',
-        certificado: certificadoInfo || null
+        certificado: certificadoInfo || null,
+        criterios_evaluacion: {
+          asistencia_minima_requerida: asistenciaMinima,
+          asistencia_obtenida: asistencia,
+          cumple_asistencia: asistencia >= asistenciaMinima
+        }
       }
     });
 
@@ -1208,7 +1239,9 @@ const registrarParticipacionCurso = async (req, res) => {
         curso: {
           select: {
             nom_cur: true,
-            es_gratuito: true
+            es_gratuito: true,
+            nota_minima_aprobacion: true,
+            porcentaje_asistencia_aprobacion: true
           }
         },
         usuario: {
@@ -1235,8 +1268,14 @@ const registrarParticipacionCurso = async (req, res) => {
       });
     }
 
-    // Calcular aprobación automáticamente (nota >= 70 && asistencia >= 70%)
-    const aprobado = nota >= 70 && asistencia >= 70;
+    // Calcular aprobación usando los criterios específicos del curso
+    const notaMinima = inscripcion.curso.nota_minima_aprobacion || 7.0; // Default 7.0 si no está configurado
+    const asistenciaMinima = inscripcion.curso.porcentaje_asistencia_aprobacion || 70; // Default 70% si no está configurado
+    
+    // Convertir nota a escala de 10 si está en escala de 100
+    const notaEscala10 = nota > 10 ? nota / 10 : nota;
+    
+    const aprobado = notaEscala10 >= notaMinima && asistencia >= asistenciaMinima;
 
     // Buscar si ya existe un registro de participación
     let participacion = await prisma.participacionCurso.findFirst({
@@ -1282,7 +1321,7 @@ const registrarParticipacionCurso = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: `Participación de ${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.ape_usu1} registrada exitosamente`,
-      data: {
+              data: {
         participacion,
         curso: inscripcion.curso.nom_cur,
         usuario: `${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.ape_usu1}`,
@@ -1290,7 +1329,16 @@ const registrarParticipacionCurso = async (req, res) => {
         nota_final: nota,
         aprobado: aprobado,
         estado: aprobado ? 'APROBADO' : 'REPROBADO',
-        certificado: certificadoInfo || null
+        certificado: certificadoInfo || null,
+        criterios_evaluacion: {
+          nota_minima_requerida: notaMinima,
+          nota_obtenida: notaEscala10,
+          cumple_nota: notaEscala10 >= notaMinima,
+          asistencia_minima_requerida: asistenciaMinima,
+          asistencia_obtenida: asistencia,
+          cumple_asistencia: asistencia >= asistenciaMinima,
+          nota_original: nota
+        }
       }
     });
 

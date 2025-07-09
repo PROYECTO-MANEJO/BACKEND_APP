@@ -4,16 +4,17 @@ const prisma = new PrismaClient();
 // Inscribir usuario a un curso (validación completa)
 async function inscribirUsuarioCurso(req, res) {
   try {
-    const { idUsuario, idCurso, metodoPago } = req.body;
+    console.log('📝 Iniciando inscripción en curso...');
     
-    // Obtener archivo de comprobante si existe
+    const { idUsuario, idCurso, metodoPago, cartaMotivacion } = req.body;
     const comprobantePago = req.file;
 
-    console.log('📝 Datos de inscripción en curso recibidos:', {
+    console.log('Datos recibidos:', {
       idUsuario,
       idCurso,
       metodoPago,
-      tieneComprobante: !!comprobantePago
+      tieneCarta: !!cartaMotivacion,
+      archivoRecibido: !!comprobantePago
     });
 
     // Validaciones básicas
@@ -23,14 +24,12 @@ async function inscribirUsuarioCurso(req, res) {
       });
     }
 
-    // Verificar que el usuario existe y obtener información de documentos
+    // Verificar que el usuario existe
     const usuario = await prisma.usuario.findUnique({
       where: { id_usu: idUsuario },
       include: {
         cuentas: {
-          select: {
-            rol_cue: true
-          }
+          select: { rol_cue: true }
         }
       }
     });
@@ -41,26 +40,22 @@ async function inscribirUsuarioCurso(req, res) {
       });
     }
 
-    // ✅ VERIFICACIÓN OBLIGATORIA DE DOCUMENTOS - SIN EXCEPCIONES
+    // Verificación de documentos
     const isEstudiante = usuario.cuentas[0]?.rol_cue === 'ESTUDIANTE';
     
-    // Verificar que los documentos están verificados por el admin
     if (!usuario.documentos_verificados) {
       return res.status(400).json({
-        message: 'Debes tener tus documentos verificados por un administrador antes de poder inscribirte. Sube tu cédula' + 
-                 (isEstudiante ? ' y matrícula' : '') + ' en tu perfil y espera la verificación administrativa.'
+        message: 'Debes tener tus documentos verificados por un administrador antes de poder inscribirte.'
       });
     }
 
-    // Verificar que tiene todos los documentos requeridos subidos
     const tieneDocumentosCompletos = isEstudiante 
       ? (!!usuario.enl_ced_pdf && !!usuario.enl_mat_pdf)
       : !!usuario.enl_ced_pdf;
 
     if (!tieneDocumentosCompletos) {
       return res.status(400).json({
-        message: 'Debes subir todos los documentos requeridos (cédula' + 
-                 (isEstudiante ? ' y matrícula' : '') + ') antes de poder inscribirte.'
+        message: 'Debes subir todos los documentos requeridos antes de poder inscribirte.'
       });
     }
 
@@ -72,6 +67,13 @@ async function inscribirUsuarioCurso(req, res) {
     if (!curso) {
       return res.status(404).json({ 
         message: 'Curso no encontrado' 
+      });
+    }
+
+    // Verificar si el curso requiere carta de motivación
+    if (curso.requiere_carta_motivacion && !cartaMotivacion) {
+      return res.status(400).json({
+        message: 'Este curso requiere una carta de motivación'
       });
     }
 
@@ -99,7 +101,7 @@ async function inscribirUsuarioCurso(req, res) {
       }
     });
 
-    if (inscripcionesActuales >= curso.cap_cur) {
+    if (inscripcionesActuales >= curso.capacidad_max_cur) {
       return res.status(400).json({ 
         message: 'El curso ha alcanzado su capacidad máxima' 
       });
@@ -109,11 +111,12 @@ async function inscribirUsuarioCurso(req, res) {
     const datosInscripcion = {
       id_usu_ins_cur: idUsuario,
       id_cur_ins: idCurso,
-      fec_ins_cur: new Date()
+      fec_ins_cur: new Date(),
+      carta_motivacion: curso.requiere_carta_motivacion ? cartaMotivacion : null
     };
 
     if (curso.es_gratuito) {
-      // CURSO GRATUITO: No requiere datos de pago
+      // CURSO GRATUITO
       if (metodoPago || comprobantePago) {
         return res.status(400).json({ 
           message: 'Este curso es gratuito, no debe incluir información de pago' 
@@ -127,11 +130,11 @@ async function inscribirUsuarioCurso(req, res) {
       datosInscripcion.comprobante_filename = null;
       datosInscripcion.comprobante_size = null;
       datosInscripcion.fec_subida_comprobante = null;
-      datosInscripcion.estado_pago_cur = 'APROBADO'; // Automáticamente aprobado
+      datosInscripcion.estado_pago_cur = 'APROBADO';
       datosInscripcion.fec_aprobacion_cur = new Date();
       
     } else {
-      // CURSO PAGADO: Requiere datos de pago
+      // CURSO PAGADO
       if (!metodoPago) {
         return res.status(400).json({ 
           message: 'Para cursos pagados, el método de pago es obligatorio' 
@@ -150,21 +153,42 @@ async function inscribirUsuarioCurso(req, res) {
           message: 'Para cursos pagados, el comprobante de pago (archivo PDF) es obligatorio' 
         });
       }
+
+      // Validar que sea un archivo PDF válido
+      if (comprobantePago.mimetype !== 'application/pdf') {
+        return res.status(400).json({ 
+          message: 'El comprobante debe ser un archivo PDF válido' 
+        });
+      }
+
+      if (comprobantePago.size > 10 * 1024 * 1024) { // 10MB
+        return res.status(400).json({ 
+          message: 'El archivo PDF no puede superar los 10MB' 
+        });
+      }
       
       datosInscripcion.val_ins_cur = curso.precio;
       datosInscripcion.met_pag_ins_cur = metodoPago;
-      datosInscripcion.enl_ord_pag_ins_cur = null; // Ya no usamos enlaces de texto
+      datosInscripcion.enl_ord_pag_ins_cur = null;
       datosInscripcion.comprobante_pago_pdf = comprobantePago.buffer;
       datosInscripcion.comprobante_filename = comprobantePago.originalname;
       datosInscripcion.comprobante_size = comprobantePago.size;
       datosInscripcion.fec_subida_comprobante = new Date();
-      datosInscripcion.estado_pago_cur = 'PENDIENTE'; // Requiere aprobación manual
+      datosInscripcion.estado_pago_cur = 'PENDIENTE';
+
+      console.log('✅ Archivo PDF procesado:', {
+        nombre: comprobantePago.originalname,
+        tamaño: `${(comprobantePago.size / 1024).toFixed(2)} KB`,
+        tipo: comprobantePago.mimetype
+      });
     }
 
     // Crear inscripción
     const nuevaInscripcion = await prisma.inscripcionCurso.create({
       data: datosInscripcion
     });
+
+    console.log('✅ Inscripción creada exitosamente:', nuevaInscripcion.id_ins_cur);
 
     const mensaje = curso.es_gratuito 
       ? 'Inscripción gratuita realizada con éxito' 
@@ -177,7 +201,8 @@ async function inscribirUsuarioCurso(req, res) {
         estado: nuevaInscripcion.estado_pago_cur,
         esGratuito: curso.es_gratuito,
         precio: curso.precio,
-        tieneComprobante: !!nuevaInscripcion.comprobante_pago_pdf
+        tieneComprobante: !!nuevaInscripcion.comprobante_pago_pdf,
+        tieneCartaMotivacion: !!nuevaInscripcion.carta_motivacion
       }
     });
 
@@ -206,6 +231,7 @@ const obtenerMisInscripcionesCurso = async (req, res) => {
             fec_ini_cur: true,
             fec_fin_cur: true,
             tipo_audiencia_cur: true,
+            estado: true,
             categoria: { select: { nom_cat: true } }
           }
         }
@@ -273,8 +299,10 @@ async function descargarComprobantePagoCurso(req, res) {
 
     // Validar ID
     if (!inscripcionId) {
-      res.status(400);
-      return res.send('Error: ID de inscripción es obligatorio');
+      return res.status(400).json({
+        success: false,
+        message: 'ID de inscripción es obligatorio'
+      });
     }
 
     // Verificar que el usuario solicitante es admin
@@ -292,8 +320,10 @@ async function descargarComprobantePagoCurso(req, res) {
     const isAdmin = ['ADMINISTRADOR', 'MASTER'].includes(currentUser.cuentas[0]?.rol_cue);
     
     if (!isAdmin) {
-      res.status(403);
-      return res.send('Error: No autorizado para descargar comprobantes de pago');
+      return res.status(403).json({
+        success: false,
+        message: 'No autorizado para descargar comprobantes de pago'
+      });
     }
 
     // Obtener la inscripción con el comprobante
@@ -319,13 +349,17 @@ async function descargarComprobantePagoCurso(req, res) {
     });
 
     if (!inscripcion) {
-      res.status(404);
-      return res.send('Error: Inscripción no encontrada');
+      return res.status(404).json({
+        success: false,
+        message: 'Inscripción no encontrada'
+      });
     }
 
     if (!inscripcion.comprobante_pago_pdf) {
-      res.status(404);
-      return res.send('Error: Comprobante de pago no encontrado para esta inscripción');
+      return res.status(404).json({
+        success: false,
+        message: 'Comprobante de pago no encontrado para esta inscripción'
+      });
     }
 
     // Verificar que el comprobante tiene datos
@@ -335,13 +369,17 @@ async function descargarComprobantePagoCurso(req, res) {
     console.log('- Longitud:', inscripcion.comprobante_pago_pdf ? inscripcion.comprobante_pago_pdf.length : 'null');
 
     if (!inscripcion.comprobante_pago_pdf) {
-      res.status(500);
-      return res.send('Error: El comprobante_pago_pdf es null o undefined');
+      return res.status(500).json({
+        success: false,
+        message: 'El comprobante_pago_pdf es null o undefined'
+      });
     }
 
     if (inscripcion.comprobante_pago_pdf.length === 0) {
-      res.status(500);
-      return res.send('Error: El archivo del comprobante tiene longitud 0');
+      return res.status(500).json({
+        success: false,
+        message: 'El archivo del comprobante tiene longitud 0'
+      });
     }
 
     // Convertir a Buffer si no lo es (puede venir como Uint8Array de Prisma)
@@ -352,8 +390,10 @@ async function descargarComprobantePagoCurso(req, res) {
       bufferComprobante = Buffer.from(inscripcion.comprobante_pago_pdf);
       console.log('✅ Convertido de Uint8Array a Buffer');
     } else {
-      res.status(500);
-      return res.send(`Error: Tipo de dato no soportado: ${typeof inscripcion.comprobante_pago_pdf}`);
+      return res.status(500).json({
+        success: false,
+        message: `Tipo de dato no soportado: ${typeof inscripcion.comprobante_pago_pdf}`
+      });
     }
 
     // Generar nombre del archivo
@@ -363,14 +403,30 @@ async function descargarComprobantePagoCurso(req, res) {
     // Log para debugging
     console.log(`📄 Descargando comprobante curso: ${fileName}, Tamaño: ${bufferComprobante.length} bytes`);
 
-    // Configurar headers para descarga de PDF
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    res.setHeader('Content-Length', bufferComprobante.length);
-    res.setHeader('Cache-Control', 'no-cache');
+    try {
+      // Configurar headers para visualización de PDF en navegador
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+      res.setHeader('Content-Length', bufferComprobante.length);
+      res.setHeader('Cache-Control', 'no-cache');
 
-    // Enviar el archivo binario
-    return res.end(bufferComprobante);
+      // Log para debugging
+      console.log('🔄 Enviando buffer al cliente, tamaño:', bufferComprobante.length);
+      
+      // Enviar el archivo binario directamente
+      res.end(bufferComprobante);
+      return;
+    } catch (sendError) {
+      console.error('❌ Error al enviar el buffer:', sendError);
+      if (!res.headersSent) {
+        return res.status(500).json({
+          success: false,
+          message: `Error al enviar el PDF: ${sendError.message}`
+        });
+      } else {
+        return res.end();
+      }
+    }
 
   } catch (error) {
     console.error('❌ Error en descargarComprobantePagoCurso:', error);
@@ -380,8 +436,10 @@ async function descargarComprobantePagoCurso(req, res) {
       return res.end();
     }
     
-    res.status(500);
-    return res.send(`Error interno del servidor: ${error.message}`);
+    return res.status(500).json({
+      success: false,
+      message: `Error interno del servidor: ${error.message}`
+    });
   }
 }
 

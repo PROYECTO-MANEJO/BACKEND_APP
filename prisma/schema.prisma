@@ -53,10 +53,6 @@ model Usuario {
   documentos_verificados Boolean @map("DOCUMENTOS_VERIFICADOS") @default(false)
   fec_verificacion_docs DateTime? @map("FEC_VERIFICACION_DOCS") @db.Timestamp
 
-  // ✅ NUEVOS CAMPOS PARA APROBACIÓN INDEPENDIENTE
-  cedula_aprobada Boolean @map("CEDULA_APROBADA") @default(false)
-  matricula_aprobada Boolean @map("MATRICULA_APROBADA") @default(false)
-
   // Campos para recuperación de contraseña
   resetToken String? @map("RESET_TOKEN") @db.VarChar(255)
   resetTokenExpiry DateTime? @map("RESET_TOKEN_EXPIRY") @db.Timestamp(3)
@@ -81,10 +77,13 @@ model Usuario {
   solicitudesCreadas SolicitudCambio[] @relation("SolicitudesUsuario")
   solicitudesResponsables SolicitudCambio[] @relation("SolicitudesAdmin")
   solicitudesAsignadas SolicitudCambio[] @relation("SolicitudesDesarrollador")
+
+  
+  // ✅ RELACIONES DE PÁGINA PRINCIPAL
+  edicionesPaginaPrincipal PaginaPrincipal[] @relation("UltimaEdicionPagina")
   
   @@map("USUARIOS")
 }
-
 
 model Cuenta {
   id_cue String @id @default(uuid()) @map("ID_CUE") @db.Uuid
@@ -162,14 +161,12 @@ model Evento {
   es_gratuito Boolean @map("ES_GRATUITO") @default(true)
   precio Decimal? @map("PRECIO") @db.Decimal(6,2) // Solo si no es gratuito
   
-  // 🎯 NUEVOS CAMPOS: Criterios de aprobación y estado
-  porcentaje_asistencia_aprobacion Int @map("PORCENTAJE_ASISTENCIA_APROBACION") @default(80) @db.SmallInt // 0-100
-  estado String @map("ESTADO") @default("ACTIVO") @db.VarChar(20) // ACTIVO, CERRADO
-  
   // 🎯 EVENTOS: Sin asignaciones ni requisitos complejos
   categoria CategoriaEvento @relation(fields: [id_cat_eve], references: [id_cat])
   organizador Organizador @relation(fields: [ced_org_eve], references: [ced_org])
-
+// 🎯 NUEVOS CAMPOS: Criterios de aprobación y estado
+  porcentaje_asistencia_aprobacion Int @map("PORCENTAJE_ASISTENCIA_APROBACION") @default(80) @db.SmallInt // 0-100
+  estado String @map("ESTADO") @default("ACTIVO") @db.VarChar(20) // ACTIVO, CERRADO
   inscripciones Inscripcion[]
   eventosPorCarrera EventoPorCarrera[]
    requiere_carta_motivacion Boolean @default(false) @map("REQUIERE_CARTA_MOTIVACION")
@@ -264,18 +261,14 @@ model Curso {
   // 🎯 CONFIGURACIÓN DE PRECIO
   es_gratuito Boolean @map("ES_GRATUITO") @default(true)
   precio Decimal? @map("PRECIO") @db.Decimal(6,2) // Solo si no es gratuito
-
-  requiere_carta_motivacion   Boolean  @default(false) @map("REQUIERE_CARTA_MOTIVACION")
-
-  // 🎯 NUEVOS CAMPOS: Criterios de aprobación y estado
-  porcentaje_asistencia_aprobacion Int @map("PORCENTAJE_ASISTENCIA_APROBACION") @default(80) @db.SmallInt // 0-100
-  nota_minima_aprobacion Decimal @map("NOTA_MINIMA_APROBACION") @default(7.0) @db.Decimal(3,1) // 0-10
-  estado String @map("ESTADO") @default("ACTIVO") @db.VarChar(20) // ACTIVO, CERRADO
-
-
+requiere_carta_motivacion   Boolean  @default(false) @map("REQUIERE_CARTA_MOTIVACION")
   // Relaciones
   categoria     CategoriaEvento @relation(fields: [id_cat_cur], references: [id_cat])
   organizador   Organizador      @relation(fields: [ced_org_cur], references: [ced_org])
+// 🎯 NUEVOS CAMPOS: Criterios de aprobación y estado
+  porcentaje_asistencia_aprobacion Int @map("PORCENTAJE_ASISTENCIA_APROBACION") @default(80) @db.SmallInt // 0-100
+  nota_minima_aprobacion Decimal @map("NOTA_MINIMA_APROBACION") @default(7.0) @db.Decimal(3,1) // 0-10
+  estado String @map("ESTADO") @default("ACTIVO") @db.VarChar(20) // ACTIVO, CERRADO
   
   inscripcionesCurso InscripcionCurso[]
   cursosPorCarrera CursoPorCarrera[]
@@ -441,8 +434,10 @@ model SolicitudCambio {
   comentarios_tecnicos_sol    String?       @map("COMENTARIOS_TECNICOS_SOL") @db.Text
   exito_implementacion        Boolean?      @map("EXITO_IMPLEMENTACION")
 
+
   // --- INTEGRACIÓN GITHUB ---
   github_repo_url             String?       @map("GITHUB_REPO_URL") @db.VarChar(500)
+
 
   // --- METADATOS ---
   fec_creacion_sol            DateTime      @map("FEC_CREACION_SOL") @default(now()) @db.Timestamp
@@ -458,15 +453,23 @@ model SolicitudCambio {
   adminResponsable            Usuario?      @relation("SolicitudesAdmin", fields: [id_admin_resp_sol], references: [id_usu])
   desarrolladorAsignado       Usuario?      @relation("SolicitudesDesarrollador", fields: [id_desarrollador_asignado], references: [id_usu])
 
+
   // --- NUEVA RELACIÓN PARA MÚLTIPLES RAMAS ---
   ramas                       SolicitudRama[]
+
+
 
   @@map("SOLICITUDES_CAMBIO")
 }
 
 // =====================================================
-// NUEVA TABLA: MÚLTIPLES RAMAS POR SOLICITUD
+// ENUMS Y TIPOS PARA SOLICITUDES DE CAMBIO
 // =====================================================
+
+enum RepositoryType {
+  FRONTEND
+  BACKEND
+}
 
 model SolicitudRama {
   id                          String        @id @default(uuid()) @map("ID") @db.Uuid
@@ -499,15 +502,6 @@ model SolicitudRama {
   // --- CONSTRAINT: SOLO UNA RAMA POR TIPO POR SOLICITUD ---
   @@unique([id_solicitud, repository_type])
   @@map("SOLICITUDES_RAMAS")
-}
-
-// =====================================================
-// NUEVOS ENUMS PARA RAMAS
-// =====================================================
-
-enum RepositoryType {
-  FRONTEND
-  BACKEND
 }
 
 enum PRStatus {
@@ -580,10 +574,55 @@ enum EstadoSolicitud {
 // =====================================================
 
 model PaginaPrincipal {
-  id_pag String @id @default(uuid()) @map("ID_PAG") @db.Uuid
-  des_pag String? @map("DES_PAG") @db.VarChar(1000)
-  mis_pag String? @map("MIS_PAG") @db.VarChar(1000)
-  vis_pag String? @map("VIS_PAG") @db.VarChar(1000)
+  id_pag                    String    @id @default(uuid()) @map("ID_PAG") @db.Uuid
+  
+  // --- HERO SECTION ---
+  titulo_hero               String?   @map("TITULO_HERO") @db.VarChar(200)
+  subtitulo_hero            String?   @map("SUBTITULO_HERO") @db.VarChar(300)
+  descripcion_hero          String?   @map("DESCRIPCION_HERO") @db.VarChar(500)
+  imagen_hero               Bytes?    @map("IMAGEN_HERO")
+  
+  // --- SECCIÓN ¿QUÉ OFRECEMOS? ---
+  titulo_ofrecemos          String?   @map("TITULO_OFRECEMOS") @db.VarChar(100)
+  subtitulo_ofrecemos       String?   @map("SUBTITULO_OFRECEMOS") @db.VarChar(300)
+  
+  // --- SECCIÓN 1: CURSOS ESPECIALIZADOS ---
+  titulo_seccion1           String?   @map("TITULO_SECCION1") @db.VarChar(100)
+  descripcion_seccion1      String?   @map("DESCRIPCION_SECCION1") @db.Text
+  imagen_seccion1           Bytes?    @map("IMAGEN_SECCION1")
+  
+  // --- SECCIÓN 2: EVENTOS ACADÉMICOS ---
+  titulo_seccion2           String?   @map("TITULO_SECCION2") @db.VarChar(100)
+  descripcion_seccion2      String?   @map("DESCRIPCION_SECCION2") @db.Text
+  imagen_seccion2           Bytes?    @map("IMAGEN_SECCION2")
+  
+  // --- SECCIÓN 3: CERTIFICACIONES OFICIALES ---
+  titulo_seccion3           String?   @map("TITULO_SECCION3") @db.VarChar(100)
+  descripcion_seccion3      String?   @map("DESCRIPCION_SECCION3") @db.Text
+  imagen_seccion3           Bytes?    @map("IMAGEN_SECCION3")
+  
+  // --- SECCIÓN 4: COMUNIDAD ACADÉMICA ---
+  titulo_seccion4           String?   @map("TITULO_SECCION4") @db.VarChar(100)
+  descripcion_seccion4      String?   @map("DESCRIPCION_SECCION4") @db.Text
+  imagen_seccion4           Bytes?    @map("IMAGEN_SECCION4")
+  
+  // --- FOOTER ---
+  texto_footer1             String?   @map("TEXTO_FOOTER1") @db.VarChar(200)
+  texto_footer2             String?   @map("TEXTO_FOOTER2") @db.VarChar(200)
+  texto_footer3             String?   @map("TEXTO_FOOTER3") @db.VarChar(200)
+  
+  // --- METADATOS ---
+  fecha_creacion            DateTime  @map("FECHA_CREACION") @default(now()) @db.Timestamp
+  fecha_ultima_actualizacion DateTime @map("FECHA_ULTIMA_ACTUALIZACION") @default(now()) @db.Timestamp
+  id_usuario_ultima_edicion String?   @map("ID_USUARIO_ULTIMA_EDICION") @db.Uuid
+  
+  // --- CAMPOS LEGACY (mantenidos por compatibilidad) ---
+  des_pag                   String?   @map("DES_PAG") @db.VarChar(1000)
+  mis_pag                   String?   @map("MIS_PAG") @db.VarChar(1000)
+  vis_pag                   String?   @map("VIS_PAG") @db.VarChar(1000)
+  
+  // --- RELACIONES ---
+  ultimoEditor              Usuario?  @relation("UltimaEdicionPagina", fields: [id_usuario_ultima_edicion], references: [id_usu])
   
   @@map("PAGINA_PRINCIPAL")
 }
@@ -594,6 +633,9 @@ enum TipoReporte {
   USUARIOS
   CURSOS
   EVENTOS
+  SOLICITUDES_ESTADO
+  SOLICITUDES_DESARROLLADOR
+  SOLICITUDES_RESUMEN
 }
 
 model Reporte {
