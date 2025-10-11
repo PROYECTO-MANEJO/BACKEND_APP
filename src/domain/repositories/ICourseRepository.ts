@@ -1,11 +1,11 @@
 /**
  * ICourseRepository Interface - Domain Layer
- * 
+ *
  * Interfaz que define el contrato para el repositorio de cursos.
  * Contiene todas las operaciones necesarias para la persistencia.
  */
 
-import { Course } from '../entities/Course';
+import { Course } from "../entities/Course";
 
 export interface ICourseRepository {
   // ✅ CRUD BÁSICO
@@ -42,25 +42,32 @@ export interface ICourseRepository {
 
   // ✅ VALIDACIONES DE NEGOCIO
   findConflictingCourses(
-    organizerId: string, 
-    startDate: Date, 
-    endDate: Date, 
+    organizerId: string,
+    startDate: Date,
+    endDate: Date,
     excludeCourseId?: string
   ): Promise<Course[]>;
-  
+
   existsById(id: string): Promise<boolean>;
   countByOrganizer(organizerId: string): Promise<number>;
   countByCategory(categoryId: number): Promise<number>;
 
   // ✅ CONSULTAS CON PAGINACIÓN
-  findAllPaginated(page: number, limit: number): Promise<{
+  findAllPaginated(
+    page: number,
+    limit: number
+  ): Promise<{
     courses: Course[];
     total: number;
     totalPages: number;
     currentPage: number;
   }>;
 
-  findByOrganizerPaginated(organizerId: string, page: number, limit: number): Promise<{
+  findByOrganizerPaginated(
+    organizerId: string,
+    page: number,
+    limit: number
+  ): Promise<{
     courses: Course[];
     total: number;
     totalPages: number;

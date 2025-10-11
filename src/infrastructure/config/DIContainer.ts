@@ -128,12 +128,12 @@ export class DIContainer {
       findByCareer: async (careerId: number) => {
         // Implementación simplificada - en el futuro se puede extender
         return [];
-      }
+      },
     };
 
     const courseCategoryRepository = {
       findById: (id: number) => this._categoryRepository.findById(id),
-      existsById: (id: number) => this._categoryRepository.existsById(id)
+      existsById: (id: number) => this._categoryRepository.existsById(id),
     };
 
     const courseCareerRepository = {
@@ -148,7 +148,7 @@ export class DIContainer {
           if (career) careers.push(career);
         }
         return careers;
-      }
+      },
     };
 
     // Inicializar servicio de gestión de cursos

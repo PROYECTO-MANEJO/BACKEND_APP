@@ -1,11 +1,11 @@
 /**
  * GetAllCoursesUseCase - Application Layer
- * 
+ *
  * Caso de uso para obtener todos los cursos del sistema.
  */
 
-import { CourseData } from '../../../domain/entities/Course';
-import { ICourseRepository } from '../../../domain/repositories/ICourseRepository';
+import { CourseData } from "../../../domain/entities/Course";
+import { ICourseRepository } from "../../../domain/repositories/ICourseRepository";
 
 export interface GetAllCoursesRequest {
   page?: number;
@@ -30,7 +30,9 @@ export interface GetAllCoursesResponse {
 export class GetAllCoursesUseCase {
   constructor(private courseRepository: ICourseRepository) {}
 
-  async execute(request: GetAllCoursesRequest = {}): Promise<GetAllCoursesResponse> {
+  async execute(
+    request: GetAllCoursesRequest = {}
+  ): Promise<GetAllCoursesResponse> {
     try {
       const { page = 1, limit = 10, organizerId, categoryId, status } = request;
 
@@ -39,20 +41,24 @@ export class GetAllCoursesUseCase {
         let result;
 
         if (organizerId) {
-          result = await this.courseRepository.findByOrganizerPaginated(organizerId, page, limit);
+          result = await this.courseRepository.findByOrganizerPaginated(
+            organizerId,
+            page,
+            limit
+          );
         } else {
           result = await this.courseRepository.findAllPaginated(page, limit);
         }
 
         return {
           success: true,
-          courses: result.courses.map(course => course.toPlainObject()),
+          courses: result.courses.map((course) => course.toPlainObject()),
           pagination: {
             total: result.total,
             totalPages: result.totalPages,
             currentPage: result.currentPage,
-            limit
-          }
+            limit,
+          },
         };
       }
 
@@ -71,13 +77,15 @@ export class GetAllCoursesUseCase {
 
       return {
         success: true,
-        courses: courses.map(course => course.toPlainObject())
+        courses: courses.map((course) => course.toPlainObject()),
       };
-
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Error desconocido al obtener los cursos'
+        error:
+          error instanceof Error
+            ? error.message
+            : "Error desconocido al obtener los cursos",
       };
     }
   }

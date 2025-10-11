@@ -1,11 +1,11 @@
 /**
  * UpdateCourseUseCase - Application Layer
- * 
+ *
  * Caso de uso para actualizar un curso existente.
  */
 
-import { CourseData } from '../../../domain/entities/Course';
-import { CourseManagementService } from '../../../domain/services/CourseManagementService';
+import { CourseData } from "../../../domain/entities/Course";
+import { CourseManagementService } from "../../../domain/services/CourseManagementService";
 
 export interface UpdateCourseRequest {
   courseId: string;
@@ -36,18 +36,20 @@ export class UpdateCourseUseCase {
     try {
       // Validación básica
       if (!request.courseId?.trim()) {
-        return { 
-          success: false, 
-          error: 'El ID del curso es obligatorio' 
+        return {
+          success: false,
+          error: "El ID del curso es obligatorio",
         };
       }
 
       // Verificar que al menos un campo se está actualizando
-      const updateFields = Object.keys(request).filter(key => key !== 'courseId');
+      const updateFields = Object.keys(request).filter(
+        (key) => key !== "courseId"
+      );
       if (updateFields.length === 0) {
-        return { 
-          success: false, 
-          error: 'Debe proporcionar al menos un campo para actualizar' 
+        return {
+          success: false,
+          error: "Debe proporcionar al menos un campo para actualizar",
         };
       }
 
@@ -83,7 +85,8 @@ export class UpdateCourseUseCase {
       }
 
       if (request.requiere_verificacion_docs !== undefined) {
-        updateData.requiere_verificacion_docs = request.requiere_verificacion_docs;
+        updateData.requiere_verificacion_docs =
+          request.requiere_verificacion_docs;
       }
 
       if (request.es_gratuito !== undefined) {
@@ -95,7 +98,8 @@ export class UpdateCourseUseCase {
       }
 
       if (request.porcentaje_asistencia_aprobacion !== undefined) {
-        updateData.porcentaje_asistencia_aprobacion = request.porcentaje_asistencia_aprobacion;
+        updateData.porcentaje_asistencia_aprobacion =
+          request.porcentaje_asistencia_aprobacion;
       }
 
       if (request.nota_minima_aprobacion !== undefined) {
@@ -104,19 +108,21 @@ export class UpdateCourseUseCase {
 
       // Ejecutar actualización
       const updatedCourse = await this.courseManagementService.updateCourse(
-        request.courseId, 
+        request.courseId,
         updateData
       );
 
       return {
         success: true,
-        course: updatedCourse.toPlainObject()
+        course: updatedCourse.toPlainObject(),
       };
-
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Error desconocido al actualizar el curso'
+        error:
+          error instanceof Error
+            ? error.message
+            : "Error desconocido al actualizar el curso",
       };
     }
   }
