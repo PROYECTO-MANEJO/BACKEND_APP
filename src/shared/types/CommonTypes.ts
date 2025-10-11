@@ -85,8 +85,8 @@ export interface AppConfig {
  * Metadata para auditoría
  */
 export interface AuditMetadata {
-  createdBy?: ID;
-  updatedBy?: ID;
+  createdBy?: number;
+  updatedBy?: number;
   createdAt: Date;
   updatedAt: Date;
   version?: number;
