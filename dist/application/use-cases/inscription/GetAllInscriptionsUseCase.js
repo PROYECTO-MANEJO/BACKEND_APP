@@ -18,13 +18,13 @@ class GetAllInscriptionsUseCase {
                 const result = await this.inscriptionRepository.findAllPaginated(page, limit);
                 return {
                     success: true,
-                    inscriptions: result.inscriptions.map(ins => ins.toPublicObject()),
+                    inscriptions: result.inscriptions.map((ins) => ins.toPublicObject()),
                     pagination: {
                         total: result.total,
                         totalPages: result.totalPages,
                         currentPage: result.currentPage,
-                        limit
-                    }
+                        limit,
+                    },
                 };
             }
             // Sin paginación - aplicar filtros
@@ -36,17 +36,19 @@ class GetAllInscriptionsUseCase {
                 startDate: request.startDate,
                 endDate: request.endDate,
                 hasPaymentProof: request.hasPaymentProof,
-                hasMotivationLetter: request.hasMotivationLetter
+                hasMotivationLetter: request.hasMotivationLetter,
             });
             return {
                 success: true,
-                inscriptions: inscriptions.map(ins => ins.toPublicObject())
+                inscriptions: inscriptions.map((ins) => ins.toPublicObject()),
             };
         }
         catch (error) {
             return {
                 success: false,
-                error: error instanceof Error ? error.message : 'Error desconocido al obtener las inscripciones'
+                error: error instanceof Error
+                    ? error.message
+                    : "Error desconocido al obtener las inscripciones",
             };
         }
     }

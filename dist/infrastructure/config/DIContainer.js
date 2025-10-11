@@ -10,6 +10,8 @@ const EventRepository_1 = require("../database/repositories/EventRepository");
 const CategoryRepository_1 = require("../database/repositories/CategoryRepository");
 const CourseRepository_1 = require("../repositories/CourseRepository");
 const InscriptionRepository_1 = require("../repositories/InscriptionRepository");
+// Phase 7 - Infrastructure Implementations
+const PrismaCertificateRepository_1 = require("../repositories/PrismaCertificateRepository");
 // External Services
 const EmailService_1 = require("../external/email/EmailService");
 // Domain Services
@@ -21,6 +23,8 @@ const CareerManagementService_1 = require("@domain/services/CareerManagementServ
 const EventManagementService_1 = require("@domain/services/EventManagementService");
 const CourseManagementService_1 = require("@domain/services/CourseManagementService");
 const InscriptionManagementService_1 = require("@domain/services/InscriptionManagementService");
+// Phase 7 - Advanced Features Domain Services
+const CertificateManagementService_1 = require("@domain/services/CertificateManagementService");
 /**
  * Container de Inyección de Dependencias
  * Implementa DIP (Dependency Inversion Principle)
@@ -105,7 +109,7 @@ class DIContainer {
                 // Verificar si el evento tiene cupo disponible
                 // Por ahora asumimos que todos los eventos activos tienen cupo
                 return event.isActive();
-            }
+            },
         };
         const inscriptionCourseRepository = {
             findById: (id) => this._courseRepository.findById(id),
@@ -117,7 +121,7 @@ class DIContainer {
                 // Verificar si el curso tiene cupo disponible
                 // Por ahora asumimos que todos los cursos activos tienen cupo
                 return course.isActive();
-            }
+            },
         };
         const inscriptionUserRepository = {
             findById: async (id) => {
@@ -133,10 +137,37 @@ class DIContainer {
                     return false;
                 const user = await this._userRepository.findById(numericId);
                 return user !== null;
-            }
+            },
         };
         // Inicializar servicio de gestión de inscripciones
         this._inscriptionManagementService = new InscriptionManagementService_1.InscriptionManagementService(this._inscriptionRepository, inscriptionEventRepository, inscriptionCourseRepository, inscriptionUserRepository);
+        // Phase 7 - Initialize Advanced Features
+        // Initialize repositories
+        this._certificateRepository = new PrismaCertificateRepository_1.PrismaCertificateRepository();
+        // TODO: Implement these repositories and services for complete Phase 7
+        // this._reportRepository = new PrismaReportRepository();
+        // this._changeRequestRepository = new PrismaChangeRequestRepository();
+        // this._pdfGenerationService = new PDFGenerationServiceImpl();
+        // this._githubIntegrationService = new GitHubIntegrationServiceImpl();
+        // this._notificationService = new NotificationServiceImpl();
+        // Initialize domain services with mock/adapter dependencies
+        const mockParticipationRepository = {
+            findEventParticipationById: async (id) => null,
+            findCourseCompletionById: async (id) => null,
+            findEventParticipationByUserAndEvent: async (userId, eventId) => null,
+            findCourseCompletionByUserAndCourse: async (userId, courseId) => null,
+        };
+        const mockPDFGenerator = {
+            generateCertificatePDF: async (data, template) => ({
+                buffer: Buffer.from("mock pdf content"),
+                filePath: `/certificates/cert_${Date.now()}.pdf`,
+                fileSize: 1024,
+            }),
+            verifyCertificatePDF: async (path) => ({ isValid: true }),
+            getAvailableTemplates: async () => ["default", "modern", "classic"],
+        };
+        this._certificateManagementService = new CertificateManagementService_1.CertificateManagementService(this._certificateRepository, mockParticipationRepository, mockPDFGenerator);
+        // TODO: Initialize other Phase 7 services when implementations are ready
     }
     static getInstance() {
         if (!DIContainer.instance) {
@@ -196,6 +227,26 @@ class DIContainer {
     get inscriptionManagementService() {
         return this._inscriptionManagementService;
     }
+    // Phase 7 - Advanced Features Getters
+    get certificateRepository() {
+        return this._certificateRepository;
+    }
+    get certificateManagementService() {
+        return this._certificateManagementService;
+    }
+    // TODO: Add getters for other Phase 7 services when implemented
+    // public get reportRepository(): ReportRepository {
+    //   return this._reportRepository;
+    // }
+    // public get reportManagementService(): ReportManagementService {
+    //   return this._reportManagementService;
+    // }
+    // public get changeRequestRepository(): ChangeRequestRepository {
+    //   return this._changeRequestRepository;
+    // }
+    // public get changeRequestManagementService(): ChangeRequestManagementService {
+    //   return this._changeRequestManagementService;
+    // }
     async dispose() {
         await this._prisma.$disconnect();
     }

@@ -16,7 +16,7 @@ class RejectInscriptionUseCase {
             if (!request.inscriptionId?.trim()) {
                 return {
                     success: false,
-                    error: 'El ID de la inscripción es obligatorio'
+                    error: "El ID de la inscripción es obligatorio",
                 };
             }
             // Rechazar inscripción
@@ -24,13 +24,15 @@ class RejectInscriptionUseCase {
             return {
                 success: true,
                 inscription: rejectedInscription.toPublicObject(),
-                message: 'Inscripción rechazada exitosamente'
+                message: "Inscripción rechazada exitosamente",
             };
         }
         catch (error) {
             return {
                 success: false,
-                error: error instanceof Error ? error.message : 'Error desconocido al rechazar la inscripción'
+                error: error instanceof Error
+                    ? error.message
+                    : "Error desconocido al rechazar la inscripción",
             };
         }
     }

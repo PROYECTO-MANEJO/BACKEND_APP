@@ -4,9 +4,9 @@
  * Representa una inscripción (a evento o curso) con todas sus reglas de negocio
  * y validaciones correspondientes.
  */
-export type InscriptionType = 'EVENT' | 'COURSE';
-export type PaymentStatus = 'PENDIENTE' | 'APROBADO' | 'RECHAZADO' | 'CANCELADO';
-export type PaymentMethod = 'TARJETA_CREDITO' | 'TRANFERENCIA' | 'DEPOSITO';
+export type InscriptionType = "EVENT" | "COURSE";
+export type PaymentStatus = "PENDIENTE" | "APROBADO" | "RECHAZADO" | "CANCELADO";
+export type PaymentMethod = "TARJETA_CREDITO" | "TRANFERENCIA" | "DEPOSITO";
 export interface InscriptionData {
     id?: string;
     userId: string;
@@ -91,6 +91,6 @@ export declare class Inscription {
     get createdAt(): Date;
     get updatedAt(): Date;
     toPlainObject(): InscriptionData;
-    toPublicObject(): Omit<InscriptionData, 'paymentProofPdf'>;
+    toPublicObject(): Omit<InscriptionData, "paymentProofPdf">;
 }
 //# sourceMappingURL=Inscription.d.ts.map

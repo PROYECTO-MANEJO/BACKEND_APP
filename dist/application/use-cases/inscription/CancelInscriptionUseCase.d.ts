@@ -3,8 +3,8 @@
  *
  * Caso de uso para cancelar una inscripción del usuario.
  */
-import { InscriptionData } from '../../../domain/entities/Inscription';
-import { InscriptionManagementService } from '../../../domain/services/InscriptionManagementService';
+import { InscriptionData } from "../../../domain/entities/Inscription";
+import { InscriptionManagementService } from "../../../domain/services/InscriptionManagementService";
 export interface CancelInscriptionRequest {
     inscriptionId: string;
     userId: string;

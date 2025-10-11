@@ -3,8 +3,8 @@
  *
  * Caso de uso para obtener las inscripciones de un usuario.
  */
-import { InscriptionData, InscriptionType } from '../../../domain/entities/Inscription';
-import { InscriptionManagementService } from '../../../domain/services/InscriptionManagementService';
+import { InscriptionData, InscriptionType } from "../../../domain/entities/Inscription";
+import { InscriptionManagementService } from "../../../domain/services/InscriptionManagementService";
 export interface GetUserInscriptionsRequest {
     userId: string;
     type?: InscriptionType;

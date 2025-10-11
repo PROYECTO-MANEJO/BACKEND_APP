@@ -3,8 +3,8 @@
  *
  * Caso de uso para obtener todas las inscripciones con filtros y paginación.
  */
-import { InscriptionData, InscriptionType } from '../../../domain/entities/Inscription';
-import { IInscriptionRepository } from '../../../domain/repositories/IInscriptionRepository';
+import { InscriptionData, InscriptionType } from "../../../domain/entities/Inscription";
+import { IInscriptionRepository } from "../../../domain/repositories/IInscriptionRepository";
 export interface GetAllInscriptionsRequest {
     page?: number;
     limit?: number;

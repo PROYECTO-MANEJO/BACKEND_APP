@@ -3,8 +3,8 @@
  *
  * Caso de uso para rechazar una inscripción pendiente.
  */
-import { InscriptionData } from '../../../domain/entities/Inscription';
-import { InscriptionManagementService } from '../../../domain/services/InscriptionManagementService';
+import { InscriptionData } from "../../../domain/entities/Inscription";
+import { InscriptionManagementService } from "../../../domain/services/InscriptionManagementService";
 export interface RejectInscriptionRequest {
     inscriptionId: string;
 }

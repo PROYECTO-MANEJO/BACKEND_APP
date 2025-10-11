@@ -16,13 +16,13 @@ class CancelInscriptionUseCase {
             if (!request.inscriptionId?.trim()) {
                 return {
                     success: false,
-                    error: 'El ID de la inscripción es obligatorio'
+                    error: "El ID de la inscripción es obligatorio",
                 };
             }
             if (!request.userId?.trim()) {
                 return {
                     success: false,
-                    error: 'El ID del usuario es obligatorio'
+                    error: "El ID del usuario es obligatorio",
                 };
             }
             // Cancelar inscripción
@@ -30,13 +30,15 @@ class CancelInscriptionUseCase {
             return {
                 success: true,
                 inscription: cancelledInscription.toPublicObject(),
-                message: 'Inscripción cancelada exitosamente'
+                message: "Inscripción cancelada exitosamente",
             };
         }
         catch (error) {
             return {
                 success: false,
-                error: error instanceof Error ? error.message : 'Error desconocido al cancelar la inscripción'
+                error: error instanceof Error
+                    ? error.message
+                    : "Error desconocido al cancelar la inscripción",
             };
         }
     }

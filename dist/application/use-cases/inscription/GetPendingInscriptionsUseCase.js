@@ -17,8 +17,9 @@ class GetPendingInscriptionsUseCase {
             // Calcular estadísticas
             const statistics = {
                 totalPending: pendingInscriptions.length,
-                eventInscriptions: pendingInscriptions.filter(ins => ins.isForEvent()).length,
-                courseInscriptions: pendingInscriptions.filter(ins => ins.isForCourse()).length
+                eventInscriptions: pendingInscriptions.filter((ins) => ins.isForEvent())
+                    .length,
+                courseInscriptions: pendingInscriptions.filter((ins) => ins.isForCourse()).length,
             };
             // Aplicar paginación si se solicita
             if (request.page && request.limit) {
@@ -27,26 +28,28 @@ class GetPendingInscriptionsUseCase {
                 const paginatedInscriptions = pendingInscriptions.slice(startIndex, endIndex);
                 return {
                     success: true,
-                    inscriptions: paginatedInscriptions.map(ins => ins.toPublicObject()),
+                    inscriptions: paginatedInscriptions.map((ins) => ins.toPublicObject()),
                     pagination: {
                         total: pendingInscriptions.length,
                         totalPages: Math.ceil(pendingInscriptions.length / request.limit),
                         currentPage: request.page,
-                        limit: request.limit
+                        limit: request.limit,
                     },
-                    statistics
+                    statistics,
                 };
             }
             return {
                 success: true,
-                inscriptions: pendingInscriptions.map(ins => ins.toPublicObject()),
-                statistics
+                inscriptions: pendingInscriptions.map((ins) => ins.toPublicObject()),
+                statistics,
             };
         }
         catch (error) {
             return {
                 success: false,
-                error: error instanceof Error ? error.message : 'Error desconocido al obtener inscripciones pendientes'
+                error: error instanceof Error
+                    ? error.message
+                    : "Error desconocido al obtener inscripciones pendientes",
             };
         }
     }

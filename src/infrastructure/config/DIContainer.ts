@@ -15,6 +15,11 @@ import {
 import { ICourseRepository } from "@domain/repositories/ICourseRepository";
 import { IInscriptionRepository } from "@domain/repositories/IInscriptionRepository";
 
+// Phase 7 - Advanced Features Repositories
+import { CertificateRepository } from "@domain/repositories/CertificateRepository";
+import { ReportRepository } from "@domain/repositories/ReportRepository";
+import { ChangeRequestRepository } from "@domain/repositories/ChangeRequestRepository";
+
 // Repositories Implementations
 import { UserRepository } from "../database/repositories/UserRepository";
 import { VerificationTokenRepository } from "../database/repositories/VerificationTokenRepository";
@@ -23,6 +28,9 @@ import { EventRepository } from "../database/repositories/EventRepository";
 import { CategoryRepository } from "../database/repositories/CategoryRepository";
 import { CourseRepository } from "../repositories/CourseRepository";
 import { InscriptionRepository } from "../repositories/InscriptionRepository";
+
+// Phase 7 - Infrastructure Implementations
+import { PrismaCertificateRepository } from "../repositories/PrismaCertificateRepository";
 
 // External Services
 import { EmailService } from "../external/email/EmailService";
@@ -36,6 +44,16 @@ import { CareerManagementService } from "@domain/services/CareerManagementServic
 import { EventManagementService } from "@domain/services/EventManagementService";
 import { CourseManagementService } from "@domain/services/CourseManagementService";
 import { InscriptionManagementService } from "@domain/services/InscriptionManagementService";
+
+// Phase 7 - Advanced Features Domain Services
+import { CertificateManagementService } from "@domain/services/CertificateManagementService";
+import { ReportManagementService } from "@domain/services/ReportManagementService";
+import { ChangeRequestManagementService } from "@domain/services/ChangeRequestManagementService";
+
+// Phase 7 - External Services Interfaces
+import { PDFGenerationService } from "@domain/services/external/PDFGenerationService";
+import { GitHubIntegrationService } from "@domain/services/external/GitHubIntegrationService";
+import { NotificationService } from "@domain/services/external/NotificationService";
 /**
  * Container de Inyección de Dependencias
  * Implementa DIP (Dependency Inversion Principle)
@@ -55,6 +73,14 @@ export class DIContainer {
   private _verificationTokenRepository: IVerificationTokenRepository;
   private _emailService: IEmailService;
 
+  // Phase 7 - Advanced Features
+  private _certificateRepository: CertificateRepository;
+  private _reportRepository?: ReportRepository;
+  private _changeRequestRepository?: ChangeRequestRepository;
+  private _pdfGenerationService?: PDFGenerationService;
+  private _githubIntegrationService?: GitHubIntegrationService;
+  private _notificationService?: NotificationService;
+
   // Domain Services
   private _authenticationService: AuthenticationService;
   private _verificationService: VerificationService;
@@ -64,6 +90,11 @@ export class DIContainer {
   private _eventManagementService: EventManagementService;
   private _courseManagementService: CourseManagementService;
   private _inscriptionManagementService: InscriptionManagementService;
+
+  // Phase 7 - Advanced Features Domain Services
+  private _certificateManagementService: CertificateManagementService;
+  private _reportManagementService?: ReportManagementService;
+  private _changeRequestManagementService?: ChangeRequestManagementService;
   private constructor() {
     // Initialize infrastructure
     this._prisma = new PrismaClient();
@@ -172,11 +203,11 @@ export class DIContainer {
         // Implementación simplificada - se puede refinar según reglas de negocio
         const event = await this._eventRepository.findById(eventId);
         if (!event) return false;
-        
+
         // Verificar si el evento tiene cupo disponible
         // Por ahora asumimos que todos los eventos activos tienen cupo
         return event.isActive();
-      }
+      },
     };
 
     const inscriptionCourseRepository = {
@@ -185,11 +216,11 @@ export class DIContainer {
         // Implementación simplificada - se puede refinar según reglas de negocio
         const course = await this._courseRepository.findById(courseId);
         if (!course) return false;
-        
+
         // Verificar si el curso tiene cupo disponible
         // Por ahora asumimos que todos los cursos activos tienen cupo
         return course.isActive();
-      }
+      },
     };
 
     const inscriptionUserRepository = {
@@ -204,7 +235,7 @@ export class DIContainer {
         if (isNaN(numericId)) return false;
         const user = await this._userRepository.findById(numericId);
         return user !== null;
-      }
+      },
     };
 
     // Inicializar servicio de gestión de inscripciones
@@ -214,6 +245,49 @@ export class DIContainer {
       inscriptionCourseRepository,
       inscriptionUserRepository
     );
+
+    // Phase 7 - Initialize Advanced Features
+    // Initialize repositories
+    this._certificateRepository = new PrismaCertificateRepository();
+
+    // TODO: Implement these repositories and services for complete Phase 7
+    // this._reportRepository = new PrismaReportRepository();
+    // this._changeRequestRepository = new PrismaChangeRequestRepository();
+    // this._pdfGenerationService = new PDFGenerationServiceImpl();
+    // this._githubIntegrationService = new GitHubIntegrationServiceImpl();
+    // this._notificationService = new NotificationServiceImpl();
+
+    // Initialize domain services with mock/adapter dependencies
+    const mockParticipationRepository = {
+      findEventParticipationById: async (id: string) => null,
+      findCourseCompletionById: async (id: string) => null,
+      findEventParticipationByUserAndEvent: async (
+        userId: string,
+        eventId: string
+      ) => null,
+      findCourseCompletionByUserAndCourse: async (
+        userId: string,
+        courseId: string
+      ) => null,
+    };
+
+    const mockPDFGenerator = {
+      generateCertificatePDF: async (data: any, template?: string) => ({
+        buffer: Buffer.from("mock pdf content"),
+        filePath: `/certificates/cert_${Date.now()}.pdf`,
+        fileSize: 1024,
+      }),
+      verifyCertificatePDF: async (path: string) => ({ isValid: true }),
+      getAvailableTemplates: async () => ["default", "modern", "classic"],
+    };
+
+    this._certificateManagementService = new CertificateManagementService(
+      this._certificateRepository as any,
+      mockParticipationRepository,
+      mockPDFGenerator
+    );
+
+    // TODO: Initialize other Phase 7 services when implementations are ready
   }
 
   public static getInstance(): DIContainer {
@@ -291,6 +365,32 @@ export class DIContainer {
   public get inscriptionManagementService(): InscriptionManagementService {
     return this._inscriptionManagementService;
   }
+
+  // Phase 7 - Advanced Features Getters
+  public get certificateRepository(): CertificateRepository {
+    return this._certificateRepository;
+  }
+
+  public get certificateManagementService(): CertificateManagementService {
+    return this._certificateManagementService;
+  }
+
+  // TODO: Add getters for other Phase 7 services when implemented
+  // public get reportRepository(): ReportRepository {
+  //   return this._reportRepository;
+  // }
+
+  // public get reportManagementService(): ReportManagementService {
+  //   return this._reportManagementService;
+  // }
+
+  // public get changeRequestRepository(): ChangeRequestRepository {
+  //   return this._changeRequestRepository;
+  // }
+
+  // public get changeRequestManagementService(): ChangeRequestManagementService {
+  //   return this._changeRequestManagementService;
+  // }
 
   public async dispose(): Promise<void> {
     await this._prisma.$disconnect();

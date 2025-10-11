@@ -1,13 +1,17 @@
 /**
  * InscriptionRepository - Infrastructure Layer
- * 
+ *
  * Implementación concreta del repositorio de inscripciones usando Prisma.
  * Maneja tanto inscripciones a eventos como a cursos.
  */
 
-import { PrismaClient } from '@prisma/client';
-import { Inscription, InscriptionData, InscriptionType } from '../../domain/entities/Inscription';
-import { IInscriptionRepository } from '../../domain/repositories/IInscriptionRepository';
+import { PrismaClient } from "@prisma/client";
+import {
+  Inscription,
+  InscriptionData,
+  InscriptionType,
+} from "../../domain/entities/Inscription";
+import { IInscriptionRepository } from "../../domain/repositories/IInscriptionRepository";
 
 export class InscriptionRepository implements IInscriptionRepository {
   constructor(private prisma: PrismaClient) {}
@@ -33,12 +37,12 @@ export class InscriptionRepository implements IInscriptionRepository {
           carta_motivacion: data.motivationLetter,
           estado_pago: data.paymentStatus as any,
           id_admin_aprobador: data.approvedBy,
-          fec_aprobacion: data.approvalDate
+          fec_aprobacion: data.approvalDate,
         },
         include: {
           usuario: true,
-          evento: true
-        }
+          evento: true,
+        },
       });
 
       return this.eventInscriptionToDomain(created);
@@ -59,12 +63,12 @@ export class InscriptionRepository implements IInscriptionRepository {
           carta_motivacion: data.motivationLetter,
           estado_pago_cur: data.paymentStatus as any,
           id_admin_aprobador_cur: data.approvedBy,
-          fec_aprobacion_cur: data.approvalDate
+          fec_aprobacion_cur: data.approvalDate,
         },
         include: {
           usuario: true,
-          curso: true
-        }
+          curso: true,
+        },
       });
 
       return this.courseInscriptionToDomain(created);
@@ -77,8 +81,8 @@ export class InscriptionRepository implements IInscriptionRepository {
       where: { id_ins: id },
       include: {
         usuario: true,
-        evento: true
-      }
+        evento: true,
+      },
     });
 
     if (eventInscription) {
@@ -90,8 +94,8 @@ export class InscriptionRepository implements IInscriptionRepository {
       where: { id_ins_cur: id },
       include: {
         usuario: true,
-        curso: true
-      }
+        curso: true,
+      },
     });
 
     if (courseInscription) {
@@ -106,29 +110,29 @@ export class InscriptionRepository implements IInscriptionRepository {
     const eventInscriptions = await this.prisma.inscripcion.findMany({
       include: {
         usuario: true,
-        evento: true
+        evento: true,
       },
-      orderBy: { fec_ins: 'desc' }
+      orderBy: { fec_ins: "desc" },
     });
 
     // Obtener inscripciones de cursos
     const courseInscriptions = await this.prisma.inscripcionCurso.findMany({
       include: {
         usuario: true,
-        curso: true
+        curso: true,
       },
-      orderBy: { fec_ins_cur: 'desc' }
+      orderBy: { fec_ins_cur: "desc" },
     });
 
     // Combinar y convertir a dominio
     const allInscriptions = [
-      ...eventInscriptions.map(ins => this.eventInscriptionToDomain(ins)),
-      ...courseInscriptions.map(ins => this.courseInscriptionToDomain(ins))
+      ...eventInscriptions.map((ins) => this.eventInscriptionToDomain(ins)),
+      ...courseInscriptions.map((ins) => this.courseInscriptionToDomain(ins)),
     ];
 
     // Ordenar por fecha de inscripción
-    return allInscriptions.sort((a, b) => 
-      b.inscriptionDate.getTime() - a.inscriptionDate.getTime()
+    return allInscriptions.sort(
+      (a, b) => b.inscriptionDate.getTime() - a.inscriptionDate.getTime()
     );
   }
 
@@ -150,12 +154,12 @@ export class InscriptionRepository implements IInscriptionRepository {
           carta_motivacion: data.motivationLetter,
           estado_pago: data.paymentStatus as any,
           id_admin_aprobador: data.approvedBy,
-          fec_aprobacion: data.approvalDate
+          fec_aprobacion: data.approvalDate,
         },
         include: {
           usuario: true,
-          evento: true
-        }
+          evento: true,
+        },
       });
 
       return this.eventInscriptionToDomain(updated);
@@ -174,12 +178,12 @@ export class InscriptionRepository implements IInscriptionRepository {
           carta_motivacion: data.motivationLetter,
           estado_pago_cur: data.paymentStatus as any,
           id_admin_aprobador_cur: data.approvedBy,
-          fec_aprobacion_cur: data.approvalDate
+          fec_aprobacion_cur: data.approvalDate,
         },
         include: {
           usuario: true,
-          curso: true
-        }
+          curso: true,
+        },
       });
 
       return this.courseInscriptionToDomain(updated);
@@ -190,7 +194,7 @@ export class InscriptionRepository implements IInscriptionRepository {
     // Intentar eliminar de inscripciones de eventos
     try {
       await this.prisma.inscripcion.delete({
-        where: { id_ins: id }
+        where: { id_ins: id },
       });
       return;
     } catch (error) {
@@ -199,7 +203,7 @@ export class InscriptionRepository implements IInscriptionRepository {
 
     // Intentar eliminar de inscripciones de cursos
     await this.prisma.inscripcionCurso.delete({
-      where: { id_ins_cur: id }
+      where: { id_ins_cur: id },
     });
   }
 
@@ -210,8 +214,8 @@ export class InscriptionRepository implements IInscriptionRepository {
       where: { id_usu_ins: userId },
       include: {
         usuario: true,
-        evento: true
-      }
+        evento: true,
+      },
     });
 
     // Obtener inscripciones de cursos del usuario
@@ -219,161 +223,185 @@ export class InscriptionRepository implements IInscriptionRepository {
       where: { id_usu_ins_cur: userId },
       include: {
         usuario: true,
-        curso: true
-      }
+        curso: true,
+      },
     });
 
     // Combinar y convertir
     const allInscriptions = [
-      ...eventInscriptions.map(ins => this.eventInscriptionToDomain(ins)),
-      ...courseInscriptions.map(ins => this.courseInscriptionToDomain(ins))
+      ...eventInscriptions.map((ins) => this.eventInscriptionToDomain(ins)),
+      ...courseInscriptions.map((ins) => this.courseInscriptionToDomain(ins)),
     ];
 
-    return allInscriptions.sort((a, b) => 
-      b.inscriptionDate.getTime() - a.inscriptionDate.getTime()
+    return allInscriptions.sort(
+      (a, b) => b.inscriptionDate.getTime() - a.inscriptionDate.getTime()
     );
   }
 
-  async findByUserAndType(userId: string, type: InscriptionType): Promise<Inscription[]> {
-    if (type === 'EVENT') {
+  async findByUserAndType(
+    userId: string,
+    type: InscriptionType
+  ): Promise<Inscription[]> {
+    if (type === "EVENT") {
       const eventInscriptions = await this.prisma.inscripcion.findMany({
         where: { id_usu_ins: userId },
         include: {
           usuario: true,
-          evento: true
+          evento: true,
         },
-        orderBy: { fec_ins: 'desc' }
+        orderBy: { fec_ins: "desc" },
       });
 
-      return eventInscriptions.map(ins => this.eventInscriptionToDomain(ins));
+      return eventInscriptions.map((ins) => this.eventInscriptionToDomain(ins));
     } else {
       const courseInscriptions = await this.prisma.inscripcionCurso.findMany({
         where: { id_usu_ins_cur: userId },
         include: {
           usuario: true,
-          curso: true
+          curso: true,
         },
-        orderBy: { fec_ins_cur: 'desc' }
+        orderBy: { fec_ins_cur: "desc" },
       });
 
-      return courseInscriptions.map(ins => this.courseInscriptionToDomain(ins));
+      return courseInscriptions.map((ins) =>
+        this.courseInscriptionToDomain(ins)
+      );
     }
   }
 
-  async findByUserAndTarget(userId: string, targetId: string, type: InscriptionType): Promise<Inscription | null> {
-    if (type === 'EVENT') {
+  async findByUserAndTarget(
+    userId: string,
+    targetId: string,
+    type: InscriptionType
+  ): Promise<Inscription | null> {
+    if (type === "EVENT") {
       const eventInscription = await this.prisma.inscripcion.findUnique({
         where: {
           id_usu_ins_id_eve_ins: {
             id_usu_ins: userId,
-            id_eve_ins: targetId
-          }
+            id_eve_ins: targetId,
+          },
         },
         include: {
           usuario: true,
-          evento: true
-        }
+          evento: true,
+        },
       });
 
-      return eventInscription ? this.eventInscriptionToDomain(eventInscription) : null;
+      return eventInscription
+        ? this.eventInscriptionToDomain(eventInscription)
+        : null;
     } else {
       const courseInscription = await this.prisma.inscripcionCurso.findUnique({
         where: {
           id_usu_ins_cur_id_cur_ins: {
             id_usu_ins_cur: userId,
-            id_cur_ins: targetId
-          }
+            id_cur_ins: targetId,
+          },
         },
         include: {
           usuario: true,
-          curso: true
-        }
+          curso: true,
+        },
       });
 
-      return courseInscription ? this.courseInscriptionToDomain(courseInscription) : null;
+      return courseInscription
+        ? this.courseInscriptionToDomain(courseInscription)
+        : null;
     }
   }
 
   async getUserInscriptionCount(userId: string): Promise<number> {
     const [eventCount, courseCount] = await Promise.all([
       this.prisma.inscripcion.count({
-        where: { id_usu_ins: userId }
+        where: { id_usu_ins: userId },
       }),
       this.prisma.inscripcionCurso.count({
-        where: { id_usu_ins_cur: userId }
-      })
+        where: { id_usu_ins_cur: userId },
+      }),
     ]);
 
     return eventCount + courseCount;
   }
 
   // ✅ CONSULTAS POR EVENTO/CURSO
-  async findByTarget(targetId: string, type: InscriptionType): Promise<Inscription[]> {
-    if (type === 'EVENT') {
+  async findByTarget(
+    targetId: string,
+    type: InscriptionType
+  ): Promise<Inscription[]> {
+    if (type === "EVENT") {
       const eventInscriptions = await this.prisma.inscripcion.findMany({
         where: { id_eve_ins: targetId },
         include: {
           usuario: true,
-          evento: true
+          evento: true,
         },
-        orderBy: { fec_ins: 'desc' }
+        orderBy: { fec_ins: "desc" },
       });
 
-      return eventInscriptions.map(ins => this.eventInscriptionToDomain(ins));
+      return eventInscriptions.map((ins) => this.eventInscriptionToDomain(ins));
     } else {
       const courseInscriptions = await this.prisma.inscripcionCurso.findMany({
         where: { id_cur_ins: targetId },
         include: {
           usuario: true,
-          curso: true
+          curso: true,
         },
-        orderBy: { fec_ins_cur: 'desc' }
+        orderBy: { fec_ins_cur: "desc" },
       });
 
-      return courseInscriptions.map(ins => this.courseInscriptionToDomain(ins));
+      return courseInscriptions.map((ins) =>
+        this.courseInscriptionToDomain(ins)
+      );
     }
   }
 
   async findByEvent(eventId: string): Promise<Inscription[]> {
-    return this.findByTarget(eventId, 'EVENT');
+    return this.findByTarget(eventId, "EVENT");
   }
 
   async findByCourse(courseId: string): Promise<Inscription[]> {
-    return this.findByTarget(courseId, 'COURSE');
+    return this.findByTarget(courseId, "COURSE");
   }
 
-  async countActiveByTarget(targetId: string, type: InscriptionType): Promise<number> {
-    if (type === 'EVENT') {
+  async countActiveByTarget(
+    targetId: string,
+    type: InscriptionType
+  ): Promise<number> {
+    if (type === "EVENT") {
       return await this.prisma.inscripcion.count({
         where: {
           id_eve_ins: targetId,
-          estado_pago: { in: ['APROBADO', 'PENDIENTE'] }
-        }
+          estado_pago: { in: ["APROBADO", "PENDIENTE"] },
+        },
       });
     } else {
       return await this.prisma.inscripcionCurso.count({
         where: {
           id_cur_ins: targetId,
-          estado_pago_cur: { in: ['APROBADO', 'PENDIENTE'] }
-        }
+          estado_pago_cur: { in: ["APROBADO", "PENDIENTE"] },
+        },
       });
     }
   }
 
-  async countApprovedByTarget(targetId: string, type: InscriptionType): Promise<number> {
-    if (type === 'EVENT') {
+  async countApprovedByTarget(
+    targetId: string,
+    type: InscriptionType
+  ): Promise<number> {
+    if (type === "EVENT") {
       return await this.prisma.inscripcion.count({
         where: {
           id_eve_ins: targetId,
-          estado_pago: 'APROBADO'
-        }
+          estado_pago: "APROBADO",
+        },
       });
     } else {
       return await this.prisma.inscripcionCurso.count({
         where: {
           id_cur_ins: targetId,
-          estado_pago_cur: 'APROBADO'
-        }
+          estado_pago_cur: "APROBADO",
+        },
       });
     }
   }
@@ -385,42 +413,42 @@ export class InscriptionRepository implements IInscriptionRepository {
         where: { estado_pago: status as any },
         include: {
           usuario: true,
-          evento: true
-        }
+          evento: true,
+        },
       }),
       this.prisma.inscripcionCurso.findMany({
         where: { estado_pago_cur: status as any },
         include: {
           usuario: true,
-          curso: true
-        }
-      })
+          curso: true,
+        },
+      }),
     ]);
 
     const allInscriptions = [
-      ...eventInscriptions.map(ins => this.eventInscriptionToDomain(ins)),
-      ...courseInscriptions.map(ins => this.courseInscriptionToDomain(ins))
+      ...eventInscriptions.map((ins) => this.eventInscriptionToDomain(ins)),
+      ...courseInscriptions.map((ins) => this.courseInscriptionToDomain(ins)),
     ];
 
-    return allInscriptions.sort((a, b) => 
-      b.inscriptionDate.getTime() - a.inscriptionDate.getTime()
+    return allInscriptions.sort(
+      (a, b) => b.inscriptionDate.getTime() - a.inscriptionDate.getTime()
     );
   }
 
   async findPendingApprovals(): Promise<Inscription[]> {
-    return this.findByPaymentStatus('PENDIENTE');
+    return this.findByPaymentStatus("PENDIENTE");
   }
 
   async findApprovedInscriptions(): Promise<Inscription[]> {
-    return this.findByPaymentStatus('APROBADO');
+    return this.findByPaymentStatus("APROBADO");
   }
 
   async findRejectedInscriptions(): Promise<Inscription[]> {
-    return this.findByPaymentStatus('RECHAZADO');
+    return this.findByPaymentStatus("RECHAZADO");
   }
 
   async findCancelledInscriptions(): Promise<Inscription[]> {
-    return this.findByPaymentStatus('CANCELADO');
+    return this.findByPaymentStatus("CANCELADO");
   }
 
   // ✅ CONSULTAS POR TIPO
@@ -428,24 +456,24 @@ export class InscriptionRepository implements IInscriptionRepository {
     const eventInscriptions = await this.prisma.inscripcion.findMany({
       include: {
         usuario: true,
-        evento: true
+        evento: true,
       },
-      orderBy: { fec_ins: 'desc' }
+      orderBy: { fec_ins: "desc" },
     });
 
-    return eventInscriptions.map(ins => this.eventInscriptionToDomain(ins));
+    return eventInscriptions.map((ins) => this.eventInscriptionToDomain(ins));
   }
 
   async findCourseInscriptions(): Promise<Inscription[]> {
     const courseInscriptions = await this.prisma.inscripcionCurso.findMany({
       include: {
         usuario: true,
-        curso: true
+        curso: true,
       },
-      orderBy: { fec_ins_cur: 'desc' }
+      orderBy: { fec_ins_cur: "desc" },
     });
 
-    return courseInscriptions.map(ins => this.courseInscriptionToDomain(ins));
+    return courseInscriptions.map((ins) => this.courseInscriptionToDomain(ins));
   }
 
   // ✅ CONSULTAS CON FILTROS AVANZADOS
@@ -463,13 +491,15 @@ export class InscriptionRepository implements IInscriptionRepository {
     let allInscriptions: Inscription[] = [];
 
     // Construir filtros para eventos si aplica
-    if (!filters.type || filters.type === 'EVENT') {
+    if (!filters.type || filters.type === "EVENT") {
       const eventWhereClause: any = {};
 
       if (filters.userId) eventWhereClause.id_usu_ins = filters.userId;
       if (filters.targetId) eventWhereClause.id_eve_ins = filters.targetId;
-      if (filters.paymentStatus) eventWhereClause.estado_pago = filters.paymentStatus;
-      if (filters.approvedBy) eventWhereClause.id_admin_aprobador = filters.approvedBy;
+      if (filters.paymentStatus)
+        eventWhereClause.estado_pago = filters.paymentStatus;
+      if (filters.approvedBy)
+        eventWhereClause.id_admin_aprobador = filters.approvedBy;
 
       if (filters.startDate || filters.endDate) {
         eventWhereClause.fec_ins = {};
@@ -497,29 +527,33 @@ export class InscriptionRepository implements IInscriptionRepository {
         where: eventWhereClause,
         include: {
           usuario: true,
-          evento: true
-        }
+          evento: true,
+        },
       });
 
       allInscriptions = [
         ...allInscriptions,
-        ...eventInscriptions.map(ins => this.eventInscriptionToDomain(ins))
+        ...eventInscriptions.map((ins) => this.eventInscriptionToDomain(ins)),
       ];
     }
 
     // Construir filtros para cursos si aplica
-    if (!filters.type || filters.type === 'COURSE') {
+    if (!filters.type || filters.type === "COURSE") {
       const courseWhereClause: any = {};
 
       if (filters.userId) courseWhereClause.id_usu_ins_cur = filters.userId;
       if (filters.targetId) courseWhereClause.id_cur_ins = filters.targetId;
-      if (filters.paymentStatus) courseWhereClause.estado_pago_cur = filters.paymentStatus;
-      if (filters.approvedBy) courseWhereClause.id_admin_aprobador_cur = filters.approvedBy;
+      if (filters.paymentStatus)
+        courseWhereClause.estado_pago_cur = filters.paymentStatus;
+      if (filters.approvedBy)
+        courseWhereClause.id_admin_aprobador_cur = filters.approvedBy;
 
       if (filters.startDate || filters.endDate) {
         courseWhereClause.fec_ins_cur = {};
-        if (filters.startDate) courseWhereClause.fec_ins_cur.gte = filters.startDate;
-        if (filters.endDate) courseWhereClause.fec_ins_cur.lte = filters.endDate;
+        if (filters.startDate)
+          courseWhereClause.fec_ins_cur.gte = filters.startDate;
+        if (filters.endDate)
+          courseWhereClause.fec_ins_cur.lte = filters.endDate;
       }
 
       if (filters.hasPaymentProof !== undefined) {
@@ -542,23 +576,26 @@ export class InscriptionRepository implements IInscriptionRepository {
         where: courseWhereClause,
         include: {
           usuario: true,
-          curso: true
-        }
+          curso: true,
+        },
       });
 
       allInscriptions = [
         ...allInscriptions,
-        ...courseInscriptions.map(ins => this.courseInscriptionToDomain(ins))
+        ...courseInscriptions.map((ins) => this.courseInscriptionToDomain(ins)),
       ];
     }
 
-    return allInscriptions.sort((a, b) => 
-      b.inscriptionDate.getTime() - a.inscriptionDate.getTime()
+    return allInscriptions.sort(
+      (a, b) => b.inscriptionDate.getTime() - a.inscriptionDate.getTime()
     );
   }
 
   // ✅ CONSULTAS CON PAGINACIÓN
-  async findAllPaginated(page: number, limit: number): Promise<{
+  async findAllPaginated(
+    page: number,
+    limit: number
+  ): Promise<{
     inscriptions: Inscription[];
     total: number;
     totalPages: number;
@@ -569,7 +606,7 @@ export class InscriptionRepository implements IInscriptionRepository {
     // Obtener totales
     const [eventTotal, courseTotal] = await Promise.all([
       this.prisma.inscripcion.count(),
-      this.prisma.inscripcionCurso.count()
+      this.prisma.inscripcionCurso.count(),
     ]);
 
     const total = eventTotal + courseTotal;
@@ -582,11 +619,15 @@ export class InscriptionRepository implements IInscriptionRepository {
       inscriptions: paginatedInscriptions,
       total,
       totalPages: Math.ceil(total / limit),
-      currentPage: page
+      currentPage: page,
     };
   }
 
-  async findByUserPaginated(userId: string, page: number, limit: number): Promise<{
+  async findByUserPaginated(
+    userId: string,
+    page: number,
+    limit: number
+  ): Promise<{
     inscriptions: Inscription[];
     total: number;
     totalPages: number;
@@ -597,24 +638,30 @@ export class InscriptionRepository implements IInscriptionRepository {
     // Obtener totales del usuario
     const [eventTotal, courseTotal] = await Promise.all([
       this.prisma.inscripcion.count({ where: { id_usu_ins: userId } }),
-      this.prisma.inscripcionCurso.count({ where: { id_usu_ins_cur: userId } })
+      this.prisma.inscripcionCurso.count({ where: { id_usu_ins_cur: userId } }),
     ]);
 
     const total = eventTotal + courseTotal;
 
     // Obtener datos del usuario y paginar
     const userInscriptions = await this.findByUser(userId);
-    const paginatedInscriptions = userInscriptions.slice(offset, offset + limit);
+    const paginatedInscriptions = userInscriptions.slice(
+      offset,
+      offset + limit
+    );
 
     return {
       inscriptions: paginatedInscriptions,
       total,
       totalPages: Math.ceil(total / limit),
-      currentPage: page
+      currentPage: page,
     };
   }
 
-  async findPendingPaginated(page: number, limit: number): Promise<{
+  async findPendingPaginated(
+    page: number,
+    limit: number
+  ): Promise<{
     inscriptions: Inscription[];
     total: number;
     totalPages: number;
@@ -624,36 +671,56 @@ export class InscriptionRepository implements IInscriptionRepository {
 
     // Obtener totales pendientes
     const [eventTotal, courseTotal] = await Promise.all([
-      this.prisma.inscripcion.count({ where: { estado_pago: 'PENDIENTE' } }),
-      this.prisma.inscripcionCurso.count({ where: { estado_pago_cur: 'PENDIENTE' } })
+      this.prisma.inscripcion.count({ where: { estado_pago: "PENDIENTE" } }),
+      this.prisma.inscripcionCurso.count({
+        where: { estado_pago_cur: "PENDIENTE" },
+      }),
     ]);
 
     const total = eventTotal + courseTotal;
 
     // Obtener pendientes y paginar
     const pendingInscriptions = await this.findPendingApprovals();
-    const paginatedInscriptions = pendingInscriptions.slice(offset, offset + limit);
+    const paginatedInscriptions = pendingInscriptions.slice(
+      offset,
+      offset + limit
+    );
 
     return {
       inscriptions: paginatedInscriptions,
       total,
       totalPages: Math.ceil(total / limit),
-      currentPage: page
+      currentPage: page,
     };
   }
 
   // ✅ VALIDACIONES DE NEGOCIO
-  async existsByUserAndTarget(userId: string, targetId: string, type: InscriptionType): Promise<boolean> {
+  async existsByUserAndTarget(
+    userId: string,
+    targetId: string,
+    type: InscriptionType
+  ): Promise<boolean> {
     const inscription = await this.findByUserAndTarget(userId, targetId, type);
     return inscription !== null;
   }
 
-  async hasActiveInscription(userId: string, targetId: string, type: InscriptionType): Promise<boolean> {
+  async hasActiveInscription(
+    userId: string,
+    targetId: string,
+    type: InscriptionType
+  ): Promise<boolean> {
     const inscription = await this.findByUserAndTarget(userId, targetId, type);
-    return inscription !== null && (inscription.isApproved() || inscription.isPending());
+    return (
+      inscription !== null &&
+      (inscription.isApproved() || inscription.isPending())
+    );
   }
 
-  async canEnrollInTarget(userId: string, targetId: string, type: InscriptionType): Promise<boolean> {
+  async canEnrollInTarget(
+    userId: string,
+    targetId: string,
+    type: InscriptionType
+  ): Promise<boolean> {
     return !(await this.existsByUserAndTarget(userId, targetId, type));
   }
 
@@ -677,19 +744,27 @@ export class InscriptionRepository implements IInscriptionRepository {
       eventRejected,
       courseRejected,
       eventCancelled,
-      courseCancelled
+      courseCancelled,
     ] = await Promise.all([
       this.prisma.inscripcion.count(),
       this.prisma.inscripcionCurso.count(),
-      this.prisma.inscripcion.count({ where: { estado_pago: 'PENDIENTE' } }),
-      this.prisma.inscripcionCurso.count({ where: { estado_pago_cur: 'PENDIENTE' } }),
-      this.prisma.inscripcion.count({ where: { estado_pago: 'APROBADO' } }),
-      this.prisma.inscripcionCurso.count({ where: { estado_pago_cur: 'APROBADO' } }),
-      this.prisma.inscripcion.count({ where: { estado_pago: 'RECHAZADO' } }),
-      this.prisma.inscripcionCurso.count({ where: { estado_pago_cur: 'RECHAZADO' } }),
+      this.prisma.inscripcion.count({ where: { estado_pago: "PENDIENTE" } }),
+      this.prisma.inscripcionCurso.count({
+        where: { estado_pago_cur: "PENDIENTE" },
+      }),
+      this.prisma.inscripcion.count({ where: { estado_pago: "APROBADO" } }),
+      this.prisma.inscripcionCurso.count({
+        where: { estado_pago_cur: "APROBADO" },
+      }),
+      this.prisma.inscripcion.count({ where: { estado_pago: "RECHAZADO" } }),
+      this.prisma.inscripcionCurso.count({
+        where: { estado_pago_cur: "RECHAZADO" },
+      }),
       // CANCELADO no existe en el enum, usar RECHAZADO como aproximación
-      this.prisma.inscripcion.count({ where: { estado_pago: 'RECHAZADO' } }),
-      this.prisma.inscripcionCurso.count({ where: { estado_pago_cur: 'RECHAZADO' } })
+      this.prisma.inscripcion.count({ where: { estado_pago: "RECHAZADO" } }),
+      this.prisma.inscripcionCurso.count({
+        where: { estado_pago_cur: "RECHAZADO" },
+      }),
     ]);
 
     return {
@@ -699,11 +774,14 @@ export class InscriptionRepository implements IInscriptionRepository {
       pendingApprovals: eventPending + coursePending,
       approvedInscriptions: eventApproved + courseApproved,
       rejectedInscriptions: eventRejected + courseRejected,
-      cancelledInscriptions: eventCancelled + courseCancelled
+      cancelledInscriptions: eventCancelled + courseCancelled,
     };
   }
 
-  async getTargetStatistics(targetId: string, type: InscriptionType): Promise<{
+  async getTargetStatistics(
+    targetId: string,
+    type: InscriptionType
+  ): Promise<{
     totalInscriptions: number;
     approvedInscriptions: number;
     pendingInscriptions: number;
@@ -715,11 +793,14 @@ export class InscriptionRepository implements IInscriptionRepository {
 
     return {
       totalInscriptions: inscriptions.length,
-      approvedInscriptions: inscriptions.filter(ins => ins.isApproved()).length,
-      pendingInscriptions: inscriptions.filter(ins => ins.isPending()).length,
-      rejectedInscriptions: inscriptions.filter(ins => ins.isRejected()).length,
-      cancelledInscriptions: inscriptions.filter(ins => ins.isCancelled()).length,
-      averageProcessingTime: this.calculateAverageProcessingTime(inscriptions)
+      approvedInscriptions: inscriptions.filter((ins) => ins.isApproved())
+        .length,
+      pendingInscriptions: inscriptions.filter((ins) => ins.isPending()).length,
+      rejectedInscriptions: inscriptions.filter((ins) => ins.isRejected())
+        .length,
+      cancelledInscriptions: inscriptions.filter((ins) => ins.isCancelled())
+        .length,
+      averageProcessingTime: this.calculateAverageProcessingTime(inscriptions),
     };
   }
 
@@ -735,33 +816,45 @@ export class InscriptionRepository implements IInscriptionRepository {
 
     return {
       totalInscriptions: inscriptions.length,
-      eventInscriptions: inscriptions.filter(ins => ins.isForEvent()).length,
-      courseInscriptions: inscriptions.filter(ins => ins.isForCourse()).length,
-      approvedInscriptions: inscriptions.filter(ins => ins.isApproved()).length,
-      pendingInscriptions: inscriptions.filter(ins => ins.isPending()).length,
-      cancelledInscriptions: inscriptions.filter(ins => ins.isCancelled()).length
+      eventInscriptions: inscriptions.filter((ins) => ins.isForEvent()).length,
+      courseInscriptions: inscriptions.filter((ins) => ins.isForCourse())
+        .length,
+      approvedInscriptions: inscriptions.filter((ins) => ins.isApproved())
+        .length,
+      pendingInscriptions: inscriptions.filter((ins) => ins.isPending()).length,
+      cancelledInscriptions: inscriptions.filter((ins) => ins.isCancelled())
+        .length,
     };
   }
 
   // ✅ MÉTODOS AUXILIARES SIMPLIFICADOS (por espacio)
-  
-  async getApprovedCountForTarget(targetId: string, type: InscriptionType): Promise<number> {
+
+  async getApprovedCountForTarget(
+    targetId: string,
+    type: InscriptionType
+  ): Promise<number> {
     return await this.countApprovedByTarget(targetId, type);
   }
 
-  async getPendingCountForTarget(targetId: string, type: InscriptionType): Promise<number> {
-    if (type === 'EVENT') {
+  async getPendingCountForTarget(
+    targetId: string,
+    type: InscriptionType
+  ): Promise<number> {
+    if (type === "EVENT") {
       return await this.prisma.inscripcion.count({
-        where: { id_eve_ins: targetId, estado_pago: 'PENDIENTE' }
+        where: { id_eve_ins: targetId, estado_pago: "PENDIENTE" },
       });
     } else {
       return await this.prisma.inscripcionCurso.count({
-        where: { id_cur_ins: targetId, estado_pago_cur: 'PENDIENTE' }
+        where: { id_cur_ins: targetId, estado_pago_cur: "PENDIENTE" },
       });
     }
   }
 
-  async getTotalActiveCountForTarget(targetId: string, type: InscriptionType): Promise<number> {
+  async getTotalActiveCountForTarget(
+    targetId: string,
+    type: InscriptionType
+  ): Promise<number> {
     return await this.countActiveByTarget(targetId, type);
   }
 
@@ -783,21 +876,27 @@ export class InscriptionRepository implements IInscriptionRepository {
     return await this.findWithFilters({ approvedBy: approverUserId });
   }
 
-  async findApprovalsByDateRange(startDate: Date, endDate: Date): Promise<Inscription[]> {
+  async findApprovalsByDateRange(
+    startDate: Date,
+    endDate: Date
+  ): Promise<Inscription[]> {
     return await this.findWithFilters({ startDate, endDate });
   }
 
   async findPendingOlderThan(days: number): Promise<Inscription[]> {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
-    
-    return await this.findWithFilters({ 
-      paymentStatus: 'PENDIENTE',
-      endDate: cutoffDate
+
+    return await this.findWithFilters({
+      paymentStatus: "PENDIENTE",
+      endDate: cutoffDate,
     });
   }
 
-  async findByDateRange(startDate: Date, endDate: Date): Promise<Inscription[]> {
+  async findByDateRange(
+    startDate: Date,
+    endDate: Date
+  ): Promise<Inscription[]> {
     return await this.findWithFilters({ startDate, endDate });
   }
 
@@ -807,23 +906,26 @@ export class InscriptionRepository implements IInscriptionRepository {
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
-    return await this.findWithFilters({ 
-      startDate: startOfDay, 
-      endDate: endOfDay 
+    return await this.findWithFilters({
+      startDate: startOfDay,
+      endDate: endOfDay,
     });
   }
 
   async findRecentInscriptions(days: number): Promise<Inscription[]> {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
-    
+
     return await this.findWithFilters({ startDate: cutoffDate });
   }
 
   // Implementaciones simplificadas de métodos restantes
-  async approveMultiple(inscriptionIds: string[], approverUserId: string): Promise<Inscription[]> {
+  async approveMultiple(
+    inscriptionIds: string[],
+    approverUserId: string
+  ): Promise<Inscription[]> {
     const approvedInscriptions: Inscription[] = [];
-    
+
     for (const id of inscriptionIds) {
       try {
         const inscription = await this.findById(id);
@@ -837,13 +939,13 @@ export class InscriptionRepository implements IInscriptionRepository {
         console.error(`Error approving inscription ${id}:`, error);
       }
     }
-    
+
     return approvedInscriptions;
   }
 
   async rejectMultiple(inscriptionIds: string[]): Promise<Inscription[]> {
     const rejectedInscriptions: Inscription[] = [];
-    
+
     for (const id of inscriptionIds) {
       try {
         const inscription = await this.findById(id);
@@ -856,22 +958,28 @@ export class InscriptionRepository implements IInscriptionRepository {
         console.error(`Error rejecting inscription ${id}:`, error);
       }
     }
-    
+
     return rejectedInscriptions;
   }
 
   async deleteByUser(userId: string): Promise<void> {
     await Promise.all([
       this.prisma.inscripcion.deleteMany({ where: { id_usu_ins: userId } }),
-      this.prisma.inscripcionCurso.deleteMany({ where: { id_usu_ins_cur: userId } })
+      this.prisma.inscripcionCurso.deleteMany({
+        where: { id_usu_ins_cur: userId },
+      }),
     ]);
   }
 
   async deleteByTarget(targetId: string, type: InscriptionType): Promise<void> {
-    if (type === 'EVENT') {
-      await this.prisma.inscripcion.deleteMany({ where: { id_eve_ins: targetId } });
+    if (type === "EVENT") {
+      await this.prisma.inscripcion.deleteMany({
+        where: { id_eve_ins: targetId },
+      });
     } else {
-      await this.prisma.inscripcionCurso.deleteMany({ where: { id_cur_ins: targetId } });
+      await this.prisma.inscripcionCurso.deleteMany({
+        where: { id_cur_ins: targetId },
+      });
     }
   }
 
@@ -900,16 +1008,16 @@ export class InscriptionRepository implements IInscriptionRepository {
     const [eventDeleted, courseDeleted] = await Promise.all([
       this.prisma.inscripcion.deleteMany({
         where: {
-          estado_pago: 'RECHAZADO',
-          fec_ins: { lt: cutoffDate }
-        }
+          estado_pago: "RECHAZADO",
+          fec_ins: { lt: cutoffDate },
+        },
       }),
       this.prisma.inscripcionCurso.deleteMany({
         where: {
-          estado_pago_cur: 'RECHAZADO',
-          fec_ins_cur: { lt: cutoffDate }
-        }
-      })
+          estado_pago_cur: "RECHAZADO",
+          fec_ins_cur: { lt: cutoffDate },
+        },
+      }),
     ]);
 
     return eventDeleted.count + courseDeleted.count;
@@ -926,9 +1034,11 @@ export class InscriptionRepository implements IInscriptionRepository {
       id: prismaEntity.id_ins,
       userId: prismaEntity.id_usu_ins,
       targetId: prismaEntity.id_eve_ins,
-      inscriptionType: 'EVENT',
+      inscriptionType: "EVENT",
       inscriptionDate: prismaEntity.fec_ins,
-      amount: prismaEntity.val_ins ? parseFloat(prismaEntity.val_ins.toString()) : null,
+      amount: prismaEntity.val_ins
+        ? parseFloat(prismaEntity.val_ins.toString())
+        : null,
       paymentMethod: prismaEntity.met_pag_ins,
       paymentOrderLink: prismaEntity.enl_ord_pag_ins,
       paymentStatus: prismaEntity.estado_pago,
@@ -942,7 +1052,7 @@ export class InscriptionRepository implements IInscriptionRepository {
       createdAt: prismaEntity.fec_ins,
       updatedAt: prismaEntity.fec_ins,
       user: prismaEntity.usuario,
-      event: prismaEntity.evento
+      event: prismaEntity.evento,
     };
 
     return new Inscription(inscriptionData);
@@ -953,9 +1063,11 @@ export class InscriptionRepository implements IInscriptionRepository {
       id: prismaEntity.id_ins_cur,
       userId: prismaEntity.id_usu_ins_cur,
       targetId: prismaEntity.id_cur_ins,
-      inscriptionType: 'COURSE',
+      inscriptionType: "COURSE",
       inscriptionDate: prismaEntity.fec_ins_cur,
-      amount: prismaEntity.val_ins_cur ? parseFloat(prismaEntity.val_ins_cur.toString()) : null,
+      amount: prismaEntity.val_ins_cur
+        ? parseFloat(prismaEntity.val_ins_cur.toString())
+        : null,
       paymentMethod: prismaEntity.met_pag_ins_cur,
       paymentOrderLink: prismaEntity.enl_ord_pag_ins_cur,
       paymentStatus: prismaEntity.estado_pago_cur,
@@ -969,24 +1081,24 @@ export class InscriptionRepository implements IInscriptionRepository {
       createdAt: prismaEntity.fec_ins_cur,
       updatedAt: prismaEntity.fec_ins_cur,
       user: prismaEntity.usuario,
-      course: prismaEntity.curso
+      course: prismaEntity.curso,
     };
 
     return new Inscription(inscriptionData);
   }
 
   private calculateAverageProcessingTime(inscriptions: Inscription[]): number {
-    const processedInscriptions = inscriptions.filter(ins => 
-      ins.isApproved() && ins.approvalDate && ins.inscriptionDate
+    const processedInscriptions = inscriptions.filter(
+      (ins) => ins.isApproved() && ins.approvalDate && ins.inscriptionDate
     );
 
     if (processedInscriptions.length === 0) return 0;
 
     const totalDays = processedInscriptions.reduce((sum, ins) => {
-      const daysDiff = Math.abs(
-        ins.approvalDate!.getTime() - ins.inscriptionDate.getTime()
-      ) / (1000 * 60 * 60 * 24);
-      
+      const daysDiff =
+        Math.abs(ins.approvalDate!.getTime() - ins.inscriptionDate.getTime()) /
+        (1000 * 60 * 60 * 24);
+
       return sum + daysDiff;
     }, 0);
 

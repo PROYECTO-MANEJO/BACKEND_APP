@@ -4,7 +4,7 @@
  * Servicio de dominio que maneja la lógica de negocio compleja
  * para la gestión de inscripciones a eventos y cursos.
  */
-import { Inscription, InscriptionType, PaymentMethod } from '../entities/Inscription';
+import { Inscription, InscriptionType, PaymentMethod } from "../entities/Inscription";
 export interface IInscriptionRepository {
     create(inscription: Inscription): Promise<Inscription>;
     findById(id: string): Promise<Inscription | null>;

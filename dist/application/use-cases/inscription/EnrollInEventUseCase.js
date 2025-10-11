@@ -15,10 +15,10 @@ class EnrollInEventUseCase {
         try {
             // Validaciones básicas de entrada
             if (!request.userId?.trim()) {
-                return { success: false, error: 'El ID del usuario es obligatorio' };
+                return { success: false, error: "El ID del usuario es obligatorio" };
             }
             if (!request.eventId?.trim()) {
-                return { success: false, error: 'El ID del evento es obligatorio' };
+                return { success: false, error: "El ID del evento es obligatorio" };
             }
             // Validar archivo PDF si se proporciona
             if (request.paymentProofBuffer && request.paymentProofFilename) {
@@ -28,7 +28,9 @@ class EnrollInEventUseCase {
                 catch (validationError) {
                     return {
                         success: false,
-                        error: validationError instanceof Error ? validationError.message : 'Error en validación de archivo'
+                        error: validationError instanceof Error
+                            ? validationError.message
+                            : "Error en validación de archivo",
                     };
                 }
             }
@@ -39,22 +41,24 @@ class EnrollInEventUseCase {
                 paymentMethod: request.paymentMethod,
                 motivationLetter: request.motivationLetter,
                 paymentProofBuffer: request.paymentProofBuffer,
-                paymentProofFilename: request.paymentProofFilename
+                paymentProofFilename: request.paymentProofFilename,
             });
             // Determinar mensaje de respuesta
             const message = inscription.isFree()
-                ? 'Inscripción gratuita realizada con éxito'
-                : 'Inscripción enviada. Pendiente de aprobación de pago';
+                ? "Inscripción gratuita realizada con éxito"
+                : "Inscripción enviada. Pendiente de aprobación de pago";
             return {
                 success: true,
                 inscription: inscription.toPublicObject(),
-                message
+                message,
             };
         }
         catch (error) {
             return {
                 success: false,
-                error: error instanceof Error ? error.message : 'Error desconocido al inscribir en evento'
+                error: error instanceof Error
+                    ? error.message
+                    : "Error desconocido al inscribir en evento",
             };
         }
     }

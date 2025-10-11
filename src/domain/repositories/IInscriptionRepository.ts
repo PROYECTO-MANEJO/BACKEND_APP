@@ -1,11 +1,11 @@
 /**
  * IInscriptionRepository Interface - Domain Layer
- * 
+ *
  * Interfaz que define el contrato para el repositorio de inscripciones.
  * Maneja tanto inscripciones a eventos como a cursos.
  */
 
-import { Inscription, InscriptionType } from '../entities/Inscription';
+import { Inscription, InscriptionType } from "../entities/Inscription";
 
 export interface IInscriptionRepository {
   // ✅ CRUD BÁSICO
@@ -17,8 +17,15 @@ export interface IInscriptionRepository {
 
   // ✅ CONSULTAS POR USUARIO
   findByUser(userId: string): Promise<Inscription[]>;
-  findByUserAndType(userId: string, type: InscriptionType): Promise<Inscription[]>;
-  findByUserAndTarget(userId: string, targetId: string, type: InscriptionType): Promise<Inscription | null>;
+  findByUserAndType(
+    userId: string,
+    type: InscriptionType
+  ): Promise<Inscription[]>;
+  findByUserAndTarget(
+    userId: string,
+    targetId: string,
+    type: InscriptionType
+  ): Promise<Inscription | null>;
   getUserInscriptionCount(userId: string): Promise<number>;
 
   // ✅ CONSULTAS POR EVENTO/CURSO
@@ -26,7 +33,10 @@ export interface IInscriptionRepository {
   findByEvent(eventId: string): Promise<Inscription[]>;
   findByCourse(courseId: string): Promise<Inscription[]>;
   countActiveByTarget(targetId: string, type: InscriptionType): Promise<number>;
-  countApprovedByTarget(targetId: string, type: InscriptionType): Promise<number>;
+  countApprovedByTarget(
+    targetId: string,
+    type: InscriptionType
+  ): Promise<number>;
 
   // ✅ CONSULTAS POR ESTADO DE PAGO
   findByPaymentStatus(status: string): Promise<Inscription[]>;
@@ -58,21 +68,31 @@ export interface IInscriptionRepository {
   }): Promise<Inscription[]>;
 
   // ✅ CONSULTAS CON PAGINACIÓN
-  findAllPaginated(page: number, limit: number): Promise<{
+  findAllPaginated(
+    page: number,
+    limit: number
+  ): Promise<{
     inscriptions: Inscription[];
     total: number;
     totalPages: number;
     currentPage: number;
   }>;
 
-  findByUserPaginated(userId: string, page: number, limit: number): Promise<{
+  findByUserPaginated(
+    userId: string,
+    page: number,
+    limit: number
+  ): Promise<{
     inscriptions: Inscription[];
     total: number;
     totalPages: number;
     currentPage: number;
   }>;
 
-  findPendingPaginated(page: number, limit: number): Promise<{
+  findPendingPaginated(
+    page: number,
+    limit: number
+  ): Promise<{
     inscriptions: Inscription[];
     total: number;
     totalPages: number;
@@ -80,9 +100,21 @@ export interface IInscriptionRepository {
   }>;
 
   // ✅ VALIDACIONES DE NEGOCIO
-  existsByUserAndTarget(userId: string, targetId: string, type: InscriptionType): Promise<boolean>;
-  hasActiveInscription(userId: string, targetId: string, type: InscriptionType): Promise<boolean>;
-  canEnrollInTarget(userId: string, targetId: string, type: InscriptionType): Promise<boolean>;
+  existsByUserAndTarget(
+    userId: string,
+    targetId: string,
+    type: InscriptionType
+  ): Promise<boolean>;
+  hasActiveInscription(
+    userId: string,
+    targetId: string,
+    type: InscriptionType
+  ): Promise<boolean>;
+  canEnrollInTarget(
+    userId: string,
+    targetId: string,
+    type: InscriptionType
+  ): Promise<boolean>;
 
   // ✅ ESTADÍSTICAS Y REPORTES
   getInscriptionStatistics(): Promise<{
@@ -95,7 +127,10 @@ export interface IInscriptionRepository {
     cancelledInscriptions: number;
   }>;
 
-  getTargetStatistics(targetId: string, type: InscriptionType): Promise<{
+  getTargetStatistics(
+    targetId: string,
+    type: InscriptionType
+  ): Promise<{
     totalInscriptions: number;
     approvedInscriptions: number;
     pendingInscriptions: number;
@@ -114,9 +149,18 @@ export interface IInscriptionRepository {
   }>;
 
   // ✅ CONSULTAS DE CAPACIDAD
-  getApprovedCountForTarget(targetId: string, type: InscriptionType): Promise<number>;
-  getPendingCountForTarget(targetId: string, type: InscriptionType): Promise<number>;
-  getTotalActiveCountForTarget(targetId: string, type: InscriptionType): Promise<number>;
+  getApprovedCountForTarget(
+    targetId: string,
+    type: InscriptionType
+  ): Promise<number>;
+  getPendingCountForTarget(
+    targetId: string,
+    type: InscriptionType
+  ): Promise<number>;
+  getTotalActiveCountForTarget(
+    targetId: string,
+    type: InscriptionType
+  ): Promise<number>;
 
   // ✅ CONSULTAS DE COMPROBANTES DE PAGO
   findInscriptionsWithPaymentProof(): Promise<Inscription[]>;
@@ -125,11 +169,17 @@ export interface IInscriptionRepository {
 
   // ✅ CONSULTAS ADMINISTRATIVAS
   findByApprover(approverUserId: string): Promise<Inscription[]>;
-  findApprovalsByDateRange(startDate: Date, endDate: Date): Promise<Inscription[]>;
+  findApprovalsByDateRange(
+    startDate: Date,
+    endDate: Date
+  ): Promise<Inscription[]>;
   findPendingOlderThan(days: number): Promise<Inscription[]>;
 
   // ✅ OPERACIONES EN LOTE
-  approveMultiple(inscriptionIds: string[], approverUserId: string): Promise<Inscription[]>;
+  approveMultiple(
+    inscriptionIds: string[],
+    approverUserId: string
+  ): Promise<Inscription[]>;
   rejectMultiple(inscriptionIds: string[]): Promise<Inscription[]>;
   deleteByUser(userId: string): Promise<void>;
   deleteByTarget(targetId: string, type: InscriptionType): Promise<void>;

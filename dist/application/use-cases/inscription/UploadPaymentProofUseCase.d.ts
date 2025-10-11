@@ -3,8 +3,8 @@
  *
  * Caso de uso para subir o actualizar el comprobante de pago de una inscripción.
  */
-import { InscriptionData } from '../../../domain/entities/Inscription';
-import { InscriptionManagementService } from '../../../domain/services/InscriptionManagementService';
+import { InscriptionData } from "../../../domain/entities/Inscription";
+import { InscriptionManagementService } from "../../../domain/services/InscriptionManagementService";
 export interface UploadPaymentProofRequest {
     inscriptionId: string;
     userId: string;

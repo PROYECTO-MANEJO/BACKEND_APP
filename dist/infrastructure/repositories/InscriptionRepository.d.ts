@@ -4,9 +4,9 @@
  * Implementación concreta del repositorio de inscripciones usando Prisma.
  * Maneja tanto inscripciones a eventos como a cursos.
  */
-import { PrismaClient } from '@prisma/client';
-import { Inscription, InscriptionType } from '../../domain/entities/Inscription';
-import { IInscriptionRepository } from '../../domain/repositories/IInscriptionRepository';
+import { PrismaClient } from "@prisma/client";
+import { Inscription, InscriptionType } from "../../domain/entities/Inscription";
+import { IInscriptionRepository } from "../../domain/repositories/IInscriptionRepository";
 export declare class InscriptionRepository implements IInscriptionRepository {
     private prisma;
     constructor(prisma: PrismaClient);

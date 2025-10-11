@@ -16,13 +16,13 @@ class ApproveInscriptionUseCase {
             if (!request.inscriptionId?.trim()) {
                 return {
                     success: false,
-                    error: 'El ID de la inscripción es obligatorio'
+                    error: "El ID de la inscripción es obligatorio",
                 };
             }
             if (!request.approverUserId?.trim()) {
                 return {
                     success: false,
-                    error: 'El ID del usuario aprobador es obligatorio'
+                    error: "El ID del usuario aprobador es obligatorio",
                 };
             }
             // Aprobar inscripción
@@ -30,13 +30,15 @@ class ApproveInscriptionUseCase {
             return {
                 success: true,
                 inscription: approvedInscription.toPublicObject(),
-                message: 'Inscripción aprobada exitosamente'
+                message: "Inscripción aprobada exitosamente",
             };
         }
         catch (error) {
             return {
                 success: false,
-                error: error instanceof Error ? error.message : 'Error desconocido al aprobar la inscripción'
+                error: error instanceof Error
+                    ? error.message
+                    : "Error desconocido al aprobar la inscripción",
             };
         }
     }

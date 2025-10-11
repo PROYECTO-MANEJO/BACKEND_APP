@@ -4,7 +4,7 @@
  * Interfaz que define el contrato para el repositorio de inscripciones.
  * Maneja tanto inscripciones a eventos como a cursos.
  */
-import { Inscription, InscriptionType } from '../entities/Inscription';
+import { Inscription, InscriptionType } from "../entities/Inscription";
 export interface IInscriptionRepository {
     create(inscription: Inscription): Promise<Inscription>;
     findById(id: string): Promise<Inscription | null>;

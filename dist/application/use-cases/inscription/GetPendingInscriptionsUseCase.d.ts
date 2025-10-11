@@ -3,8 +3,8 @@
  *
  * Caso de uso para obtener las inscripciones pendientes de aprobación.
  */
-import { InscriptionData } from '../../../domain/entities/Inscription';
-import { InscriptionManagementService } from '../../../domain/services/InscriptionManagementService';
+import { InscriptionData } from "../../../domain/entities/Inscription";
+import { InscriptionManagementService } from "../../../domain/services/InscriptionManagementService";
 export interface GetPendingInscriptionsRequest {
     page?: number;
     limit?: number;

@@ -3,8 +3,8 @@
  *
  * Caso de uso para inscribir un usuario en un curso.
  */
-import { InscriptionData, PaymentMethod } from '../../../domain/entities/Inscription';
-import { InscriptionManagementService } from '../../../domain/services/InscriptionManagementService';
+import { InscriptionData, PaymentMethod } from "../../../domain/entities/Inscription";
+import { InscriptionManagementService } from "../../../domain/services/InscriptionManagementService";
 export interface EnrollInCourseRequest {
     userId: string;
     courseId: string;
