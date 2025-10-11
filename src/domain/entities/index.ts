@@ -7,11 +7,34 @@
 // GitHub Entities
 export * from './github';
 
-// Administration Entities
-export * from './administration';
+// GitHub Entities
+export * from './github';
 
-// Homepage Entities
-export * from './homepage';
+// Administration Entities (with namespace to avoid conflicts)
+import * as AdminEntities from './administration';
+export { AdminEntities };
+
+// Homepage Entities (with namespace to avoid conflicts) 
+import * as HomepageEntities from './homepage';
+export { HomepageEntities };
+
+// Participation Entities (with namespace to avoid conflicts)
+import * as ParticipationEntities from './participation';
+export { ParticipationEntities };
+
+// Events Entities (with namespace to avoid conflicts)
+import * as EventEntities from './events';
+export { EventEntities };
+
+// Courses Entities (with namespace to avoid conflicts)
+import * as CourseEntities from './courses';
+export { CourseEntities };
+
+// Re-export main entities directly for convenience
+export { HomepageContent, HomepageDashboard } from './homepage';
+export { Participation, Enrollment } from './participation';
+export { Event, EventCategory } from './events';  
+export { Course, CourseCategory } from './courses';
 
 // Base Entity Types
 export interface BaseEntity {
