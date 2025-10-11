@@ -16,15 +16,15 @@ class UpdateCourseUseCase {
             if (!request.courseId?.trim()) {
                 return {
                     success: false,
-                    error: 'El ID del curso es obligatorio'
+                    error: "El ID del curso es obligatorio",
                 };
             }
             // Verificar que al menos un campo se está actualizando
-            const updateFields = Object.keys(request).filter(key => key !== 'courseId');
+            const updateFields = Object.keys(request).filter((key) => key !== "courseId");
             if (updateFields.length === 0) {
                 return {
                     success: false,
-                    error: 'Debe proporcionar al menos un campo para actualizar'
+                    error: "Debe proporcionar al menos un campo para actualizar",
                 };
             }
             // Preparar datos de actualización
@@ -51,7 +51,8 @@ class UpdateCourseUseCase {
                 updateData.capacidad_max_cur = request.capacidad_max_cur;
             }
             if (request.requiere_verificacion_docs !== undefined) {
-                updateData.requiere_verificacion_docs = request.requiere_verificacion_docs;
+                updateData.requiere_verificacion_docs =
+                    request.requiere_verificacion_docs;
             }
             if (request.es_gratuito !== undefined) {
                 updateData.es_gratuito = request.es_gratuito;
@@ -60,7 +61,8 @@ class UpdateCourseUseCase {
                 updateData.precio = request.precio;
             }
             if (request.porcentaje_asistencia_aprobacion !== undefined) {
-                updateData.porcentaje_asistencia_aprobacion = request.porcentaje_asistencia_aprobacion;
+                updateData.porcentaje_asistencia_aprobacion =
+                    request.porcentaje_asistencia_aprobacion;
             }
             if (request.nota_minima_aprobacion !== undefined) {
                 updateData.nota_minima_aprobacion = request.nota_minima_aprobacion;
@@ -69,13 +71,15 @@ class UpdateCourseUseCase {
             const updatedCourse = await this.courseManagementService.updateCourse(request.courseId, updateData);
             return {
                 success: true,
-                course: updatedCourse.toPlainObject()
+                course: updatedCourse.toPlainObject(),
             };
         }
         catch (error) {
             return {
                 success: false,
-                error: error instanceof Error ? error.message : 'Error desconocido al actualizar el curso'
+                error: error instanceof Error
+                    ? error.message
+                    : "Error desconocido al actualizar el curso",
             };
         }
     }

@@ -4,7 +4,7 @@
  * Interfaz que define el contrato para el repositorio de cursos.
  * Contiene todas las operaciones necesarias para la persistencia.
  */
-import { Course } from '../entities/Course';
+import { Course } from "../entities/Course";
 export interface ICourseRepository {
     create(course: Course): Promise<Course>;
     findById(id: string): Promise<Course | null>;

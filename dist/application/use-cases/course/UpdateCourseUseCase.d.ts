@@ -3,8 +3,8 @@
  *
  * Caso de uso para actualizar un curso existente.
  */
-import { CourseData } from '../../../domain/entities/Course';
-import { CourseManagementService } from '../../../domain/services/CourseManagementService';
+import { CourseData } from "../../../domain/entities/Course";
+import { CourseManagementService } from "../../../domain/services/CourseManagementService";
 export interface UpdateCourseRequest {
     courseId: string;
     nom_cur?: string;

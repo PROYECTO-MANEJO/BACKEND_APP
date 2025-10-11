@@ -3,8 +3,8 @@
  *
  * Caso de uso para crear un nuevo curso en el sistema.
  */
-import { CourseData } from '../../../domain/entities/Course';
-import { CourseManagementService } from '../../../domain/services/CourseManagementService';
+import { CourseData } from "../../../domain/entities/Course";
+import { CourseManagementService } from "../../../domain/services/CourseManagementService";
 export interface CreateCourseRequest {
     nom_cur: string;
     des_cur: string;

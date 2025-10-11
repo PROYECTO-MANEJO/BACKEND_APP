@@ -3,7 +3,7 @@
  *
  * Caso de uso para eliminar un curso del sistema.
  */
-import { CourseManagementService } from '../../../domain/services/CourseManagementService';
+import { CourseManagementService } from "../../../domain/services/CourseManagementService";
 export interface DeleteCourseRequest {
     courseId: string;
     organizerId: string;

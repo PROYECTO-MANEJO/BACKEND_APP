@@ -16,19 +16,19 @@ class UpdateCourseCareerIdsUseCase {
             if (!request.courseId?.trim()) {
                 return {
                     success: false,
-                    error: 'El ID del curso es obligatorio'
+                    error: "El ID del curso es obligatorio",
                 };
             }
             if (!request.organizerId?.trim()) {
                 return {
                     success: false,
-                    error: 'El ID del organizador es obligatorio'
+                    error: "El ID del organizador es obligatorio",
                 };
             }
             if (!Array.isArray(request.careerIds)) {
                 return {
                     success: false,
-                    error: 'La lista de carreras debe ser un array'
+                    error: "La lista de carreras debe ser un array",
                 };
             }
             // Validar que las carreras sean números válidos
@@ -36,7 +36,7 @@ class UpdateCourseCareerIdsUseCase {
                 if (!Number.isInteger(careerId) || careerId <= 0) {
                     return {
                         success: false,
-                        error: `ID de carrera inválido: ${careerId}`
+                        error: `ID de carrera inválido: ${careerId}`,
                     };
                 }
             }
@@ -45,13 +45,15 @@ class UpdateCourseCareerIdsUseCase {
             return {
                 success: true,
                 course: updatedCourse.toPlainObject(),
-                message: 'Carreras del curso actualizadas exitosamente'
+                message: "Carreras del curso actualizadas exitosamente",
             };
         }
         catch (error) {
             return {
                 success: false,
-                error: error instanceof Error ? error.message : 'Error desconocido al actualizar las carreras del curso'
+                error: error instanceof Error
+                    ? error.message
+                    : "Error desconocido al actualizar las carreras del curso",
             };
         }
     }

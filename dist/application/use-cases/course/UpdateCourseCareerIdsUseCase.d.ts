@@ -3,8 +3,8 @@
  *
  * Caso de uso para actualizar las carreras asociadas a un curso.
  */
-import { CourseData } from '../../../domain/entities/Course';
-import { CourseManagementService } from '../../../domain/services/CourseManagementService';
+import { CourseData } from "../../../domain/entities/Course";
+import { CourseManagementService } from "../../../domain/services/CourseManagementService";
 export interface UpdateCourseCareerIdsRequest {
     courseId: string;
     careerIds: number[];

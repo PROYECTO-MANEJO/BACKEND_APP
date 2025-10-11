@@ -3,8 +3,8 @@
  *
  * Caso de uso para cerrar un curso y generar certificados.
  */
-import { CourseData } from '../../../domain/entities/Course';
-import { CourseManagementService } from '../../../domain/services/CourseManagementService';
+import { CourseData } from "../../../domain/entities/Course";
+import { CourseManagementService } from "../../../domain/services/CourseManagementService";
 export interface CloseCourseRequest {
     courseId: string;
     organizerId: string;

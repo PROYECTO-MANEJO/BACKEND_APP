@@ -24,13 +24,13 @@ class GetAllCoursesUseCase {
                 }
                 return {
                     success: true,
-                    courses: result.courses.map(course => course.toPlainObject()),
+                    courses: result.courses.map((course) => course.toPlainObject()),
                     pagination: {
                         total: result.total,
                         totalPages: result.totalPages,
                         currentPage: result.currentPage,
-                        limit
-                    }
+                        limit,
+                    },
                 };
             }
             // Sin paginación - obtener todos con filtros
@@ -49,13 +49,15 @@ class GetAllCoursesUseCase {
             }
             return {
                 success: true,
-                courses: courses.map(course => course.toPlainObject())
+                courses: courses.map((course) => course.toPlainObject()),
             };
         }
         catch (error) {
             return {
                 success: false,
-                error: error instanceof Error ? error.message : 'Error desconocido al obtener los cursos'
+                error: error instanceof Error
+                    ? error.message
+                    : "Error desconocido al obtener los cursos",
             };
         }
     }

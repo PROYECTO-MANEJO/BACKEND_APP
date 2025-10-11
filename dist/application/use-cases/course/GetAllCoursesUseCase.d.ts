@@ -3,8 +3,8 @@
  *
  * Caso de uso para obtener todos los cursos del sistema.
  */
-import { CourseData } from '../../../domain/entities/Course';
-import { ICourseRepository } from '../../../domain/repositories/ICourseRepository';
+import { CourseData } from "../../../domain/entities/Course";
+import { ICourseRepository } from "../../../domain/repositories/ICourseRepository";
 export interface GetAllCoursesRequest {
     page?: number;
     limit?: number;

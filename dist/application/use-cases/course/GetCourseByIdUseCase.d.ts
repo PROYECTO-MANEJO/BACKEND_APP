@@ -3,8 +3,8 @@
  *
  * Caso de uso para obtener un curso específico por su ID.
  */
-import { CourseData } from '../../../domain/entities/Course';
-import { ICourseRepository } from '../../../domain/repositories/ICourseRepository';
+import { CourseData } from "../../../domain/entities/Course";
+import { ICourseRepository } from "../../../domain/repositories/ICourseRepository";
 export interface GetCourseByIdRequest {
     courseId: string;
     includeStatistics?: boolean;

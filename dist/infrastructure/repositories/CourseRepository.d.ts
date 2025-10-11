@@ -3,9 +3,9 @@
  *
  * Implementación concreta del repositorio de cursos usando Prisma.
  */
-import { PrismaClient } from '@prisma/client';
-import { Course } from '../../domain/entities/Course';
-import { ICourseRepository } from '../../domain/repositories/ICourseRepository';
+import { PrismaClient } from "@prisma/client";
+import { Course } from "../../domain/entities/Course";
+import { ICourseRepository } from "../../domain/repositories/ICourseRepository";
 export declare class CourseRepository implements ICourseRepository {
     private prisma;
     constructor(prisma: PrismaClient);

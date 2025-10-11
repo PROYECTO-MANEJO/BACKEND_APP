@@ -4,6 +4,7 @@ import { IVerificationTokenRepository } from "@domain/repositories/IVerification
 import { IEmailService } from "@domain/repositories/IEmailService";
 import { IEventRepository, ICategoryRepository } from "@domain/services/EventManagementService";
 import { ICourseRepository } from "@domain/repositories/ICourseRepository";
+import { IInscriptionRepository } from "@domain/repositories/IInscriptionRepository";
 import { AuthenticationService } from "@domain/services/AuthenticationService";
 import { VerificationService } from "@domain/services/VerificationService";
 import { PasswordRecoveryService } from "@domain/services/PasswordRecoveryService";
@@ -11,6 +12,7 @@ import { UserManagementService } from "@domain/services/UserManagementService";
 import { CareerManagementService } from "@domain/services/CareerManagementService";
 import { EventManagementService } from "@domain/services/EventManagementService";
 import { CourseManagementService } from "@domain/services/CourseManagementService";
+import { InscriptionManagementService } from "@domain/services/InscriptionManagementService";
 /**
  * Container de Inyección de Dependencias
  * Implementa DIP (Dependency Inversion Principle)
@@ -24,6 +26,7 @@ export declare class DIContainer {
     private _eventRepository;
     private _categoryRepository;
     private _courseRepository;
+    private _inscriptionRepository;
     private _verificationTokenRepository;
     private _emailService;
     private _authenticationService;
@@ -33,6 +36,7 @@ export declare class DIContainer {
     private _careerManagementService;
     private _eventManagementService;
     private _courseManagementService;
+    private _inscriptionManagementService;
     private constructor();
     static getInstance(): DIContainer;
     get prisma(): PrismaClient;
@@ -50,6 +54,8 @@ export declare class DIContainer {
     get eventManagementService(): EventManagementService;
     get courseRepository(): ICourseRepository;
     get courseManagementService(): CourseManagementService;
+    get inscriptionRepository(): IInscriptionRepository;
+    get inscriptionManagementService(): InscriptionManagementService;
     dispose(): Promise<void>;
 }
 //# sourceMappingURL=DIContainer.d.ts.map

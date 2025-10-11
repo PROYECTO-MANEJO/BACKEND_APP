@@ -4,8 +4,8 @@
  * Servicio de dominio que maneja la lógica de negocio compleja
  * para la gestión de cursos y sus operaciones.
  */
-import { Course, CourseData } from '../entities/Course';
-import { ICourseRepository } from '../repositories/ICourseRepository';
+import { Course, CourseData } from "../entities/Course";
+import { ICourseRepository } from "../repositories/ICourseRepository";
 export interface ICategoryRepository {
     findById(id: number): Promise<any | null>;
     existsById(id: number): Promise<boolean>;

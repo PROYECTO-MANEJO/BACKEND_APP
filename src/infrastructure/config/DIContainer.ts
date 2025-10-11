@@ -13,6 +13,7 @@ import {
   IEventUserRepository,
 } from "@domain/services/EventManagementService";
 import { ICourseRepository } from "@domain/repositories/ICourseRepository";
+import { IInscriptionRepository } from "@domain/repositories/IInscriptionRepository";
 
 // Repositories Implementations
 import { UserRepository } from "../database/repositories/UserRepository";
@@ -21,6 +22,7 @@ import { CareerRepository } from "../database/repositories/CareerRepository";
 import { EventRepository } from "../database/repositories/EventRepository";
 import { CategoryRepository } from "../database/repositories/CategoryRepository";
 import { CourseRepository } from "../repositories/CourseRepository";
+import { InscriptionRepository } from "../repositories/InscriptionRepository";
 
 // External Services
 import { EmailService } from "../external/email/EmailService";
@@ -33,6 +35,7 @@ import { UserManagementService } from "@domain/services/UserManagementService";
 import { CareerManagementService } from "@domain/services/CareerManagementService";
 import { EventManagementService } from "@domain/services/EventManagementService";
 import { CourseManagementService } from "@domain/services/CourseManagementService";
+import { InscriptionManagementService } from "@domain/services/InscriptionManagementService";
 /**
  * Container de Inyección de Dependencias
  * Implementa DIP (Dependency Inversion Principle)
@@ -48,6 +51,7 @@ export class DIContainer {
   private _eventRepository: IEventRepository;
   private _categoryRepository: ICategoryRepository;
   private _courseRepository: ICourseRepository;
+  private _inscriptionRepository: IInscriptionRepository;
   private _verificationTokenRepository: IVerificationTokenRepository;
   private _emailService: IEmailService;
 
@@ -59,6 +63,7 @@ export class DIContainer {
   private _careerManagementService: CareerManagementService;
   private _eventManagementService: EventManagementService;
   private _courseManagementService: CourseManagementService;
+  private _inscriptionManagementService: InscriptionManagementService;
   private constructor() {
     // Initialize infrastructure
     this._prisma = new PrismaClient();
@@ -67,6 +72,7 @@ export class DIContainer {
     this._eventRepository = new EventRepository(this._prisma);
     this._categoryRepository = new CategoryRepository(this._prisma);
     this._courseRepository = new CourseRepository(this._prisma);
+    this._inscriptionRepository = new InscriptionRepository(this._prisma);
     this._verificationTokenRepository = new VerificationTokenRepository(
       this._prisma
     );
@@ -158,6 +164,56 @@ export class DIContainer {
       courseUserRepository,
       courseCareerRepository
     );
+
+    // Adaptadores para InscriptionManagementService
+    const inscriptionEventRepository = {
+      findById: (id: string) => this._eventRepository.findById(id),
+      hasAvailableCapacity: async (eventId: string) => {
+        // Implementación simplificada - se puede refinar según reglas de negocio
+        const event = await this._eventRepository.findById(eventId);
+        if (!event) return false;
+        
+        // Verificar si el evento tiene cupo disponible
+        // Por ahora asumimos que todos los eventos activos tienen cupo
+        return event.isActive();
+      }
+    };
+
+    const inscriptionCourseRepository = {
+      findById: (id: string) => this._courseRepository.findById(id),
+      hasAvailableCapacity: async (courseId: string) => {
+        // Implementación simplificada - se puede refinar según reglas de negocio
+        const course = await this._courseRepository.findById(courseId);
+        if (!course) return false;
+        
+        // Verificar si el curso tiene cupo disponible
+        // Por ahora asumimos que todos los cursos activos tienen cupo
+        return course.isActive();
+      }
+    };
+
+    const inscriptionUserRepository = {
+      findById: async (id: string) => {
+        // Convertir string ID a número si es necesario
+        const numericId = parseInt(id);
+        if (isNaN(numericId)) return null;
+        return await this._userRepository.findById(numericId);
+      },
+      exists: async (id: string) => {
+        const numericId = parseInt(id);
+        if (isNaN(numericId)) return false;
+        const user = await this._userRepository.findById(numericId);
+        return user !== null;
+      }
+    };
+
+    // Inicializar servicio de gestión de inscripciones
+    this._inscriptionManagementService = new InscriptionManagementService(
+      this._inscriptionRepository,
+      inscriptionEventRepository,
+      inscriptionCourseRepository,
+      inscriptionUserRepository
+    );
   }
 
   public static getInstance(): DIContainer {
@@ -226,6 +282,14 @@ export class DIContainer {
 
   public get courseManagementService(): CourseManagementService {
     return this._courseManagementService;
+  }
+
+  public get inscriptionRepository(): IInscriptionRepository {
+    return this._inscriptionRepository;
+  }
+
+  public get inscriptionManagementService(): InscriptionManagementService {
+    return this._inscriptionManagementService;
   }
 
   public async dispose(): Promise<void> {

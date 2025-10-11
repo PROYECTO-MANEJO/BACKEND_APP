@@ -9,6 +9,7 @@ const CareerRepository_1 = require("../database/repositories/CareerRepository");
 const EventRepository_1 = require("../database/repositories/EventRepository");
 const CategoryRepository_1 = require("../database/repositories/CategoryRepository");
 const CourseRepository_1 = require("../repositories/CourseRepository");
+const InscriptionRepository_1 = require("../repositories/InscriptionRepository");
 // External Services
 const EmailService_1 = require("../external/email/EmailService");
 // Domain Services
@@ -19,6 +20,7 @@ const UserManagementService_1 = require("@domain/services/UserManagementService"
 const CareerManagementService_1 = require("@domain/services/CareerManagementService");
 const EventManagementService_1 = require("@domain/services/EventManagementService");
 const CourseManagementService_1 = require("@domain/services/CourseManagementService");
+const InscriptionManagementService_1 = require("@domain/services/InscriptionManagementService");
 /**
  * Container de Inyección de Dependencias
  * Implementa DIP (Dependency Inversion Principle)
@@ -33,6 +35,7 @@ class DIContainer {
         this._eventRepository = new EventRepository_1.EventRepository(this._prisma);
         this._categoryRepository = new CategoryRepository_1.CategoryRepository(this._prisma);
         this._courseRepository = new CourseRepository_1.CourseRepository(this._prisma);
+        this._inscriptionRepository = new InscriptionRepository_1.InscriptionRepository(this._prisma);
         this._verificationTokenRepository = new VerificationTokenRepository_1.VerificationTokenRepository(this._prisma);
         this._emailService = new EmailService_1.EmailService();
         // Initialize domain services
@@ -68,11 +71,11 @@ class DIContainer {
             findByCareer: async (careerId) => {
                 // Implementación simplificada - en el futuro se puede extender
                 return [];
-            }
+            },
         };
         const courseCategoryRepository = {
             findById: (id) => this._categoryRepository.findById(id),
-            existsById: (id) => this._categoryRepository.existsById(id)
+            existsById: (id) => this._categoryRepository.existsById(id),
         };
         const courseCareerRepository = {
             exists: async (id) => {
@@ -87,10 +90,53 @@ class DIContainer {
                         careers.push(career);
                 }
                 return careers;
-            }
+            },
         };
         // Inicializar servicio de gestión de cursos
         this._courseManagementService = new CourseManagementService_1.CourseManagementService(this._courseRepository, courseCategoryRepository, courseUserRepository, courseCareerRepository);
+        // Adaptadores para InscriptionManagementService
+        const inscriptionEventRepository = {
+            findById: (id) => this._eventRepository.findById(id),
+            hasAvailableCapacity: async (eventId) => {
+                // Implementación simplificada - se puede refinar según reglas de negocio
+                const event = await this._eventRepository.findById(eventId);
+                if (!event)
+                    return false;
+                // Verificar si el evento tiene cupo disponible
+                // Por ahora asumimos que todos los eventos activos tienen cupo
+                return event.isActive();
+            }
+        };
+        const inscriptionCourseRepository = {
+            findById: (id) => this._courseRepository.findById(id),
+            hasAvailableCapacity: async (courseId) => {
+                // Implementación simplificada - se puede refinar según reglas de negocio
+                const course = await this._courseRepository.findById(courseId);
+                if (!course)
+                    return false;
+                // Verificar si el curso tiene cupo disponible
+                // Por ahora asumimos que todos los cursos activos tienen cupo
+                return course.isActive();
+            }
+        };
+        const inscriptionUserRepository = {
+            findById: async (id) => {
+                // Convertir string ID a número si es necesario
+                const numericId = parseInt(id);
+                if (isNaN(numericId))
+                    return null;
+                return await this._userRepository.findById(numericId);
+            },
+            exists: async (id) => {
+                const numericId = parseInt(id);
+                if (isNaN(numericId))
+                    return false;
+                const user = await this._userRepository.findById(numericId);
+                return user !== null;
+            }
+        };
+        // Inicializar servicio de gestión de inscripciones
+        this._inscriptionManagementService = new InscriptionManagementService_1.InscriptionManagementService(this._inscriptionRepository, inscriptionEventRepository, inscriptionCourseRepository, inscriptionUserRepository);
     }
     static getInstance() {
         if (!DIContainer.instance) {
@@ -143,6 +189,12 @@ class DIContainer {
     }
     get courseManagementService() {
         return this._courseManagementService;
+    }
+    get inscriptionRepository() {
+        return this._inscriptionRepository;
+    }
+    get inscriptionManagementService() {
+        return this._inscriptionManagementService;
     }
     async dispose() {
         await this._prisma.$disconnect();

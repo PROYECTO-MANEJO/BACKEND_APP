@@ -16,7 +16,7 @@ class GetCourseByIdUseCase {
             if (!request.courseId?.trim()) {
                 return {
                     success: false,
-                    error: 'El ID del curso es obligatorio'
+                    error: "El ID del curso es obligatorio",
                 };
             }
             // Buscar el curso
@@ -24,12 +24,12 @@ class GetCourseByIdUseCase {
             if (!course) {
                 return {
                     success: false,
-                    error: 'Curso no encontrado'
+                    error: "Curso no encontrado",
                 };
             }
             const response = {
                 success: true,
-                course: course.toPlainObject()
+                course: course.toPlainObject(),
             };
             // Incluir estadísticas si se solicita
             if (request.includeStatistics) {
@@ -41,7 +41,7 @@ class GetCourseByIdUseCase {
                     enrolledCount,
                     availableSpots,
                     capacityPercentage: Math.round(capacityPercentage * 100) / 100,
-                    canEnroll
+                    canEnroll,
                 };
             }
             return response;
@@ -49,7 +49,9 @@ class GetCourseByIdUseCase {
         catch (error) {
             return {
                 success: false,
-                error: error instanceof Error ? error.message : 'Error desconocido al obtener el curso'
+                error: error instanceof Error
+                    ? error.message
+                    : "Error desconocido al obtener el curso",
             };
         }
     }

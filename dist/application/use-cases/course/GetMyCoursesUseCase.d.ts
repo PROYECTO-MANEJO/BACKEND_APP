@@ -3,11 +3,11 @@
  *
  * Caso de uso para obtener los cursos de un usuario específico.
  */
-import { CourseData } from '../../../domain/entities/Course';
-import { CourseManagementService } from '../../../domain/services/CourseManagementService';
+import { CourseData } from "../../../domain/entities/Course";
+import { CourseManagementService } from "../../../domain/services/CourseManagementService";
 export interface GetMyCoursesRequest {
     userId: string;
-    status?: 'upcoming' | 'in-progress' | 'finished' | 'all';
+    status?: "upcoming" | "in-progress" | "finished" | "all";
 }
 export interface GetMyCoursesResponse {
     success: boolean;

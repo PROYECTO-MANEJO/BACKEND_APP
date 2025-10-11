@@ -14,13 +14,16 @@ class CreateCourseUseCase {
         try {
             // Validaciones básicas de entrada
             if (!request.nom_cur?.trim()) {
-                return { success: false, error: 'El nombre del curso es obligatorio' };
+                return { success: false, error: "El nombre del curso es obligatorio" };
             }
             if (!request.ced_org_cur?.trim()) {
-                return { success: false, error: 'El organizador es obligatorio' };
+                return { success: false, error: "El organizador es obligatorio" };
             }
             if (!request.fec_ini_cur || !request.fec_fin_cur) {
-                return { success: false, error: 'Las fechas de inicio y fin son obligatorias' };
+                return {
+                    success: false,
+                    error: "Las fechas de inicio y fin son obligatorias",
+                };
             }
             // Convertir request a CourseData
             const courseData = {
@@ -38,19 +41,21 @@ class CreateCourseUseCase {
                 precio: request.precio,
                 porcentaje_asistencia_aprobacion: request.porcentaje_asistencia_aprobacion,
                 nota_minima_aprobacion: request.nota_minima_aprobacion,
-                carreras: request.carreras
+                carreras: request.carreras,
             };
             // Ejecutar lógica de negocio
             const course = await this.courseManagementService.createCourse(courseData);
             return {
                 success: true,
-                course: course.toPlainObject()
+                course: course.toPlainObject(),
             };
         }
         catch (error) {
             return {
                 success: false,
-                error: error instanceof Error ? error.message : 'Error desconocido al crear el curso'
+                error: error instanceof Error
+                    ? error.message
+                    : "Error desconocido al crear el curso",
             };
         }
     }

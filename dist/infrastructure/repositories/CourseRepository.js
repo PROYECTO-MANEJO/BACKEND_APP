@@ -27,20 +27,22 @@ class CourseRepository {
                 tipo_audiencia_cur: courseData.tipo_audiencia_cur,
                 requiere_verificacion_docs: courseData.requiere_verificacion_docs,
                 es_gratuito: courseData.es_gratuito,
-                precio: courseData.precio ? parseFloat(courseData.precio.toString()) : null,
+                precio: courseData.precio
+                    ? parseFloat(courseData.precio.toString())
+                    : null,
                 porcentaje_asistencia_aprobacion: courseData.porcentaje_asistencia_aprobacion,
                 nota_minima_aprobacion: parseFloat(courseData.nota_minima_aprobacion.toString()),
-                estado: courseData.estado_cur || 'ACTIVO',
+                estado: courseData.estado_cur || "ACTIVO",
             },
             include: {
                 categoria: true,
                 organizador: true,
                 cursosPorCarrera: {
                     include: {
-                        carrera: true
-                    }
-                }
-            }
+                        carrera: true,
+                    },
+                },
+            },
         });
         return this.toDomainEntity(created);
     }
@@ -52,15 +54,15 @@ class CourseRepository {
                 organizador: true,
                 cursosPorCarrera: {
                     include: {
-                        carrera: true
-                    }
+                        carrera: true,
+                    },
                 },
                 inscripcionesCurso: {
                     include: {
-                        usuario: true
-                    }
-                }
-            }
+                        usuario: true,
+                    },
+                },
+            },
         });
         return curso ? this.toDomainEntity(curso) : null;
     }
@@ -71,13 +73,13 @@ class CourseRepository {
                 organizador: true,
                 cursosPorCarrera: {
                     include: {
-                        carrera: true
-                    }
-                }
+                        carrera: true,
+                    },
+                },
             },
-            orderBy: { fec_ini_cur: 'asc' }
+            orderBy: { fec_ini_cur: "asc" },
         });
-        return cursos.map(curso => this.toDomainEntity(curso));
+        return cursos.map((curso) => this.toDomainEntity(curso));
     }
     async update(id, course) {
         const courseData = course.toPlainObject();
@@ -93,7 +95,9 @@ class CourseRepository {
                 capacidad_max_cur: courseData.capacidad_max_cur,
                 requiere_verificacion_docs: courseData.requiere_verificacion_docs,
                 es_gratuito: courseData.es_gratuito,
-                precio: courseData.precio ? parseFloat(courseData.precio.toString()) : null,
+                precio: courseData.precio
+                    ? parseFloat(courseData.precio.toString())
+                    : null,
                 porcentaje_asistencia_aprobacion: courseData.porcentaje_asistencia_aprobacion,
                 nota_minima_aprobacion: parseFloat(courseData.nota_minima_aprobacion.toString()),
                 estado: courseData.estado_cur,
@@ -103,10 +107,10 @@ class CourseRepository {
                 organizador: true,
                 cursosPorCarrera: {
                     include: {
-                        carrera: true
-                    }
-                }
-            }
+                        carrera: true,
+                    },
+                },
+            },
         });
         return this.toDomainEntity(updated);
     }
@@ -114,15 +118,15 @@ class CourseRepository {
         await this.prisma.$transaction(async (tx) => {
             // Eliminar relaciones primero
             await tx.cursoPorCarrera.deleteMany({
-                where: { id_cur_per: id }
+                where: { id_cur_per: id },
             });
             // Eliminar inscripciones
             await tx.inscripcionCurso.deleteMany({
-                where: { id_cur_ins: id }
+                where: { id_cur_ins: id },
             });
             // Eliminar el curso
             await tx.curso.delete({
-                where: { id_cur: id }
+                where: { id_cur: id },
             });
         });
     }
@@ -135,13 +139,13 @@ class CourseRepository {
                 organizador: true,
                 cursosPorCarrera: {
                     include: {
-                        carrera: true
-                    }
-                }
+                        carrera: true,
+                    },
+                },
             },
-            orderBy: { fec_ini_cur: 'asc' }
+            orderBy: { fec_ini_cur: "asc" },
         });
-        return cursos.map(curso => this.toDomainEntity(curso));
+        return cursos.map((curso) => this.toDomainEntity(curso));
     }
     async findByCategory(categoryId) {
         const cursos = await this.prisma.curso.findMany({
@@ -151,13 +155,13 @@ class CourseRepository {
                 organizador: true,
                 cursosPorCarrera: {
                     include: {
-                        carrera: true
-                    }
-                }
+                        carrera: true,
+                    },
+                },
             },
-            orderBy: { fec_ini_cur: 'asc' }
+            orderBy: { fec_ini_cur: "asc" },
         });
-        return cursos.map(curso => this.toDomainEntity(curso));
+        return cursos.map((curso) => this.toDomainEntity(curso));
     }
     async findByStatus(status) {
         const cursos = await this.prisma.curso.findMany({
@@ -167,76 +171,74 @@ class CourseRepository {
                 organizador: true,
                 cursosPorCarrera: {
                     include: {
-                        carrera: true
-                    }
-                }
+                        carrera: true,
+                    },
+                },
             },
-            orderBy: { fec_ini_cur: 'asc' }
+            orderBy: { fec_ini_cur: "asc" },
         });
-        return cursos.map(curso => this.toDomainEntity(curso));
+        return cursos.map((curso) => this.toDomainEntity(curso));
     }
     async findByDateRange(startDate, endDate) {
         const cursos = await this.prisma.curso.findMany({
             where: {
                 AND: [
                     { fec_ini_cur: { gte: startDate } },
-                    { fec_fin_cur: { lte: endDate } }
-                ]
+                    { fec_fin_cur: { lte: endDate } },
+                ],
             },
             include: {
                 categoria: true,
                 organizador: true,
                 cursosPorCarrera: {
                     include: {
-                        carrera: true
-                    }
-                }
+                        carrera: true,
+                    },
+                },
             },
-            orderBy: { fec_ini_cur: 'asc' }
+            orderBy: { fec_ini_cur: "asc" },
         });
-        return cursos.map(curso => this.toDomainEntity(curso));
+        return cursos.map((curso) => this.toDomainEntity(curso));
     }
     // ✅ CONSULTAS ESPECIALIZADAS
     async findAvailableCourses(userId) {
         const now = new Date();
         let whereClause = {
             AND: [
-                { estado: 'ACTIVO' },
-                { fec_ini_cur: { gt: now } } // Solo cursos futuros
-            ]
+                { estado: "ACTIVO" },
+                { fec_ini_cur: { gt: now } }, // Solo cursos futuros
+            ],
         };
         // Si hay usuario, filtrar por eligibilidad
         if (userId) {
             const usuario = await this.prisma.usuario.findUnique({
                 where: { id_usu: userId },
-                select: { id_car_per: true }
+                select: { id_car_per: true },
             });
             if (usuario?.id_car_per) {
                 whereClause.OR = [
-                    { tipo_audiencia_cur: 'PUBLICO_GENERAL' },
-                    { tipo_audiencia_cur: 'TODAS_CARRERAS' },
+                    { tipo_audiencia_cur: "PUBLICO_GENERAL" },
+                    { tipo_audiencia_cur: "TODAS_CARRERAS" },
                     {
                         AND: [
-                            { tipo_audiencia_cur: 'CARRERA_ESPECIFICA' },
+                            { tipo_audiencia_cur: "CARRERA_ESPECIFICA" },
                             {
                                 cursosPorCarrera: {
-                                    some: { id_car_per: usuario.id_car_per }
-                                }
-                            }
-                        ]
-                    }
+                                    some: { id_car_per: usuario.id_car_per },
+                                },
+                            },
+                        ],
+                    },
                 ];
             }
             else {
                 // Usuario sin carrera solo puede ver cursos públicos
-                whereClause.OR = [
-                    { tipo_audiencia_cur: 'PUBLICO_GENERAL' }
-                ];
+                whereClause.OR = [{ tipo_audiencia_cur: "PUBLICO_GENERAL" }];
             }
         }
         else {
             // Sin usuario solo cursos públicos
-            whereClause.tipo_audiencia_cur = 'PUBLICO_GENERAL';
+            whereClause.tipo_audiencia_cur = "PUBLICO_GENERAL";
         }
         const cursos = await this.prisma.curso.findMany({
             where: whereClause,
@@ -245,13 +247,13 @@ class CourseRepository {
                 organizador: true,
                 cursosPorCarrera: {
                     include: {
-                        carrera: true
-                    }
-                }
+                        carrera: true,
+                    },
+                },
             },
-            orderBy: { fec_ini_cur: 'asc' }
+            orderBy: { fec_ini_cur: "asc" },
         });
-        return cursos.map(curso => this.toDomainEntity(curso));
+        return cursos.map((curso) => this.toDomainEntity(curso));
     }
     async findUserCourses(userId) {
         const cursos = await this.prisma.curso.findMany({
@@ -259,118 +261,112 @@ class CourseRepository {
                 inscripcionesCurso: {
                     some: {
                         id_usu_ins_cur: userId,
-                        estado_pago_cur: 'APROBADO'
-                    }
-                }
+                        estado_pago_cur: "APROBADO",
+                    },
+                },
             },
             include: {
                 categoria: true,
                 organizador: true,
                 cursosPorCarrera: {
                     include: {
-                        carrera: true
-                    }
-                }
+                        carrera: true,
+                    },
+                },
             },
-            orderBy: { fec_ini_cur: 'asc' }
+            orderBy: { fec_ini_cur: "asc" },
         });
-        return cursos.map(curso => this.toDomainEntity(curso));
+        return cursos.map((curso) => this.toDomainEntity(curso));
     }
     async findActiveByDateRange(startDate, endDate) {
         const cursos = await this.prisma.curso.findMany({
             where: {
                 AND: [
-                    { estado: 'ACTIVO' },
+                    { estado: "ACTIVO" },
                     { fec_ini_cur: { gte: startDate } },
-                    { fec_fin_cur: { lte: endDate } }
-                ]
+                    { fec_fin_cur: { lte: endDate } },
+                ],
             },
             include: {
                 categoria: true,
                 organizador: true,
                 cursosPorCarrera: {
                     include: {
-                        carrera: true
-                    }
-                }
+                        carrera: true,
+                    },
+                },
             },
-            orderBy: { fec_ini_cur: 'asc' }
+            orderBy: { fec_ini_cur: "asc" },
         });
-        return cursos.map(curso => this.toDomainEntity(curso));
+        return cursos.map((curso) => this.toDomainEntity(curso));
     }
     async findUpcomingCourses() {
         const now = new Date();
         const cursos = await this.prisma.curso.findMany({
             where: {
-                AND: [
-                    { estado: 'ACTIVO' },
-                    { fec_ini_cur: { gt: now } }
-                ]
+                AND: [{ estado: "ACTIVO" }, { fec_ini_cur: { gt: now } }],
             },
             include: {
                 categoria: true,
                 organizador: true,
                 cursosPorCarrera: {
                     include: {
-                        carrera: true
-                    }
-                }
+                        carrera: true,
+                    },
+                },
             },
-            orderBy: { fec_ini_cur: 'asc' }
+            orderBy: { fec_ini_cur: "asc" },
         });
-        return cursos.map(curso => this.toDomainEntity(curso));
+        return cursos.map((curso) => this.toDomainEntity(curso));
     }
     async findInProgressCourses() {
         const now = new Date();
         const cursos = await this.prisma.curso.findMany({
             where: {
                 AND: [
-                    { estado: 'ACTIVO' },
+                    { estado: "ACTIVO" },
                     { fec_ini_cur: { lte: now } },
-                    { fec_fin_cur: { gte: now } }
-                ]
+                    { fec_fin_cur: { gte: now } },
+                ],
             },
             include: {
                 categoria: true,
                 organizador: true,
                 cursosPorCarrera: {
                     include: {
-                        carrera: true
-                    }
-                }
+                        carrera: true,
+                    },
+                },
             },
-            orderBy: { fec_ini_cur: 'asc' }
+            orderBy: { fec_ini_cur: "asc" },
         });
-        return cursos.map(curso => this.toDomainEntity(curso));
+        return cursos.map((curso) => this.toDomainEntity(curso));
     }
     async findFinishedCourses() {
         const cursos = await this.prisma.curso.findMany({
             where: {
-                OR: [
-                    { estado: 'CERRADO' },
-                    { estado: 'FINALIZADO' }
-                ]
+                OR: [{ estado: "CERRADO" }, { estado: "FINALIZADO" }],
             },
             include: {
                 categoria: true,
                 organizador: true,
                 cursosPorCarrera: {
                     include: {
-                        carrera: true
-                    }
-                }
+                        carrera: true,
+                    },
+                },
             },
-            orderBy: { fec_fin_cur: 'desc' }
+            orderBy: { fec_fin_cur: "desc" },
         });
-        return cursos.map(curso => this.toDomainEntity(curso));
+        return cursos.map((curso) => this.toDomainEntity(curso));
     }
     // ✅ CONSULTAS DE INSCRIPCIONES Y CAPACIDAD
     async getEnrolledCount(courseId) {
         const count = await this.prisma.inscripcionCurso.count({
             where: {
                 id_cur_ins: courseId,
-                estado_pago_cur: 'APROBADO'
-            }
+                estado_pago_cur: "APROBADO",
+            },
         });
         return count;
     }
@@ -379,15 +375,15 @@ class CourseRepository {
             where: {
                 id_cur_ins: courseId,
                 id_usu_ins_cur: userId,
-                estado_pago_cur: 'APROBADO'
-            }
+                estado_pago_cur: "APROBADO",
+            },
         });
         return !!inscription;
     }
     async hasAvailableCapacity(courseId) {
         const course = await this.prisma.curso.findUnique({
             where: { id_cur: courseId },
-            select: { capacidad_max_cur: true }
+            select: { capacidad_max_cur: true },
         });
         if (!course)
             return false;
@@ -398,96 +394,96 @@ class CourseRepository {
         const inscripciones = await this.prisma.inscripcionCurso.findMany({
             where: {
                 id_cur_ins: courseId,
-                estado_pago_cur: 'APROBADO'
+                estado_pago_cur: "APROBADO",
             },
             include: {
-                usuario: true
-            }
+                usuario: true,
+            },
         });
-        return inscripciones.map(ins => ins.usuario);
+        return inscripciones.map((ins) => ins.usuario);
     }
     // ✅ GESTIÓN DE CARRERAS
     async getCourseCareerIds(courseId) {
         const cursoCarreras = await this.prisma.cursoPorCarrera.findMany({
             where: { id_cur_per: courseId },
-            include: { carrera: true }
+            include: { carrera: true },
         });
-        // Nota: Aquí asumo que la carrera tiene un campo numérico id_carrera 
+        // Nota: Aquí asumo que la carrera tiene un campo numérico id_carrera
         // Si no existe, necesitaríamos ajustar el esquema
-        return cursoCarreras.map(cc => parseInt(cc.carrera.id_car) || 0);
+        return cursoCarreras.map((cc) => parseInt(cc.carrera.id_car) || 0);
     }
     async updateCourseCareerIds(courseId, careerIds) {
         await this.prisma.$transaction(async (tx) => {
             // Eliminar carreras existentes
             await tx.cursoPorCarrera.deleteMany({
-                where: { id_cur_per: courseId }
+                where: { id_cur_per: courseId },
             });
             // Agregar nuevas carreras
             if (careerIds.length > 0) {
                 await tx.cursoPorCarrera.createMany({
-                    data: careerIds.map(careerId => ({
+                    data: careerIds.map((careerId) => ({
                         id_cur_per: courseId,
-                        id_car_per: careerId.toString() // Convertir a UUID string
-                    }))
+                        id_car_per: careerId.toString(), // Convertir a UUID string
+                    })),
                 });
             }
         });
     }
     async findByCareerIds(careerIds) {
-        const careerUuids = careerIds.map(id => id.toString());
+        const careerUuids = careerIds.map((id) => id.toString());
         const cursos = await this.prisma.curso.findMany({
             where: {
                 cursosPorCarrera: {
                     some: {
-                        id_car_per: { in: careerUuids }
-                    }
-                }
+                        id_car_per: { in: careerUuids },
+                    },
+                },
             },
             include: {
                 categoria: true,
                 organizador: true,
                 cursosPorCarrera: {
                     include: {
-                        carrera: true
-                    }
-                }
+                        carrera: true,
+                    },
+                },
             },
-            orderBy: { fec_ini_cur: 'asc' }
+            orderBy: { fec_ini_cur: "asc" },
         });
-        return cursos.map(curso => this.toDomainEntity(curso));
+        return cursos.map((curso) => this.toDomainEntity(curso));
     }
     // ✅ VALIDACIONES DE NEGOCIO
     async findConflictingCourses(organizerId, startDate, endDate, excludeCourseId) {
         const whereClause = {
             AND: [
                 { ced_org_cur: organizerId },
-                { estado: 'ACTIVO' },
+                { estado: "ACTIVO" },
                 {
                     OR: [
                         // Curso que inicia durante el rango
                         {
                             AND: [
                                 { fec_ini_cur: { gte: startDate } },
-                                { fec_ini_cur: { lte: endDate } }
-                            ]
+                                { fec_ini_cur: { lte: endDate } },
+                            ],
                         },
                         // Curso que termina durante el rango
                         {
                             AND: [
                                 { fec_fin_cur: { gte: startDate } },
-                                { fec_fin_cur: { lte: endDate } }
-                            ]
+                                { fec_fin_cur: { lte: endDate } },
+                            ],
                         },
                         // Curso que abarca todo el rango
                         {
                             AND: [
                                 { fec_ini_cur: { lte: startDate } },
-                                { fec_fin_cur: { gte: endDate } }
-                            ]
-                        }
-                    ]
-                }
-            ]
+                                { fec_fin_cur: { gte: endDate } },
+                            ],
+                        },
+                    ],
+                },
+            ],
         };
         if (excludeCourseId) {
             whereClause.AND.push({ id_cur: { not: excludeCourseId } });
@@ -499,28 +495,28 @@ class CourseRepository {
                 organizador: true,
                 cursosPorCarrera: {
                     include: {
-                        carrera: true
-                    }
-                }
-            }
+                        carrera: true,
+                    },
+                },
+            },
         });
-        return cursos.map(curso => this.toDomainEntity(curso));
+        return cursos.map((curso) => this.toDomainEntity(curso));
     }
     async existsById(id) {
         const curso = await this.prisma.curso.findUnique({
             where: { id_cur: id },
-            select: { id_cur: true }
+            select: { id_cur: true },
         });
         return !!curso;
     }
     async countByOrganizer(organizerId) {
         return await this.prisma.curso.count({
-            where: { ced_org_cur: organizerId }
+            where: { ced_org_cur: organizerId },
         });
     }
     async countByCategory(categoryId) {
         return await this.prisma.curso.count({
-            where: { id_cat_cur: categoryId.toString() }
+            where: { id_cat_cur: categoryId.toString() },
         });
     }
     // ✅ CONSULTAS CON PAGINACIÓN
@@ -535,19 +531,19 @@ class CourseRepository {
                     organizador: true,
                     cursosPorCarrera: {
                         include: {
-                            carrera: true
-                        }
-                    }
+                            carrera: true,
+                        },
+                    },
                 },
-                orderBy: { fec_ini_cur: 'asc' }
+                orderBy: { fec_ini_cur: "asc" },
             }),
-            this.prisma.curso.count()
+            this.prisma.curso.count(),
         ]);
         return {
-            courses: cursos.map(curso => this.toDomainEntity(curso)),
+            courses: cursos.map((curso) => this.toDomainEntity(curso)),
             total,
             totalPages: Math.ceil(total / limit),
-            currentPage: page
+            currentPage: page,
         };
     }
     async findByOrganizerPaginated(organizerId, page, limit) {
@@ -562,21 +558,21 @@ class CourseRepository {
                     organizador: true,
                     cursosPorCarrera: {
                         include: {
-                            carrera: true
-                        }
-                    }
+                            carrera: true,
+                        },
+                    },
                 },
-                orderBy: { fec_ini_cur: 'asc' }
+                orderBy: { fec_ini_cur: "asc" },
             }),
             this.prisma.curso.count({
-                where: { ced_org_cur: organizerId }
-            })
+                where: { ced_org_cur: organizerId },
+            }),
         ]);
         return {
-            courses: cursos.map(curso => this.toDomainEntity(curso)),
+            courses: cursos.map((curso) => this.toDomainEntity(curso)),
             total,
             totalPages: Math.ceil(total / limit),
-            currentPage: page
+            currentPage: page,
         };
     }
     // ✅ CONSULTAS CON FILTROS AVANZADOS
@@ -608,8 +604,8 @@ class CourseRepository {
         }
         if (filters.searchTerm) {
             whereClause.OR = [
-                { nom_cur: { contains: filters.searchTerm, mode: 'insensitive' } },
-                { des_cur: { contains: filters.searchTerm, mode: 'insensitive' } }
+                { nom_cur: { contains: filters.searchTerm, mode: "insensitive" } },
+                { des_cur: { contains: filters.searchTerm, mode: "insensitive" } },
             ];
         }
         const cursos = await this.prisma.curso.findMany({
@@ -619,28 +615,27 @@ class CourseRepository {
                 organizador: true,
                 cursosPorCarrera: {
                     include: {
-                        carrera: true
-                    }
-                }
+                        carrera: true,
+                    },
+                },
             },
-            orderBy: { fec_ini_cur: 'asc' }
+            orderBy: { fec_ini_cur: "asc" },
         });
-        return cursos.map(curso => this.toDomainEntity(curso));
+        return cursos.map((curso) => this.toDomainEntity(curso));
     }
     // ✅ ESTADÍSTICAS Y REPORTES
     async getStatistics() {
-        const [totalCourses, activeCourses, finishedCourses, totalEnrollments, capacityData] = await Promise.all([
+        const [totalCourses, activeCourses, finishedCourses, totalEnrollments, capacityData,] = await Promise.all([
             this.prisma.curso.count(),
-            this.prisma.curso.count({ where: { estado: 'ACTIVO' } }),
+            this.prisma.curso.count({ where: { estado: "ACTIVO" } }),
             this.prisma.curso.count({
                 where: {
-                    OR: [
-                        { estado: 'CERRADO' },
-                        { estado: 'FINALIZADO' }
-                    ]
-                }
+                    OR: [{ estado: "CERRADO" }, { estado: "FINALIZADO" }],
+                },
             }),
-            this.prisma.inscripcionCurso.count({ where: { estado_pago_cur: 'APROBADO' } }),
+            this.prisma.inscripcionCurso.count({
+                where: { estado_pago_cur: "APROBADO" },
+            }),
             this.prisma.curso.findMany({
                 select: {
                     id_cur: true,
@@ -648,16 +643,16 @@ class CourseRepository {
                     _count: {
                         select: {
                             inscripcionesCurso: {
-                                where: { estado_pago_cur: 'APROBADO' }
-                            }
-                        }
-                    }
-                }
-            })
+                                where: { estado_pago_cur: "APROBADO" },
+                            },
+                        },
+                    },
+                },
+            }),
         ]);
         let totalCapacity = 0;
         let totalUsed = 0;
-        capacityData.forEach(course => {
+        capacityData.forEach((course) => {
             totalCapacity += course.capacidad_max_cur;
             totalUsed += course._count.inscripcionesCurso;
         });
@@ -667,7 +662,7 @@ class CourseRepository {
             activeCourses,
             finishedCourses,
             totalEnrollments,
-            averageCapacityUsage: Math.round(averageCapacityUsage * 100) / 100
+            averageCapacityUsage: Math.round(averageCapacityUsage * 100) / 100,
         };
     }
     async getCourseStatistics(courseId) {
@@ -677,7 +672,7 @@ class CourseRepository {
             enrolledCount,
             completedCount: 0, // TODO: Implementar cuando se gestionen certificados
             averageAttendance: 0, // TODO: Implementar cuando se gestione asistencia
-            averageGrade: 0 // TODO: Implementar cuando se gestionen calificaciones
+            averageGrade: 0, // TODO: Implementar cuando se gestionen calificaciones
         };
     }
     // ✅ MÉTODO AUXILIAR PARA CONVERTIR A ENTIDAD DE DOMINIO
@@ -695,7 +690,9 @@ class CourseRepository {
             tipo_audiencia_cur: prismaEntity.tipo_audiencia_cur,
             requiere_verificacion_docs: prismaEntity.requiere_verificacion_docs,
             es_gratuito: prismaEntity.es_gratuito,
-            precio: prismaEntity.precio ? parseFloat(prismaEntity.precio.toString()) : null,
+            precio: prismaEntity.precio
+                ? parseFloat(prismaEntity.precio.toString())
+                : null,
             porcentaje_asistencia_aprobacion: prismaEntity.porcentaje_asistencia_aprobacion,
             nota_minima_aprobacion: parseFloat(prismaEntity.nota_minima_aprobacion.toString()),
             estado_cur: prismaEntity.estado,
@@ -704,7 +701,7 @@ class CourseRepository {
             categoria: prismaEntity.categoria,
             organizador: prismaEntity.organizador,
             inscripciones: prismaEntity.inscripcionesCurso,
-            carreras: prismaEntity.cursosPorCarrera?.map((cc) => parseInt(cc.carrera.id_car) || 0)
+            carreras: prismaEntity.cursosPorCarrera?.map((cc) => parseInt(cc.carrera.id_car) || 0),
         };
         return new Course_1.Course(courseData);
     }

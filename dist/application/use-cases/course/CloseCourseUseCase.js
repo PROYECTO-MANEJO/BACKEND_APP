@@ -16,13 +16,13 @@ class CloseCourseUseCase {
             if (!request.courseId?.trim()) {
                 return {
                     success: false,
-                    error: 'El ID del curso es obligatorio'
+                    error: "El ID del curso es obligatorio",
                 };
             }
             if (!request.organizerId?.trim()) {
                 return {
                     success: false,
-                    error: 'El ID del organizador es obligatorio'
+                    error: "El ID del organizador es obligatorio",
                 };
             }
             // Cerrar el curso
@@ -32,18 +32,20 @@ class CloseCourseUseCase {
             return {
                 success: true,
                 course: closedCourse.toPlainObject(),
-                message: 'Curso cerrado exitosamente',
+                message: "Curso cerrado exitosamente",
                 certificatesGenerated: {
                     total: 0, // Placeholder - implementar en futuras fases
-                    successful: 0, // Placeholder - implementar en futuras fases  
-                    failed: 0 // Placeholder - implementar en futuras fases
-                }
+                    successful: 0, // Placeholder - implementar en futuras fases
+                    failed: 0, // Placeholder - implementar en futuras fases
+                },
             };
         }
         catch (error) {
             return {
                 success: false,
-                error: error instanceof Error ? error.message : 'Error desconocido al cerrar el curso'
+                error: error instanceof Error
+                    ? error.message
+                    : "Error desconocido al cerrar el curso",
             };
         }
     }
