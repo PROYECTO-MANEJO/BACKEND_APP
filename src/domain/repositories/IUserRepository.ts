@@ -30,6 +30,11 @@ export interface IUserRepository extends BaseRepository<User> {
    * Actualizar contraseña
    */
   updatePassword(userId: number, hashedPassword: string): Promise<boolean>;
+
+  /**
+   * Marcar usuario como verificado
+   */
+  markAsVerified(userId: number): Promise<boolean>;
 }
 
 /**

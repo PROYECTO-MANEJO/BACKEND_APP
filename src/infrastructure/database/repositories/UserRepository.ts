@@ -13,11 +13,7 @@ import { User, Account, Career, UserRole } from "@domain/entities/User";
  * - DIP: Implementa la interfaz IUserRepository
  */
 export class UserRepository implements IUserRepository {
-  private prisma: PrismaClient;
-
-  constructor() {
-    this.prisma = new PrismaClient();
-  }
+  constructor(private prisma: PrismaClient) {}
 
   async findById(id: number): Promise<User | null> {
     try {
@@ -301,6 +297,22 @@ export class UserRepository implements IUserRepository {
           }
         : undefined,
     };
+  }
+
+  /**
+   * Marca un usuario como verificado actualizando su cuenta
+   */
+  async markAsVerified(userId: number): Promise<boolean> {
+    try {
+      await this.prisma.cuenta.updateMany({
+        where: { id_usu_per: userId.toString() },
+        data: { isVerified: true },
+      });
+      return true;
+    } catch (error) {
+      console.error("Error marking user as verified:", error);
+      return false;
+    }
   }
 
   /**
