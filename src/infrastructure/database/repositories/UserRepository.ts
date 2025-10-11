@@ -291,6 +291,7 @@ export class UserRepository implements IUserRepository {
             id: parseInt(prismaUser.carrera.id_car),
             name: prismaUser.carrera.nom_car,
             code: prismaUser.carrera.des_car,
+            faculty: prismaUser.carrera.nom_fac_per,
             isActive: true,
             createdAt: new Date(),
             updatedAt: new Date(),
@@ -313,6 +314,159 @@ export class UserRepository implements IUserRepository {
       console.error("Error marking user as verified:", error);
       return false;
     }
+  }
+
+  /**
+   * Actualizar perfil de usuario
+   */
+  async updateProfile(userId: number, profileData: Partial<User>): Promise<boolean> {
+    try {
+      const updateData: any = {};
+      
+      if (profileData.firstName) updateData.nom_usu1 = profileData.firstName;
+      if (profileData.secondName !== undefined) updateData.nom_usu2 = profileData.secondName || "";
+      if (profileData.lastName) updateData.ape_usu1 = profileData.lastName;
+      if (profileData.secondLastName !== undefined) updateData.ape_usu2 = profileData.secondLastName || "";
+      if (profileData.dateOfBirth) updateData.fec_nac_usu = profileData.dateOfBirth;
+      if (profileData.phoneNumber !== undefined) updateData.num_tel_usu = profileData.phoneNumber;
+      if (profileData.careerId !== undefined) updateData.id_car_per = profileData.careerId?.toString();
+      if (profileData.githubToken !== undefined) updateData.github_token = profileData.githubToken;
+      if (profileData.githubUsername !== undefined) updateData.github_username = profileData.githubUsername;
+
+      await this.prisma.usuario.update({
+        where: { id_usu: userId.toString() },
+        data: updateData
+      });
+
+      return true;
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Obtener perfil completo con cuenta y carrera
+   */
+  async getCompleteProfile(userId: number): Promise<(User & { account: Account; career?: Career }) | null> {
+    try {
+      const user = await this.prisma.usuario.findUnique({
+        where: { id_usu: userId.toString() },
+        include: {
+          carrera: true,
+          cuentas: true,
+        },
+      });
+
+      if (!user || !user.cuentas.length) {
+        return null;
+      }
+
+      const mappedUser = this.mapToEntityComplete(user);
+      const account = this.mapAccountToEntity(user.cuentas[0]);
+      const career = user.carrera ? this.mapCareerToEntity(user.carrera) : undefined;
+
+      return {
+        ...mappedUser,
+        account,
+        career
+      };
+    } catch (error) {
+      console.error("Error getting complete profile:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Buscar usuarios con paginación
+   */
+  async findPaginated(page: number, limit: number, filters?: Partial<User>): Promise<{ users: User[]; total: number }> {
+    try {
+      const skip = (page - 1) * limit;
+      const where: any = {};
+
+      if (filters?.careerId) {
+        where.id_car_per = filters.careerId.toString();
+      }
+
+      const [users, total] = await Promise.all([
+        this.prisma.usuario.findMany({
+          where,
+          skip,
+          take: limit,
+          include: {
+            carrera: true,
+            cuentas: true,
+          },
+          orderBy: {
+            nom_usu1: 'asc'
+          }
+        }),
+        this.prisma.usuario.count({ where })
+      ]);
+
+      return {
+        users: users.map(user => this.mapToEntity(user)),
+        total
+      };
+    } catch (error) {
+      console.error("Error finding paginated users:", error);
+      throw new Error("Failed to find paginated users");
+    }
+  }
+
+  /**
+   * Eliminar usuario (soft delete)
+   */
+  async softDelete(userId: number): Promise<boolean> {
+    try {
+      // En lugar de eliminar, marcar como inactivo en la cuenta
+      await this.prisma.cuenta.updateMany({
+        where: { id_usu_per: userId.toString() },
+        data: { isVerified: false } // Usar isVerified como flag de soft delete temporalmente
+      });
+      return true;
+    } catch (error) {
+      console.error("Error soft deleting user:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Mapear usuario completo incluyendo campos de GitHub
+   */
+  private mapToEntityComplete(prismaUser: any): User {
+    return {
+      id: parseInt(prismaUser.id_usu),
+      cedula: prismaUser.ced_usu,
+      firstName: prismaUser.nom_usu1,
+      secondName: prismaUser.nom_usu2,
+      lastName: prismaUser.ape_usu1,
+      secondLastName: prismaUser.ape_usu2,
+      dateOfBirth: prismaUser.fec_nac_usu,
+      phoneNumber: prismaUser.num_tel_usu,
+      password: prismaUser.pas_usu,
+      careerId: prismaUser.id_car_per ? parseInt(prismaUser.id_car_per) : undefined,
+      githubToken: prismaUser.github_token,
+      githubUsername: prismaUser.github_username,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+  }
+
+  /**
+   * Mapear carrera de Prisma a entidad
+   */
+  private mapCareerToEntity(prismaCareer: any): Career {
+    return {
+      id: parseInt(prismaCareer.id_car),
+      name: prismaCareer.nom_car,
+      code: prismaCareer.des_car,
+      faculty: prismaCareer.nom_fac_per,
+      isActive: true, // Asumir activa por defecto
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
   }
 
   /**

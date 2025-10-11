@@ -35,6 +35,26 @@ export interface IUserRepository extends BaseRepository<User> {
    * Marcar usuario como verificado
    */
   markAsVerified(userId: number): Promise<boolean>;
+
+  /**
+   * Actualizar perfil de usuario
+   */
+  updateProfile(userId: number, profileData: Partial<User>): Promise<boolean>;
+
+  /**
+   * Obtener perfil completo con cuenta y carrera
+   */
+  getCompleteProfile(userId: number): Promise<(User & { account: Account; career?: Career }) | null>;
+
+  /**
+   * Buscar usuarios con paginación
+   */
+  findPaginated(page: number, limit: number, filters?: Partial<User>): Promise<{ users: User[]; total: number }>;
+
+  /**
+   * Eliminar usuario (soft delete)
+   */
+  softDelete(userId: number): Promise<boolean>;
 }
 
 /**
@@ -82,4 +102,19 @@ export interface ICareerRepository extends BaseRepository<Career> {
    * Verificar si carrera existe y está activa
    */
   existsAndActive(careerId: number): Promise<boolean>;
+
+  /**
+   * Buscar carrera por código
+   */
+  findByCode(code: string): Promise<Career | null>;
+
+  /**
+   * Verificar si código ya existe
+   */
+  codeExists(code: string, excludeId?: number): Promise<boolean>;
+
+  /**
+   * Activar/Desactivar carrera
+   */
+  setActiveStatus(careerId: number, isActive: boolean): Promise<boolean>;
 }

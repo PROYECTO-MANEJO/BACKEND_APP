@@ -1,13 +1,14 @@
 import { PrismaClient } from "@prisma/client";
 
 // Repositories Interfaces
-import { IUserRepository } from "@domain/repositories/IUserRepository";
+import { IUserRepository, ICareerRepository } from "@domain/repositories/IUserRepository";
 import { IVerificationTokenRepository } from "@domain/repositories/IVerificationTokenRepository";
 import { IEmailService } from "@domain/repositories/IEmailService";
 
-// Repositories Implementations
+// Repositories Implementations  
 import { UserRepository } from "../database/repositories/UserRepository";
 import { VerificationTokenRepository } from "../database/repositories/VerificationTokenRepository";
+import { CareerRepository } from "../database/repositories/CareerRepository";
 
 // External Services
 import { EmailService } from "../external/email/EmailService";
@@ -16,8 +17,8 @@ import { EmailService } from "../external/email/EmailService";
 import { AuthenticationService } from "@domain/services/AuthenticationService";
 import { VerificationService } from "@domain/services/VerificationService";
 import { PasswordRecoveryService } from "@domain/services/PasswordRecoveryService";
-
-/**
+import { UserManagementService } from "@domain/services/UserManagementService";
+import { CareerManagementService } from "@domain/services/CareerManagementService";/**
  * Container de Inyección de Dependencias
  * Implementa DIP (Dependency Inversion Principle)
  * Centraliza la creación y configuración de dependencias
@@ -28,21 +29,21 @@ export class DIContainer {
   // Infrastructure
   private _prisma: PrismaClient;
   private _userRepository: IUserRepository;
+  private _careerRepository: ICareerRepository;
   private _verificationTokenRepository: IVerificationTokenRepository;
   private _emailService: IEmailService;
-
+  
   // Domain Services
   private _authenticationService: AuthenticationService;
   private _verificationService: VerificationService;
   private _passwordRecoveryService: PasswordRecoveryService;
-
-  private constructor() {
-    // Initialize infrastructure
+  private _userManagementService: UserManagementService;
+  private _careerManagementService: CareerManagementService;  private constructor() {
+        // Initialize infrastructure
     this._prisma = new PrismaClient();
     this._userRepository = new UserRepository(this._prisma);
-    this._verificationTokenRepository = new VerificationTokenRepository(
-      this._prisma
-    );
+    this._careerRepository = new CareerRepository(this._prisma);
+    this._verificationTokenRepository = new VerificationTokenRepository(this._prisma);
     this._emailService = new EmailService();
 
     // Initialize domain services
@@ -58,6 +59,15 @@ export class DIContainer {
       this._userRepository,
       this._verificationTokenRepository,
       this._emailService
+    );
+
+    this._userManagementService = new UserManagementService(
+      this._userRepository,
+      this._careerRepository
+    );
+
+    this._careerManagementService = new CareerManagementService(
+      this._careerRepository
     );
   }
 
@@ -75,6 +85,10 @@ export class DIContainer {
 
   public get userRepository(): IUserRepository {
     return this._userRepository;
+  }
+
+  public get careerRepository(): ICareerRepository {
+    return this._careerRepository;
   }
 
   public get verificationTokenRepository(): IVerificationTokenRepository {
@@ -95,6 +109,14 @@ export class DIContainer {
 
   public get passwordRecoveryService(): PasswordRecoveryService {
     return this._passwordRecoveryService;
+  }
+
+  public get userManagementService(): UserManagementService {
+    return this._userManagementService;
+  }
+
+  public get careerManagementService(): CareerManagementService {
+    return this._careerManagementService;
   }
 
   public async dispose(): Promise<void> {

@@ -14,6 +14,10 @@ export interface User extends BaseEntity {
   phoneNumber?: string;
   password: string;
   careerId?: number;
+  
+  // Campos de GitHub
+  githubToken?: string;
+  githubUsername?: string;
 
   // Relaciones
   account?: Account;
@@ -40,7 +44,8 @@ export interface Account extends BaseEntity {
  */
 export interface Career extends BaseEntity {
   name: string;
-  code?: string;
+  code: string;
+  faculty: string;
   isActive: boolean;
 }
 
