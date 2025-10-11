@@ -4,8 +4,13 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js",
-    "dev": "nodemon index.js",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "start:old": "node index.js",
+    "dev": "ts-node -r tsconfig-paths/register src/server.ts",
+    "dev:old": "nodemon index.js",
+    "dev:watch": "nodemon --exec ts-node -r tsconfig-paths/register src/server.ts",
+    "type-check": "tsc --noEmit",
     "migrate": "node scripts/migrate.js",
     "check-github": "node scripts/verify-github-config.js",
     "postinstall": "prisma generate && prisma migrate deploy"
@@ -33,7 +38,18 @@
     "pg": "^8.16.0"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^24.7.2",
+    "@types/nodemailer": "^7.0.2",
+    "@types/pg": "^8.15.5",
     "nodemon": "^3.1.10",
-    "prisma": "^6.10.1"
+    "prisma": "^6.10.1",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.9.3"
   }
 }
