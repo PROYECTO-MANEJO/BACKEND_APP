@@ -1,6 +1,6 @@
 /**
  * Events Application Layer - Use Cases Index
- * 
+ *
  * Clean Architecture Application Layer for Events Domain
  * Provides use case implementations with dependency injection and error handling
  */
@@ -16,19 +16,12 @@ import { EventCategoryManagement } from "./EventCategoryManagement";
 import { EventAnalytics } from "./EventAnalytics";
 
 // Repository Interfaces
-export type { 
-  EventRepository,
-} from "./EventManagement";
+export type { EventRepository } from "./EventManagement";
 
-export type {
-  EventCategoryRepository,
-} from "./EventCategoryManagement";
+export type { EventCategoryRepository } from "./EventCategoryManagement";
 
 // Use Case Input/Output Types from EventManagement
-export type {
-  EventCreationInput,
-  EventUpdateInput,
-} from "./EventManagement";
+export type { EventCreationInput, EventUpdateInput } from "./EventManagement";
 
 // Use Case Input/Output Types from EventCategoryManagement
 export type {
@@ -57,9 +50,7 @@ export type {
   CategoryMoveInput as EventCategoryMoveInput,
 } from "./EventCategoryManagement";
 
-export type {
-  AnalyticsFilters as EventAnalyticsFilters,
-} from "./EventAnalytics";
+export type { AnalyticsFilters as EventAnalyticsFilters } from "./EventAnalytics";
 
 /**
  * Use Case Factory for Dependency Injection
@@ -94,11 +85,12 @@ export class EventsApplicationServices {
   }> {
     try {
       // Test basic functionality of each service
-      const [eventsHealth, categoriesHealth, analyticsHealth] = await Promise.allSettled([
-        this.testEventManagement(),
-        this.testCategoryManagement(), 
-        this.testAnalytics(),
-      ]);
+      const [eventsHealth, categoriesHealth, analyticsHealth] =
+        await Promise.allSettled([
+          this.testEventManagement(),
+          this.testCategoryManagement(),
+          this.testAnalytics(),
+        ]);
 
       const services = {
         eventManagement: eventsHealth.status === "fulfilled",
@@ -107,10 +99,12 @@ export class EventsApplicationServices {
       };
 
       const healthyCount = Object.values(services).filter(Boolean).length;
-      const status = 
-        healthyCount === 3 ? "healthy" : 
-        healthyCount >= 2 ? "degraded" : 
-        "unhealthy";
+      const status =
+        healthyCount === 3
+          ? "healthy"
+          : healthyCount >= 2
+          ? "degraded"
+          : "unhealthy";
 
       return {
         status,
@@ -136,7 +130,7 @@ export class EventsApplicationServices {
   }
 
   private async testCategoryManagement(): Promise<void> {
-    // Basic smoke test - just check if service responds 
+    // Basic smoke test - just check if service responds
     await this.categoryManagement.getCategories();
   }
 
@@ -144,7 +138,7 @@ export class EventsApplicationServices {
     // Basic smoke test - just check if service responds
     const endDate = new Date();
     const startDate = new Date(endDate.getTime() - 24 * 60 * 60 * 1000); // 24 hours ago
-    await this.analytics.getEventAnalytics({ 
+    await this.analytics.getEventAnalytics({
       startDate,
       endDate,
     });
@@ -174,7 +168,11 @@ export class EventNotFoundError extends EventApplicationError {
 
 export class EventCategoryNotFoundError extends EventApplicationError {
   constructor(categoryId: string, cause?: Error) {
-    super(`Event category with ID '${categoryId}' not found`, "CATEGORY_NOT_FOUND", cause);
+    super(
+      `Event category with ID '${categoryId}' not found`,
+      "CATEGORY_NOT_FOUND",
+      cause
+    );
     this.name = "EventCategoryNotFoundError";
   }
 }
@@ -260,7 +258,10 @@ export const EventsApplicationUtils = {
   /**
    * Validates pagination parameters
    */
-  validatePagination(page?: number, limit?: number): { page: number; limit: number } {
+  validatePagination(
+    page?: number,
+    limit?: number
+  ): { page: number; limit: number } {
     const validatedPage = Math.max(1, page || 1);
     const validatedLimit = Math.min(
       EVENTS_APPLICATION_CONSTANTS.MAX_PAGE_SIZE,
@@ -274,10 +275,15 @@ export const EventsApplicationUtils = {
    */
   validateDateRange(startDate: Date, endDate: Date): void {
     if (startDate >= endDate) {
-      throw new EventApplicationError("Start date must be before end date", "INVALID_DATE_RANGE");
+      throw new EventApplicationError(
+        "Start date must be before end date",
+        "INVALID_DATE_RANGE"
+      );
     }
 
-    const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    const daysDiff = Math.ceil(
+      (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
     if (daysDiff > EVENTS_APPLICATION_CONSTANTS.MAX_ANALYTICS_PERIOD_DAYS) {
       throw new EventApplicationError(
         `Date range exceeds maximum allowed period of ${EVENTS_APPLICATION_CONSTANTS.MAX_ANALYTICS_PERIOD_DAYS} days`,
@@ -298,7 +304,8 @@ export const EventsApplicationUtils = {
     return {
       success: false,
       message: error.message,
-      code: error instanceof EventApplicationError ? error.code : "UNKNOWN_ERROR",
+      code:
+        error instanceof EventApplicationError ? error.code : "UNKNOWN_ERROR",
       timestamp: new Date(),
     };
   },
@@ -306,7 +313,10 @@ export const EventsApplicationUtils = {
   /**
    * Creates a standardized success response
    */
-  createSuccessResponse<T>(data: T, message?: string): {
+  createSuccessResponse<T>(
+    data: T,
+    message?: string
+  ): {
     success: true;
     data: T;
     message?: string;

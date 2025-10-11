@@ -13,12 +13,12 @@ interface CourseCategoryData {
   code?: string;
   color?: string;
   icon?: string;
-  
+
   // Hierarchy Management
   parentCategoryId?: string;
   level: number; // 0 for root categories, increments with depth
   path: string; // Hierarchical path like "/parent/child"
-  
+
   // Category Configuration
   settings: {
     allowSubcategories: boolean;
@@ -30,7 +30,7 @@ interface CourseCategoryData {
     maxCoursesPerInstructor?: number;
     allowedInstructorRoles: string[];
   };
-  
+
   // Category Restrictions and Rules
   restrictions: {
     maxCoursesPerMonth?: number;
@@ -47,7 +47,7 @@ interface CourseCategoryData {
     }>;
     requiresSpecialApproval: boolean;
   };
-  
+
   // Email Templates for Course Category
   emailTemplates: {
     enrollment?: string;
@@ -55,7 +55,7 @@ interface CourseCategoryData {
     completion?: string;
     cancellation?: string;
   };
-  
+
   // Category Statistics
   statistics: {
     totalCourses: number;
@@ -65,11 +65,11 @@ interface CourseCategoryData {
     averageRating?: number;
     completionRate?: number;
   };
-  
+
   // Category Status
   isActive: boolean;
   isVisible: boolean; // For public display
-  
+
   // Administrative Metadata
   createdAt: Date;
   updatedAt: Date;
@@ -124,7 +124,7 @@ export class CourseCategory {
     createdBy?: string
   ): CourseCategory {
     const now = new Date();
-    
+
     const categoryData: CourseCategoryData = {
       id: `category_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: name.trim(),
@@ -132,7 +132,7 @@ export class CourseCategory {
       code: code?.trim(),
       color,
       level: 0,
-      path: `/${name.trim().toLowerCase().replace(/\s+/g, '-')}`,
+      path: `/${name.trim().toLowerCase().replace(/\s+/g, "-")}`,
       settings: {
         allowSubcategories: true,
         requireApproval: false,
@@ -140,7 +140,7 @@ export class CourseCategory {
         defaultDuration: 40,
         allowRegistration: true,
         autoPublishCourses: false,
-        allowedInstructorRoles: ['INSTRUCTOR', 'COORDINATOR', 'ADMIN'],
+        allowedInstructorRoles: ["INSTRUCTOR", "COORDINATOR", "ADMIN"],
       },
       restrictions: {
         maxCoursesPerMonth: 10,
@@ -174,12 +174,14 @@ export class CourseCategory {
     const mappedData: CourseCategoryData = {
       id: categoryData.id_cat,
       name: categoryData.nom_cat,
-      description: categoryData.des_cat || '',
+      description: categoryData.des_cat || "",
       code: categoryData.codigo_cat,
       color: categoryData.color_cat,
       parentCategoryId: categoryData.id_categoria_padre?.toString(),
       level: 0, // Will be calculated based on hierarchy
-      path: `/${categoryData.nom_cat?.toLowerCase().replace(/\s+/g, '-') || ''}`,
+      path: `/${
+        categoryData.nom_cat?.toLowerCase().replace(/\s+/g, "-") || ""
+      }`,
       settings: {
         allowSubcategories: true,
         requireApproval: false,
@@ -187,7 +189,7 @@ export class CourseCategory {
         defaultDuration: 40,
         allowRegistration: true,
         autoPublishCourses: false,
-        allowedInstructorRoles: ['INSTRUCTOR', 'COORDINATOR', 'ADMIN'],
+        allowedInstructorRoles: ["INSTRUCTOR", "COORDINATOR", "ADMIN"],
       },
       restrictions: {
         maxCoursesPerMonth: 10,
@@ -240,22 +242,36 @@ export class CourseCategory {
       throw new Error("Default duration must be positive");
     }
 
-    if (this.data.restrictions.maxCoursesPerMonth !== undefined && this.data.restrictions.maxCoursesPerMonth <= 0) {
+    if (
+      this.data.restrictions.maxCoursesPerMonth !== undefined &&
+      this.data.restrictions.maxCoursesPerMonth <= 0
+    ) {
       throw new Error("Max courses per month must be positive");
     }
 
-    if (this.data.restrictions.minimumAdvanceNotice !== undefined && this.data.restrictions.minimumAdvanceNotice < 0) {
+    if (
+      this.data.restrictions.minimumAdvanceNotice !== undefined &&
+      this.data.restrictions.minimumAdvanceNotice < 0
+    ) {
       throw new Error("Minimum advance notice cannot be negative");
     }
 
-    if (this.data.restrictions.maximumAdvanceNotice !== undefined && this.data.restrictions.maximumAdvanceNotice < 0) {
+    if (
+      this.data.restrictions.maximumAdvanceNotice !== undefined &&
+      this.data.restrictions.maximumAdvanceNotice < 0
+    ) {
       throw new Error("Maximum advance notice cannot be negative");
     }
 
-    if (this.data.restrictions.minimumAdvanceNotice !== undefined && 
-        this.data.restrictions.maximumAdvanceNotice !== undefined &&
-        this.data.restrictions.minimumAdvanceNotice > this.data.restrictions.maximumAdvanceNotice) {
-      throw new Error("Minimum advance notice cannot be greater than maximum advance notice");
+    if (
+      this.data.restrictions.minimumAdvanceNotice !== undefined &&
+      this.data.restrictions.maximumAdvanceNotice !== undefined &&
+      this.data.restrictions.minimumAdvanceNotice >
+        this.data.restrictions.maximumAdvanceNotice
+    ) {
+      throw new Error(
+        "Minimum advance notice cannot be greater than maximum advance notice"
+      );
     }
   }
 
@@ -403,12 +419,17 @@ export class CourseCategory {
     const updatedData = {
       ...this.data,
       name: name !== undefined ? name.trim() : this.data.name,
-      description: description !== undefined ? description.trim() : this.data.description,
+      description:
+        description !== undefined ? description.trim() : this.data.description,
       code: code !== undefined ? code?.trim() : this.data.code,
       color: color !== undefined ? color : this.data.color,
-      path: name !== undefined 
-        ? `${this.data.path.substring(0, this.data.path.lastIndexOf('/'))}/${name.trim().toLowerCase().replace(/\s+/g, '-')}`
-        : this.data.path,
+      path:
+        name !== undefined
+          ? `${this.data.path.substring(
+              0,
+              this.data.path.lastIndexOf("/")
+            )}/${name.trim().toLowerCase().replace(/\s+/g, "-")}`
+          : this.data.path,
       updatedAt: new Date(),
       lastModifiedBy: updatedBy,
     };
@@ -454,21 +475,35 @@ export class CourseCategory {
     const updatedRestrictions = { ...this.data.restrictions, ...restrictions };
 
     // Validate restrictions
-    if (updatedRestrictions.minimumAdvanceNotice !== undefined && updatedRestrictions.minimumAdvanceNotice < 0) {
+    if (
+      updatedRestrictions.minimumAdvanceNotice !== undefined &&
+      updatedRestrictions.minimumAdvanceNotice < 0
+    ) {
       throw new Error("Minimum advance notice cannot be negative");
     }
 
-    if (updatedRestrictions.maximumAdvanceNotice !== undefined && updatedRestrictions.maximumAdvanceNotice < 0) {
+    if (
+      updatedRestrictions.maximumAdvanceNotice !== undefined &&
+      updatedRestrictions.maximumAdvanceNotice < 0
+    ) {
       throw new Error("Maximum advance notice cannot be negative");
     }
 
-    if (updatedRestrictions.minimumAdvanceNotice !== undefined && 
-        updatedRestrictions.maximumAdvanceNotice !== undefined &&
-        updatedRestrictions.minimumAdvanceNotice > updatedRestrictions.maximumAdvanceNotice) {
-      throw new Error("Minimum advance notice cannot be greater than maximum advance notice");
+    if (
+      updatedRestrictions.minimumAdvanceNotice !== undefined &&
+      updatedRestrictions.maximumAdvanceNotice !== undefined &&
+      updatedRestrictions.minimumAdvanceNotice >
+        updatedRestrictions.maximumAdvanceNotice
+    ) {
+      throw new Error(
+        "Minimum advance notice cannot be greater than maximum advance notice"
+      );
     }
 
-    if (updatedRestrictions.maxCoursesPerMonth !== undefined && updatedRestrictions.maxCoursesPerMonth <= 0) {
+    if (
+      updatedRestrictions.maxCoursesPerMonth !== undefined &&
+      updatedRestrictions.maxCoursesPerMonth <= 0
+    ) {
       throw new Error("Max courses per month must be positive");
     }
 
@@ -507,13 +542,13 @@ export class CourseCategory {
   public setParentCategory(
     parentCategoryId: string | undefined,
     parentLevel: number = 0,
-    parentPath: string = '',
+    parentPath: string = "",
     updatedBy?: string
   ): CourseCategory {
     const newLevel = parentCategoryId ? parentLevel + 1 : 0;
-    const newPath = parentCategoryId 
-      ? `${parentPath}/${this.data.name.toLowerCase().replace(/\s+/g, '-')}`
-      : `/${this.data.name.toLowerCase().replace(/\s+/g, '-')}`;
+    const newPath = parentCategoryId
+      ? `${parentPath}/${this.data.name.toLowerCase().replace(/\s+/g, "-")}`
+      : `/${this.data.name.toLowerCase().replace(/\s+/g, "-")}`;
 
     const updatedData = {
       ...this.data,
@@ -612,12 +647,14 @@ export class CourseCategory {
     const updatedStats = {
       ...this.data.statistics,
       totalCourses: this.data.statistics.totalCourses + 1,
-      activeCourses: courseStatus === "ACTIVE" 
-        ? this.data.statistics.activeCourses + 1 
-        : this.data.statistics.activeCourses,
-      completedCourses: courseStatus === "COMPLETED"
-        ? this.data.statistics.completedCourses + 1
-        : this.data.statistics.completedCourses,
+      activeCourses:
+        courseStatus === "ACTIVE"
+          ? this.data.statistics.activeCourses + 1
+          : this.data.statistics.activeCourses,
+      completedCourses:
+        courseStatus === "COMPLETED"
+          ? this.data.statistics.completedCourses + 1
+          : this.data.statistics.completedCourses,
     };
 
     return this.updateStatistics(updatedStats, updatedBy);
@@ -633,12 +670,14 @@ export class CourseCategory {
     const updatedStats = {
       ...this.data.statistics,
       totalCourses: Math.max(0, this.data.statistics.totalCourses - 1),
-      activeCourses: courseStatus === "ACTIVE" 
-        ? Math.max(0, this.data.statistics.activeCourses - 1)
-        : this.data.statistics.activeCourses,
-      completedCourses: courseStatus === "COMPLETED"
-        ? Math.max(0, this.data.statistics.completedCourses - 1)
-        : this.data.statistics.completedCourses,
+      activeCourses:
+        courseStatus === "ACTIVE"
+          ? Math.max(0, this.data.statistics.activeCourses - 1)
+          : this.data.statistics.activeCourses,
+      completedCourses:
+        courseStatus === "COMPLETED"
+          ? Math.max(0, this.data.statistics.completedCourses - 1)
+          : this.data.statistics.completedCourses,
     };
 
     return this.updateStatistics(updatedStats, updatedBy);
@@ -676,7 +715,10 @@ export class CourseCategory {
       return 0;
     }
 
-    return (this.data.statistics.activeCourses / this.data.statistics.totalCourses) * 100;
+    return (
+      (this.data.statistics.activeCourses / this.data.statistics.totalCourses) *
+      100
+    );
   }
 
   /**
@@ -687,7 +729,9 @@ export class CourseCategory {
       return 0;
     }
 
-    return this.data.statistics.totalEnrollments / this.data.statistics.totalCourses;
+    return (
+      this.data.statistics.totalEnrollments / this.data.statistics.totalCourses
+    );
   }
 
   /**
@@ -703,13 +747,17 @@ export class CourseCategory {
     }
 
     if (!this.data.settings.allowRegistration) {
-      return { canAccept: false, reason: "Registration is not allowed for this category" };
+      return {
+        canAccept: false,
+        reason: "Registration is not allowed for this category",
+      };
     }
 
     if (this.data.restrictions.maxCoursesPerMonth !== undefined) {
       const monthlyCoursesCount = this.data.statistics.activeCourses; // Simplified - should be filtered by month
-      const remainingSlots = this.data.restrictions.maxCoursesPerMonth - monthlyCoursesCount;
-      
+      const remainingSlots =
+        this.data.restrictions.maxCoursesPerMonth - monthlyCoursesCount;
+
       if (remainingSlots <= 0) {
         return { canAccept: false, reason: "Monthly course limit reached" };
       }
@@ -735,45 +783,83 @@ export class CourseCategory {
     const violations: string[] = [];
 
     // Check duration restrictions
-    if (this.data.restrictions.minimumDuration !== undefined && 
-        courseData.duration < this.data.restrictions.minimumDuration) {
-      violations.push(`Course duration (${courseData.duration}h) is below minimum (${this.data.restrictions.minimumDuration}h)`);
+    if (
+      this.data.restrictions.minimumDuration !== undefined &&
+      courseData.duration < this.data.restrictions.minimumDuration
+    ) {
+      violations.push(
+        `Course duration (${courseData.duration}h) is below minimum (${this.data.restrictions.minimumDuration}h)`
+      );
     }
 
-    if (this.data.restrictions.maximumDuration !== undefined && 
-        courseData.duration > this.data.restrictions.maximumDuration) {
-      violations.push(`Course duration (${courseData.duration}h) exceeds maximum (${this.data.restrictions.maximumDuration}h)`);
+    if (
+      this.data.restrictions.maximumDuration !== undefined &&
+      courseData.duration > this.data.restrictions.maximumDuration
+    ) {
+      violations.push(
+        `Course duration (${courseData.duration}h) exceeds maximum (${this.data.restrictions.maximumDuration}h)`
+      );
     }
 
     // Check capacity restrictions
-    if (this.data.restrictions.maxCapacityPerCourse !== undefined && 
-        courseData.capacity > this.data.restrictions.maxCapacityPerCourse) {
-      violations.push(`Course capacity (${courseData.capacity}) exceeds maximum allowed (${this.data.restrictions.maxCapacityPerCourse})`);
+    if (
+      this.data.restrictions.maxCapacityPerCourse !== undefined &&
+      courseData.capacity > this.data.restrictions.maxCapacityPerCourse
+    ) {
+      violations.push(
+        `Course capacity (${courseData.capacity}) exceeds maximum allowed (${this.data.restrictions.maxCapacityPerCourse})`
+      );
     }
 
     // Check advance notice
-    const daysDifference = Math.ceil((courseData.startDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (this.data.restrictions.minimumAdvanceNotice !== undefined && 
-        daysDifference < this.data.restrictions.minimumAdvanceNotice) {
-      violations.push(`Course must be scheduled at least ${this.data.restrictions.minimumAdvanceNotice} days in advance`);
+    const daysDifference = Math.ceil(
+      (courseData.startDate.getTime() - new Date().getTime()) /
+        (1000 * 60 * 60 * 24)
+    );
+
+    if (
+      this.data.restrictions.minimumAdvanceNotice !== undefined &&
+      daysDifference < this.data.restrictions.minimumAdvanceNotice
+    ) {
+      violations.push(
+        `Course must be scheduled at least ${this.data.restrictions.minimumAdvanceNotice} days in advance`
+      );
     }
 
-    if (this.data.restrictions.maximumAdvanceNotice !== undefined && 
-        daysDifference > this.data.restrictions.maximumAdvanceNotice) {
-      violations.push(`Course cannot be scheduled more than ${this.data.restrictions.maximumAdvanceNotice} days in advance`);
+    if (
+      this.data.restrictions.maximumAdvanceNotice !== undefined &&
+      daysDifference > this.data.restrictions.maximumAdvanceNotice
+    ) {
+      violations.push(
+        `Course cannot be scheduled more than ${this.data.restrictions.maximumAdvanceNotice} days in advance`
+      );
     }
 
     // Check day of week
     const dayOfWeek = courseData.startDate.getDay();
     if (!this.isDayAllowed(dayOfWeek)) {
-      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      violations.push(`Courses cannot be scheduled on ${dayNames[dayOfWeek]} in this category`);
+      const dayNames = [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ];
+      violations.push(
+        `Courses cannot be scheduled on ${dayNames[dayOfWeek]} in this category`
+      );
     }
 
     // Check instructor role
-    if (courseData.instructorRole && !this.isInstructorRoleAllowed(courseData.instructorRole)) {
-      violations.push(`Instructor role '${courseData.instructorRole}' is not allowed in this category`);
+    if (
+      courseData.instructorRole &&
+      !this.isInstructorRoleAllowed(courseData.instructorRole)
+    ) {
+      violations.push(
+        `Instructor role '${courseData.instructorRole}' is not allowed in this category`
+      );
     }
 
     return {
@@ -816,7 +902,7 @@ export class CourseCategory {
     };
   } {
     const canAccept = this.canAcceptNewCourses();
-    
+
     return {
       category: {
         id: this.data.id,

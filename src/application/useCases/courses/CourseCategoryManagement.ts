@@ -1,6 +1,6 @@
 /**
  * Course Category Management Use Case - Application Layer
- * 
+ *
  * Simplified version that works with the actual CourseCategory domain entity
  */
 
@@ -34,8 +34,13 @@ export interface CourseCategoryRepository {
 
 // External Service Dependencies
 export interface CategoryValidationService {
-  validateCategoryName(name: string, parentId?: string): Promise<{ isValid: boolean; message?: string }>;
-  validateParentCategory(parentId: string): Promise<{ isValid: boolean; message?: string }>;
+  validateCategoryName(
+    name: string,
+    parentId?: string
+  ): Promise<{ isValid: boolean; message?: string }>;
+  validateParentCategory(
+    parentId: string
+  ): Promise<{ isValid: boolean; message?: string }>;
 }
 
 export interface CourseService {
@@ -43,9 +48,20 @@ export interface CourseService {
 }
 
 export interface NotificationService {
-  notifyCategoryCreated(category: CourseCategory, recipients: string[]): Promise<void>;
-  notifyCategoryUpdated(category: CourseCategory, changes: string[], recipients: string[]): Promise<void>;
-  notifyCategoryDeleted(categoryName: string, affectedCourses: number, recipients: string[]): Promise<void>;
+  notifyCategoryCreated(
+    category: CourseCategory,
+    recipients: string[]
+  ): Promise<void>;
+  notifyCategoryUpdated(
+    category: CourseCategory,
+    changes: string[],
+    recipients: string[]
+  ): Promise<void>;
+  notifyCategoryDeleted(
+    categoryName: string,
+    affectedCourses: number,
+    recipients: string[]
+  ): Promise<void>;
 }
 
 export interface PermissionService {
@@ -90,7 +106,10 @@ export class CourseCategoryManagement {
   /**
    * Create a new category
    */
-  async createCategory(input: CategoryCreationInput, userId?: string): Promise<{
+  async createCategory(
+    input: CategoryCreationInput,
+    userId?: string
+  ): Promise<{
     success: boolean;
     categoryId?: string;
     message: string;
@@ -101,7 +120,9 @@ export class CourseCategoryManagement {
 
       // Check permissions
       if (userId) {
-        const canCreate = await this.permissionService.canCreateCategory(userId);
+        const canCreate = await this.permissionService.canCreateCategory(
+          userId
+        );
         if (!canCreate) {
           return {
             success: false,
@@ -111,7 +132,9 @@ export class CourseCategoryManagement {
       }
 
       // Validate category name
-      const nameValidation = await this.validationService.validateCategoryName(input.name);
+      const nameValidation = await this.validationService.validateCategoryName(
+        input.name
+      );
       if (!nameValidation.isValid) {
         return {
           success: false,
@@ -134,7 +157,9 @@ export class CourseCategoryManagement {
       // Send notifications
       if (userId) {
         try {
-          await this.notificationService.notifyCategoryCreated(category, [userId]);
+          await this.notificationService.notifyCategoryCreated(category, [
+            userId,
+          ]);
         } catch (error) {
           warnings.push("Category created but notification failed");
         }
@@ -146,11 +171,11 @@ export class CourseCategoryManagement {
         message: "Category created successfully",
         warnings: warnings.length > 0 ? warnings : undefined,
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to create category",
+        message:
+          error instanceof Error ? error.message : "Failed to create category",
       };
     }
   }
@@ -158,7 +183,10 @@ export class CourseCategoryManagement {
   /**
    * Update an existing category
    */
-  async updateCategory(input: CategoryUpdateInput, userId?: string): Promise<{
+  async updateCategory(
+    input: CategoryUpdateInput,
+    userId?: string
+  ): Promise<{
     success: boolean;
     message: string;
     warnings?: string[];
@@ -168,7 +196,10 @@ export class CourseCategoryManagement {
 
       // Check permissions
       if (userId) {
-        const canManage = await this.permissionService.canManageCategory(userId, input.categoryId);
+        const canManage = await this.permissionService.canManageCategory(
+          userId,
+          input.categoryId
+        );
         if (!canManage) {
           return {
             success: false,
@@ -189,12 +220,16 @@ export class CourseCategoryManagement {
       let updatedCategory = category;
 
       // Update basic information
-      if (input.name !== undefined || input.description !== undefined || 
-          input.code !== undefined || input.color !== undefined) {
-        
+      if (
+        input.name !== undefined ||
+        input.description !== undefined ||
+        input.code !== undefined ||
+        input.color !== undefined
+      ) {
         // Validate new name if provided
         if (input.name !== undefined && input.name !== category.getName()) {
-          const nameValidation = await this.validationService.validateCategoryName(input.name);
+          const nameValidation =
+            await this.validationService.validateCategoryName(input.name);
           if (!nameValidation.isValid) {
             return {
               success: false,
@@ -234,11 +269,11 @@ export class CourseCategoryManagement {
         message: "Category updated successfully",
         warnings: warnings.length > 0 ? warnings : undefined,
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to update category",
+        message:
+          error instanceof Error ? error.message : "Failed to update category",
       };
     }
   }
@@ -246,14 +281,20 @@ export class CourseCategoryManagement {
   /**
    * Activate a category
    */
-  async activateCategory(categoryId: string, userId?: string): Promise<{
+  async activateCategory(
+    categoryId: string,
+    userId?: string
+  ): Promise<{
     success: boolean;
     message: string;
   }> {
     try {
       // Check permissions
       if (userId) {
-        const canManage = await this.permissionService.canManageCategory(userId, categoryId);
+        const canManage = await this.permissionService.canManageCategory(
+          userId,
+          categoryId
+        );
         if (!canManage) {
           return {
             success: false,
@@ -277,11 +318,13 @@ export class CourseCategoryManagement {
         success: true,
         message: "Category activated successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to activate category",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to activate category",
       };
     }
   }
@@ -289,14 +332,20 @@ export class CourseCategoryManagement {
   /**
    * Deactivate a category
    */
-  async deactivateCategory(categoryId: string, userId?: string): Promise<{
+  async deactivateCategory(
+    categoryId: string,
+    userId?: string
+  ): Promise<{
     success: boolean;
     message: string;
   }> {
     try {
       // Check permissions
       if (userId) {
-        const canManage = await this.permissionService.canManageCategory(userId, categoryId);
+        const canManage = await this.permissionService.canManageCategory(
+          userId,
+          categoryId
+        );
         if (!canManage) {
           return {
             success: false,
@@ -320,11 +369,13 @@ export class CourseCategoryManagement {
         success: true,
         message: "Category deactivated successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to deactivate category",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to deactivate category",
       };
     }
   }
@@ -332,7 +383,10 @@ export class CourseCategoryManagement {
   /**
    * Delete a category
    */
-  async deleteCategory(categoryId: string, userId?: string): Promise<{
+  async deleteCategory(
+    categoryId: string,
+    userId?: string
+  ): Promise<{
     success: boolean;
     message: string;
     warnings?: string[];
@@ -342,7 +396,10 @@ export class CourseCategoryManagement {
 
       // Check permissions
       if (userId) {
-        const canDelete = await this.permissionService.canDeleteCategory(userId, categoryId);
+        const canDelete = await this.permissionService.canDeleteCategory(
+          userId,
+          categoryId
+        );
         if (!canDelete) {
           return {
             success: false,
@@ -361,7 +418,9 @@ export class CourseCategoryManagement {
       }
 
       // Check for child categories
-      const childCategories = await this.categoryRepository.findByParent(categoryId);
+      const childCategories = await this.categoryRepository.findByParent(
+        categoryId
+      );
       if (childCategories.length > 0) {
         return {
           success: false,
@@ -370,7 +429,9 @@ export class CourseCategoryManagement {
       }
 
       // Check for courses in this category
-      const coursesInCategory = await this.courseService.getCoursesByCategory(categoryId);
+      const coursesInCategory = await this.courseService.getCoursesByCategory(
+        categoryId
+      );
       if (coursesInCategory.length > 0) {
         return {
           success: false,
@@ -397,11 +458,11 @@ export class CourseCategoryManagement {
         message: "Category deleted successfully",
         warnings: warnings.length > 0 ? warnings : undefined,
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to delete category",
+        message:
+          error instanceof Error ? error.message : "Failed to delete category",
       };
     }
   }
@@ -416,7 +477,7 @@ export class CourseCategoryManagement {
   }> {
     try {
       const category = await this.categoryRepository.findById(categoryId);
-      
+
       if (!category) {
         return {
           success: false,
@@ -429,11 +490,13 @@ export class CourseCategoryManagement {
         category,
         message: "Category retrieved successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to retrieve category",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to retrieve category",
       };
     }
   }
@@ -460,9 +523,10 @@ export class CourseCategoryManagement {
       let filteredCategories = categories;
       if (filters?.name) {
         const nameFilter = filters.name.toLowerCase();
-        filteredCategories = categories.filter(category =>
-          category.getName().toLowerCase().includes(nameFilter) ||
-          category.getDescription().toLowerCase().includes(nameFilter)
+        filteredCategories = categories.filter(
+          (category) =>
+            category.getName().toLowerCase().includes(nameFilter) ||
+            category.getDescription().toLowerCase().includes(nameFilter)
         );
       }
 
@@ -472,11 +536,13 @@ export class CourseCategoryManagement {
         totalCount: filteredCategories.length,
         message: "Categories retrieved successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to retrieve categories",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to retrieve categories",
       };
     }
   }
@@ -497,11 +563,13 @@ export class CourseCategoryManagement {
         categories,
         message: "Root categories retrieved successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to retrieve root categories",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to retrieve root categories",
       };
     }
   }
@@ -515,18 +583,22 @@ export class CourseCategoryManagement {
     message: string;
   }> {
     try {
-      const categories = await this.categoryRepository.findChildCategories(parentId);
+      const categories = await this.categoryRepository.findChildCategories(
+        parentId
+      );
 
       return {
         success: true,
         categories,
         message: "Child categories retrieved successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to retrieve child categories",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to retrieve child categories",
       };
     }
   }
@@ -540,18 +612,22 @@ export class CourseCategoryManagement {
     message: string;
   }> {
     try {
-      const statistics = await this.categoryRepository.getCategoryStatistics(categoryId);
+      const statistics = await this.categoryRepository.getCategoryStatistics(
+        categoryId
+      );
 
       return {
         success: true,
         statistics,
         message: "Statistics retrieved successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to retrieve statistics",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to retrieve statistics",
       };
     }
   }
@@ -583,11 +659,13 @@ export class CourseCategoryManagement {
         success: true,
         message: "Statistics updated successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to update statistics",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to update statistics",
       };
     }
   }
@@ -612,18 +690,23 @@ export class CourseCategoryManagement {
         };
       }
 
-      const updatedCategory = category.incrementCourseCount(courseStatus, userId);
+      const updatedCategory = category.incrementCourseCount(
+        courseStatus,
+        userId
+      );
       await this.categoryRepository.update(updatedCategory);
 
       return {
         success: true,
         message: "Course count incremented successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to increment course count",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to increment course count",
       };
     }
   }
@@ -631,14 +714,21 @@ export class CourseCategoryManagement {
   /**
    * Private helper methods
    */
-  private buildChangesList(originalCategory: CourseCategory, updatedCategory: CourseCategory): string[] {
+  private buildChangesList(
+    originalCategory: CourseCategory,
+    updatedCategory: CourseCategory
+  ): string[] {
     const changes: string[] = [];
 
     if (originalCategory.getName() !== updatedCategory.getName()) {
-      changes.push(`Name changed from "${originalCategory.getName()}" to "${updatedCategory.getName()}"`);
+      changes.push(
+        `Name changed from "${originalCategory.getName()}" to "${updatedCategory.getName()}"`
+      );
     }
 
-    if (originalCategory.getDescription() !== updatedCategory.getDescription()) {
+    if (
+      originalCategory.getDescription() !== updatedCategory.getDescription()
+    ) {
       changes.push("Description updated");
     }
 
@@ -650,11 +740,20 @@ export class CourseCategoryManagement {
       changes.push("Color updated");
     }
 
-    if (originalCategory.isActiveCategory() !== updatedCategory.isActiveCategory()) {
-      changes.push(`Status changed to ${updatedCategory.isActiveCategory() ? "active" : "inactive"}`);
+    if (
+      originalCategory.isActiveCategory() !== updatedCategory.isActiveCategory()
+    ) {
+      changes.push(
+        `Status changed to ${
+          updatedCategory.isActiveCategory() ? "active" : "inactive"
+        }`
+      );
     }
 
-    if (originalCategory.getParentCategoryId() !== updatedCategory.getParentCategoryId()) {
+    if (
+      originalCategory.getParentCategoryId() !==
+      updatedCategory.getParentCategoryId()
+    ) {
       changes.push("Parent category updated");
     }
 

@@ -18,7 +18,7 @@ export type {
   CourseFiltersInput,
 } from "./CourseManagement";
 
-// Course Category Management Use Case  
+// Course Category Management Use Case
 export { CourseCategoryManagement } from "./CourseCategoryManagement";
 export type {
   CourseCategoryRepository,
@@ -45,10 +45,7 @@ export type {
 } from "./CourseAnalytics";
 
 // Re-export domain entities for convenience
-export {
-  Course,
-  CourseCategory,
-} from "../../../domain/entities/courses";
+export { Course, CourseCategory } from "../../../domain/entities/courses";
 
 export type {
   CourseStatistics,

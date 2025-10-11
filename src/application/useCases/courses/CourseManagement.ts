@@ -32,7 +32,11 @@ export interface CourseRepository {
   // Statistics and analytics
   getCourseStatistics(courseId: string): Promise<CourseStatistics>;
   getEnrollmentCount(courseId: string): Promise<number>;
-  findConflictingCourses(startDate: Date, endDate: Date, organizerId?: string): Promise<Course[]>;
+  findConflictingCourses(
+    startDate: Date,
+    endDate: Date,
+    organizerId?: string
+  ): Promise<Course[]>;
 }
 
 // External Service Dependencies
@@ -52,24 +56,50 @@ export interface CategoryService {
 
 export interface NotificationService {
   notifyCourseCreated(course: Course, recipients: string[]): Promise<void>;
-  notifyCourseUpdated(course: Course, changes: string[], recipients: string[]): Promise<void>;
+  notifyCourseUpdated(
+    course: Course,
+    changes: string[],
+    recipients: string[]
+  ): Promise<void>;
   notifyCoursePublished(course: Course, recipients: string[]): Promise<void>;
-  notifyCourseCancelled(course: Course, reason: string, recipients: string[]): Promise<void>;
+  notifyCourseCancelled(
+    course: Course,
+    reason: string,
+    recipients: string[]
+  ): Promise<void>;
   notifyEnrollmentOpened(course: Course, recipients: string[]): Promise<void>;
 }
 
 export interface EnrollmentService {
-  enrollUser(courseId: string, userId: string): Promise<{ success: boolean; message: string }>;
-  unenrollUser(courseId: string, userId: string): Promise<{ success: boolean; message: string }>;
+  enrollUser(
+    courseId: string,
+    userId: string
+  ): Promise<{ success: boolean; message: string }>;
+  unenrollUser(
+    courseId: string,
+    userId: string
+  ): Promise<{ success: boolean; message: string }>;
   getEnrollments(courseId: string): Promise<any[]>;
   checkUserEnrollment(courseId: string, userId: string): Promise<boolean>;
 }
 
 export interface ValidationService {
-  validateCourseName(name: string, categoryId?: string): Promise<{ isValid: boolean; message?: string }>;
-  validateScheduling(startDate: Date, endDate: Date, organizerId: string): Promise<{ isValid: boolean; conflicts?: any[] }>;
-  validateCapacity(capacity: number, categoryId: string): Promise<{ isValid: boolean; message?: string }>;
-  validatePrerequisites(prerequisiteIds: string[]): Promise<{ isValid: boolean; message?: string }>;
+  validateCourseName(
+    name: string,
+    categoryId?: string
+  ): Promise<{ isValid: boolean; message?: string }>;
+  validateScheduling(
+    startDate: Date,
+    endDate: Date,
+    organizerId: string
+  ): Promise<{ isValid: boolean; conflicts?: any[] }>;
+  validateCapacity(
+    capacity: number,
+    categoryId: string
+  ): Promise<{ isValid: boolean; message?: string }>;
+  validatePrerequisites(
+    prerequisiteIds: string[]
+  ): Promise<{ isValid: boolean; message?: string }>;
 }
 
 // Use Case Input Types
@@ -154,7 +184,9 @@ export class CourseManagement {
 
       // Validate organizer exists
       if (input.organizerId) {
-        const organizerExists = await this.userService.validateUserExists(input.organizerId);
+        const organizerExists = await this.userService.validateUserExists(
+          input.organizerId
+        );
         if (!organizerExists) {
           return {
             success: false,
@@ -164,7 +196,9 @@ export class CourseManagement {
       }
 
       // Validate category exists and get settings
-      const categoryExists = await this.categoryService.validateCategoryExists(input.categoryId);
+      const categoryExists = await this.categoryService.validateCategoryExists(
+        input.categoryId
+      );
       if (!categoryExists) {
         return {
           success: false,
@@ -186,13 +220,17 @@ export class CourseManagement {
 
       // Validate scheduling
       if (input.organizerId) {
-        const scheduleValidation = await this.validationService.validateScheduling(
-          input.startDate,
-          input.endDate,
-          input.organizerId
-        );
+        const scheduleValidation =
+          await this.validationService.validateScheduling(
+            input.startDate,
+            input.endDate,
+            input.organizerId
+          );
         if (!scheduleValidation.isValid) {
-          if (scheduleValidation.conflicts && scheduleValidation.conflicts.length > 0) {
+          if (
+            scheduleValidation.conflicts &&
+            scheduleValidation.conflicts.length > 0
+          ) {
             warnings.push("Schedule conflicts detected with existing courses");
           } else {
             return {
@@ -216,10 +254,14 @@ export class CourseManagement {
       }
 
       // Validate prerequisites if provided
-      if (input.prerequisites?.requiredCourses && input.prerequisites.requiredCourses.length > 0) {
-        const prereqValidation = await this.validationService.validatePrerequisites(
-          input.prerequisites.requiredCourses
-        );
+      if (
+        input.prerequisites?.requiredCourses &&
+        input.prerequisites.requiredCourses.length > 0
+      ) {
+        const prereqValidation =
+          await this.validationService.validatePrerequisites(
+            input.prerequisites.requiredCourses
+          );
         if (!prereqValidation.isValid) {
           return {
             success: false,
@@ -245,7 +287,10 @@ export class CourseManagement {
       // Apply additional settings
       let updatedCourse = course;
 
-      if (input.requiresDocumentVerification !== undefined || input.requiresMotivationLetter !== undefined) {
+      if (
+        input.requiresDocumentVerification !== undefined ||
+        input.requiresMotivationLetter !== undefined
+      ) {
         updatedCourse = updatedCourse.updateRequirements(
           input.requiresDocumentVerification,
           input.requiresMotivationLetter,
@@ -261,7 +306,10 @@ export class CourseManagement {
         );
       }
 
-      if (input.attendancePercentageForApproval !== undefined || input.minimumGradeForApproval !== undefined) {
+      if (
+        input.attendancePercentageForApproval !== undefined ||
+        input.minimumGradeForApproval !== undefined
+      ) {
         updatedCourse = updatedCourse.updateApprovalCriteria(
           input.attendancePercentageForApproval,
           input.minimumGradeForApproval,
@@ -273,7 +321,10 @@ export class CourseManagement {
       if (input.associatedCareers && input.associatedCareers.length > 0) {
         for (const careerId of input.associatedCareers) {
           try {
-            updatedCourse = updatedCourse.addCareerAssociation(careerId, input.createdBy);
+            updatedCourse = updatedCourse.addCareerAssociation(
+              careerId,
+              input.createdBy
+            );
           } catch (error) {
             warnings.push(
               `Could not associate career ${careerId}: ${
@@ -285,10 +336,16 @@ export class CourseManagement {
       }
 
       // Add prerequisites
-      if (input.prerequisites?.requiredCourses && input.prerequisites.requiredCourses.length > 0) {
+      if (
+        input.prerequisites?.requiredCourses &&
+        input.prerequisites.requiredCourses.length > 0
+      ) {
         for (const prerequisiteId of input.prerequisites.requiredCourses) {
           try {
-            updatedCourse = updatedCourse.addPrerequisiteCourse(prerequisiteId, input.createdBy);
+            updatedCourse = updatedCourse.addPrerequisiteCourse(
+              prerequisiteId,
+              input.createdBy
+            );
           } catch (error) {
             warnings.push(
               `Could not add prerequisite ${prerequisiteId}: ${
@@ -299,7 +356,10 @@ export class CourseManagement {
         }
       }
 
-      if (input.prerequisites?.requiredSkills && input.prerequisites.requiredSkills.length > 0) {
+      if (
+        input.prerequisites?.requiredSkills &&
+        input.prerequisites.requiredSkills.length > 0
+      ) {
         updatedCourse = updatedCourse.updateRequiredSkills(
           input.prerequisites.requiredSkills,
           input.createdBy
@@ -312,7 +372,9 @@ export class CourseManagement {
       // Send notifications
       if (input.organizerId) {
         try {
-          await this.notificationService.notifyCourseCreated(updatedCourse, [input.organizerId]);
+          await this.notificationService.notifyCourseCreated(updatedCourse, [
+            input.organizerId,
+          ]);
         } catch (error) {
           warnings.push("Course created but notification failed");
         }
@@ -324,11 +386,11 @@ export class CourseManagement {
         message: "Course created successfully",
         warnings: warnings.length > 0 ? warnings : undefined,
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to create course",
+        message:
+          error instanceof Error ? error.message : "Failed to create course",
       };
     }
   }
@@ -354,7 +416,10 @@ export class CourseManagement {
       }
 
       // Check if course can be updated
-      if (course.getStatus() === "IN_PROGRESS" || course.getStatus() === "COMPLETED") {
+      if (
+        course.getStatus() === "IN_PROGRESS" ||
+        course.getStatus() === "COMPLETED"
+      ) {
         return {
           success: false,
           message: "Cannot update course that is in progress or completed",
@@ -364,7 +429,11 @@ export class CourseManagement {
       let updatedCourse = course;
 
       // Update basic information
-      if (input.name !== undefined || input.description !== undefined || input.duration !== undefined) {
+      if (
+        input.name !== undefined ||
+        input.description !== undefined ||
+        input.duration !== undefined
+      ) {
         updatedCourse = updatedCourse.updateBasicInfo(
           input.name,
           input.description,
@@ -374,12 +443,15 @@ export class CourseManagement {
 
         // Validate new name if provided
         if (input.name !== undefined) {
-          const nameValidation = await this.validationService.validateCourseName(
-            input.name,
-            course.getCategoryId()
-          );
+          const nameValidation =
+            await this.validationService.validateCourseName(
+              input.name,
+              course.getCategoryId()
+            );
           if (!nameValidation.isValid) {
-            warnings.push(nameValidation.message || "Course name validation warning");
+            warnings.push(
+              nameValidation.message || "Course name validation warning"
+            );
           }
         }
       }
@@ -394,18 +466,20 @@ export class CourseManagement {
           );
 
           // Validate new schedule
-          const scheduleValidation = await this.validationService.validateScheduling(
-            updatedCourse.getStartDate(),
-            updatedCourse.getEndDate(),
-            updatedCourse.getOrganizerId()
-          );
+          const scheduleValidation =
+            await this.validationService.validateScheduling(
+              updatedCourse.getStartDate(),
+              updatedCourse.getEndDate(),
+              updatedCourse.getOrganizerId()
+            );
           if (!scheduleValidation.isValid) {
             warnings.push("Schedule validation warning - conflicts may exist");
           }
         } catch (error) {
           return {
             success: false,
-            message: error instanceof Error ? error.message : "Invalid date update",
+            message:
+              error instanceof Error ? error.message : "Invalid date update",
           };
         }
       }
@@ -420,7 +494,10 @@ export class CourseManagement {
         } catch (error) {
           return {
             success: false,
-            message: error instanceof Error ? error.message : "Invalid capacity update",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Invalid capacity update",
           };
         }
       }
@@ -436,13 +513,17 @@ export class CourseManagement {
         } catch (error) {
           return {
             success: false,
-            message: error instanceof Error ? error.message : "Invalid pricing update",
+            message:
+              error instanceof Error ? error.message : "Invalid pricing update",
           };
         }
       }
 
       // Update approval criteria
-      if (input.attendancePercentageForApproval !== undefined || input.minimumGradeForApproval !== undefined) {
+      if (
+        input.attendancePercentageForApproval !== undefined ||
+        input.minimumGradeForApproval !== undefined
+      ) {
         try {
           updatedCourse = updatedCourse.updateApprovalCriteria(
             input.attendancePercentageForApproval,
@@ -452,13 +533,19 @@ export class CourseManagement {
         } catch (error) {
           return {
             success: false,
-            message: error instanceof Error ? error.message : "Invalid approval criteria update",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Invalid approval criteria update",
           };
         }
       }
 
       // Update requirements
-      if (input.requiresDocumentVerification !== undefined || input.requiresMotivationLetter !== undefined) {
+      if (
+        input.requiresDocumentVerification !== undefined ||
+        input.requiresMotivationLetter !== undefined
+      ) {
         updatedCourse = updatedCourse.updateRequirements(
           input.requiresDocumentVerification,
           input.requiresMotivationLetter,
@@ -486,11 +573,11 @@ export class CourseManagement {
         message: "Course updated successfully",
         warnings: warnings.length > 0 ? warnings : undefined,
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to update course",
+        message:
+          error instanceof Error ? error.message : "Failed to update course",
       };
     }
   }
@@ -498,7 +585,11 @@ export class CourseManagement {
   /**
    * Delete/Cancel a course
    */
-  async deleteCourse(courseId: string, reason: string, deletedBy?: string): Promise<{
+  async deleteCourse(
+    courseId: string,
+    reason: string,
+    deletedBy?: string
+  ): Promise<{
     success: boolean;
     message: string;
   }> {
@@ -513,7 +604,10 @@ export class CourseManagement {
       }
 
       // Check if course can be cancelled
-      if (course.getStatus() === "COMPLETED" || course.getStatus() === "ARCHIVED") {
+      if (
+        course.getStatus() === "COMPLETED" ||
+        course.getStatus() === "ARCHIVED"
+      ) {
         return {
           success: false,
           message: "Cannot cancel completed or archived course",
@@ -522,7 +616,9 @@ export class CourseManagement {
 
       // Get enrollments before cancelling
       const enrollments = await this.enrollmentService.getEnrollments(courseId);
-      const enrolledUserIds = enrollments.map(enrollment => enrollment.userId || enrollment.user_id);
+      const enrolledUserIds = enrollments.map(
+        (enrollment) => enrollment.userId || enrollment.user_id
+      );
 
       // Cancel course
       const cancelledCourse = course.cancel(reason, deletedBy);
@@ -547,11 +643,11 @@ export class CourseManagement {
         success: true,
         message: "Course cancelled successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to cancel course",
+        message:
+          error instanceof Error ? error.message : "Failed to cancel course",
       };
     }
   }
@@ -566,7 +662,7 @@ export class CourseManagement {
   }> {
     try {
       const course = await this.courseRepository.findById(courseId);
-      
+
       if (!course) {
         return {
           success: false,
@@ -579,11 +675,11 @@ export class CourseManagement {
         course,
         message: "Course retrieved successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to retrieve course",
+        message:
+          error instanceof Error ? error.message : "Failed to retrieve course",
       };
     }
   }
@@ -614,16 +710,16 @@ export class CourseManagement {
       let filteredCourses = courses;
 
       if (filters?.status && filters.status.length > 0) {
-        filteredCourses = filteredCourses.filter(course => 
+        filteredCourses = filteredCourses.filter((course) =>
           filters.status!.includes(course.getStatus())
         );
       }
 
       if (filters?.careerIds && filters.careerIds.length > 0) {
-        filteredCourses = filteredCourses.filter(course =>
-          course.getAssociatedCareers().some(careerId => 
-            filters.careerIds!.includes(careerId)
-          )
+        filteredCourses = filteredCourses.filter((course) =>
+          course
+            .getAssociatedCareers()
+            .some((careerId) => filters.careerIds!.includes(careerId))
         );
       }
 
@@ -631,7 +727,10 @@ export class CourseManagement {
       const page = filters?.page || 1;
       const limit = filters?.limit || 20;
       const startIndex = (page - 1) * limit;
-      const paginatedCourses = filteredCourses.slice(startIndex, startIndex + limit);
+      const paginatedCourses = filteredCourses.slice(
+        startIndex,
+        startIndex + limit
+      );
 
       return {
         success: true,
@@ -639,11 +738,11 @@ export class CourseManagement {
         totalCount: filteredCourses.length,
         message: "Courses retrieved successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to retrieve courses",
+        message:
+          error instanceof Error ? error.message : "Failed to retrieve courses",
       };
     }
   }
@@ -651,7 +750,10 @@ export class CourseManagement {
   /**
    * Publish a course (make it active for enrollment)
    */
-  async publishCourse(courseId: string, publishedBy?: string): Promise<{
+  async publishCourse(
+    courseId: string,
+    publishedBy?: string
+  ): Promise<{
     success: boolean;
     message: string;
   }> {
@@ -672,10 +774,9 @@ export class CourseManagement {
 
       // Notify about course being available
       try {
-        await this.notificationService.notifyCoursePublished(
-          publishedCourse,
-          [publishedCourse.getOrganizerId()]
-        );
+        await this.notificationService.notifyCoursePublished(publishedCourse, [
+          publishedCourse.getOrganizerId(),
+        ]);
 
         if (publishedCourse.getAudienceType() !== "PUBLICO_GENERAL") {
           await this.notificationService.notifyEnrollmentOpened(
@@ -691,11 +792,11 @@ export class CourseManagement {
         success: true,
         message: "Course published successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to publish course",
+        message:
+          error instanceof Error ? error.message : "Failed to publish course",
       };
     }
   }
@@ -703,7 +804,10 @@ export class CourseManagement {
   /**
    * Start a course (transition to in-progress)
    */
-  async startCourse(courseId: string, startedBy?: string): Promise<{
+  async startCourse(
+    courseId: string,
+    startedBy?: string
+  ): Promise<{
     success: boolean;
     message: string;
   }> {
@@ -726,11 +830,11 @@ export class CourseManagement {
         success: true,
         message: "Course started successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to start course",
+        message:
+          error instanceof Error ? error.message : "Failed to start course",
       };
     }
   }
@@ -738,7 +842,10 @@ export class CourseManagement {
   /**
    * Complete a course
    */
-  async completeCourse(courseId: string, completedBy?: string): Promise<{
+  async completeCourse(
+    courseId: string,
+    completedBy?: string
+  ): Promise<{
     success: boolean;
     message: string;
   }> {
@@ -761,11 +868,11 @@ export class CourseManagement {
         success: true,
         message: "Course completed successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to complete course",
+        message:
+          error instanceof Error ? error.message : "Failed to complete course",
       };
     }
   }
@@ -773,7 +880,10 @@ export class CourseManagement {
   /**
    * Check if user is eligible for course enrollment
    */
-  async checkEnrollmentEligibility(courseId: string, userId: string): Promise<{
+  async checkEnrollmentEligibility(
+    courseId: string,
+    userId: string
+  ): Promise<{
     eligible: boolean;
     reasons: string[];
     course?: Course;
@@ -807,7 +917,10 @@ export class CourseManagement {
       }
 
       // Check if already enrolled
-      const alreadyEnrolled = await this.enrollmentService.checkUserEnrollment(courseId, userId);
+      const alreadyEnrolled = await this.enrollmentService.checkUserEnrollment(
+        courseId,
+        userId
+      );
       if (alreadyEnrolled) {
         reasons.push("User is already enrolled in this course");
       }
@@ -819,16 +932,28 @@ export class CourseManagement {
       }
 
       // Check prerequisites
-      const userCompletedCourses = await this.userService.getUserCompletedCourses(userId);
+      const userCompletedCourses =
+        await this.userService.getUserCompletedCourses(userId);
       const userSkills = await this.userService.getUserSkills(userId);
-      const prerequisiteCheck = course.meetsPrerequisites(userCompletedCourses, userSkills);
-      
+      const prerequisiteCheck = course.meetsPrerequisites(
+        userCompletedCourses,
+        userSkills
+      );
+
       if (!prerequisiteCheck.meets) {
         if (prerequisiteCheck.missing.courses.length > 0) {
-          reasons.push(`Missing required courses: ${prerequisiteCheck.missing.courses.join(", ")}`);
+          reasons.push(
+            `Missing required courses: ${prerequisiteCheck.missing.courses.join(
+              ", "
+            )}`
+          );
         }
         if (prerequisiteCheck.missing.skills.length > 0) {
-          reasons.push(`Missing required skills: ${prerequisiteCheck.missing.skills.join(", ")}`);
+          reasons.push(
+            `Missing required skills: ${prerequisiteCheck.missing.skills.join(
+              ", "
+            )}`
+          );
         }
       }
 
@@ -837,11 +962,14 @@ export class CourseManagement {
         reasons,
         course,
       };
-
     } catch (error) {
       return {
         eligible: false,
-        reasons: [error instanceof Error ? error.message : "Failed to check eligibility"],
+        reasons: [
+          error instanceof Error
+            ? error.message
+            : "Failed to check eligibility",
+        ],
       };
     }
   }
@@ -855,18 +983,22 @@ export class CourseManagement {
     message: string;
   }> {
     try {
-      const statistics = await this.courseRepository.getCourseStatistics(courseId);
+      const statistics = await this.courseRepository.getCourseStatistics(
+        courseId
+      );
 
       return {
         success: true,
         statistics,
         message: "Statistics retrieved successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to retrieve statistics",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to retrieve statistics",
       };
     }
   }
@@ -887,11 +1019,11 @@ export class CourseManagement {
         courses,
         message: "Courses retrieved successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to retrieve courses",
+        message:
+          error instanceof Error ? error.message : "Failed to retrieve courses",
       };
     }
   }
@@ -912,11 +1044,13 @@ export class CourseManagement {
         courses,
         message: "Upcoming courses retrieved successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to retrieve upcoming courses",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to retrieve upcoming courses",
       };
     }
   }
@@ -924,11 +1058,16 @@ export class CourseManagement {
   /**
    * Private helper methods
    */
-  private buildChangesList(originalCourse: Course, updatedCourse: Course): string[] {
+  private buildChangesList(
+    originalCourse: Course,
+    updatedCourse: Course
+  ): string[] {
     const changes: string[] = [];
 
     if (originalCourse.getName() !== updatedCourse.getName()) {
-      changes.push(`Name changed from "${originalCourse.getName()}" to "${updatedCourse.getName()}"`);
+      changes.push(
+        `Name changed from "${originalCourse.getName()}" to "${updatedCourse.getName()}"`
+      );
     }
 
     if (originalCourse.getDescription() !== updatedCourse.getDescription()) {
@@ -936,23 +1075,35 @@ export class CourseManagement {
     }
 
     if (originalCourse.getDuration() !== updatedCourse.getDuration()) {
-      changes.push(`Duration changed from ${originalCourse.getDuration()} to ${updatedCourse.getDuration()} hours`);
+      changes.push(
+        `Duration changed from ${originalCourse.getDuration()} to ${updatedCourse.getDuration()} hours`
+      );
     }
 
-    if (originalCourse.getStartDate().getTime() !== updatedCourse.getStartDate().getTime()) {
+    if (
+      originalCourse.getStartDate().getTime() !==
+      updatedCourse.getStartDate().getTime()
+    ) {
       changes.push("Start date updated");
     }
 
-    if (originalCourse.getEndDate().getTime() !== updatedCourse.getEndDate().getTime()) {
+    if (
+      originalCourse.getEndDate().getTime() !==
+      updatedCourse.getEndDate().getTime()
+    ) {
       changes.push("End date updated");
     }
 
     if (originalCourse.getMaxCapacity() !== updatedCourse.getMaxCapacity()) {
-      changes.push(`Capacity changed from ${originalCourse.getMaxCapacity()} to ${updatedCourse.getMaxCapacity()}`);
+      changes.push(
+        `Capacity changed from ${originalCourse.getMaxCapacity()} to ${updatedCourse.getMaxCapacity()}`
+      );
     }
 
     if (originalCourse.isFree() !== updatedCourse.isFree()) {
-      changes.push(`Pricing changed to ${updatedCourse.isFree() ? "free" : "paid"}`);
+      changes.push(
+        `Pricing changed to ${updatedCourse.isFree() ? "free" : "paid"}`
+      );
     }
 
     return changes;

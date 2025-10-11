@@ -15,28 +15,35 @@ interface CourseData {
   endDate: Date;
   categoryId: string;
   organizerId: string;
-  
+
   // Capacity and Audience Management
   maxCapacity: number;
   currentEnrollments: number;
   audienceType: "CARRERA_ESPECIFICA" | "TODAS_CARRERAS" | "PUBLICO_GENERAL";
-  
+
   // Course Configuration
   requiresDocumentVerification: boolean;
   requiresMotivationLetter: boolean;
   isFree: boolean;
   price?: number;
-  
+
   // Approval Criteria
   attendancePercentageForApproval: number; // 0-100
   minimumGradeForApproval: number; // 0-10
-  
+
   // Course Status and Lifecycle
-  status: "DRAFT" | "ACTIVE" | "FULL" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "ARCHIVED";
-  
+  status:
+    | "DRAFT"
+    | "ACTIVE"
+    | "FULL"
+    | "IN_PROGRESS"
+    | "COMPLETED"
+    | "CANCELLED"
+    | "ARCHIVED";
+
   // Career Associations
   associatedCareers: string[]; // Career IDs
-  
+
   // Prerequisites and Requirements
   prerequisites: {
     requiredCourses: string[]; // Course IDs that must be completed
@@ -44,7 +51,7 @@ interface CourseData {
     requiredSkills: string[];
     educationLevel?: "SECONDARY" | "TECHNICAL" | "UNIVERSITY" | "POSTGRADUATE";
   };
-  
+
   // Course Materials and Resources
   materials: {
     syllabus?: string;
@@ -56,7 +63,7 @@ interface CourseData {
     }>;
     bibliography?: string[];
   };
-  
+
   // Scheduling and Sessions
   schedule: {
     sessions: Array<{
@@ -69,7 +76,7 @@ interface CourseData {
     totalSessions: number;
     sessionDuration: number; // Minutes per session
   };
-  
+
   // Evaluation and Certification
   evaluation: {
     hasExam: boolean;
@@ -79,7 +86,7 @@ interface CourseData {
     certificationType: "PARTICIPATION" | "COMPLETION" | "ACHIEVEMENT";
     certificateTemplate?: string;
   };
-  
+
   // Administrative Metadata
   createdAt: Date;
   updatedAt: Date;
@@ -139,7 +146,7 @@ export class Course {
     createdBy?: string
   ): Course {
     const now = new Date();
-    
+
     const courseData: CourseData = {
       id: `course_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: name.trim(),
@@ -204,10 +211,12 @@ export class Course {
       requiresMotivationLetter: courseData.requiere_carta_motivacion,
       isFree: courseData.es_gratuito,
       price: courseData.precio ? parseFloat(courseData.precio) : undefined,
-      attendancePercentageForApproval: courseData.porcentaje_asistencia_aprobacion,
+      attendancePercentageForApproval:
+        courseData.porcentaje_asistencia_aprobacion,
       minimumGradeForApproval: parseFloat(courseData.nota_minima_aprobacion),
       status: courseData.estado as CourseData["status"],
-      associatedCareers: courseData.cursosPorCarrera?.map((cpc: any) => cpc.id_car_per) || [],
+      associatedCareers:
+        courseData.cursosPorCarrera?.map((cpc: any) => cpc.id_car_per) || [],
       prerequisites: {
         requiredCourses: [],
         requiredSkills: [],
@@ -264,11 +273,17 @@ export class Course {
       throw new Error("Current enrollments cannot exceed max capacity");
     }
 
-    if (this.data.attendancePercentageForApproval < 0 || this.data.attendancePercentageForApproval > 100) {
+    if (
+      this.data.attendancePercentageForApproval < 0 ||
+      this.data.attendancePercentageForApproval > 100
+    ) {
       throw new Error("Attendance percentage must be between 0 and 100");
     }
 
-    if (this.data.minimumGradeForApproval < 0 || this.data.minimumGradeForApproval > 10) {
+    if (
+      this.data.minimumGradeForApproval < 0 ||
+      this.data.minimumGradeForApproval > 10
+    ) {
       throw new Error("Minimum grade must be between 0 and 10");
     }
 
@@ -403,7 +418,10 @@ export class Course {
   /**
    * Check if user meets prerequisites
    */
-  public meetsPrerequisites(userCompletedCourses: string[], userSkills: string[]): {
+  public meetsPrerequisites(
+    userCompletedCourses: string[],
+    userSkills: string[]
+  ): {
     meets: boolean;
     missing: {
       courses: string[];
@@ -411,11 +429,11 @@ export class Course {
     };
   } {
     const missingCourses = this.data.prerequisites.requiredCourses.filter(
-      courseId => !userCompletedCourses.includes(courseId)
+      (courseId) => !userCompletedCourses.includes(courseId)
     );
 
     const missingSkills = this.data.prerequisites.requiredSkills.filter(
-      skill => !userSkills.includes(skill)
+      (skill) => !userSkills.includes(skill)
     );
 
     return {
@@ -437,7 +455,7 @@ export class Course {
       case "TODAS_CARRERAS":
         return userCareerIds.length > 0;
       case "CARRERA_ESPECIFICA":
-        return this.data.associatedCareers.some(careerId => 
+        return this.data.associatedCareers.some((careerId) =>
           userCareerIds.includes(careerId)
         );
       default:
@@ -457,7 +475,8 @@ export class Course {
     const updatedData = {
       ...this.data,
       name: name !== undefined ? name.trim() : this.data.name,
-      description: description !== undefined ? description.trim() : this.data.description,
+      description:
+        description !== undefined ? description.trim() : this.data.description,
       duration: duration !== undefined ? duration : this.data.duration,
       updatedAt: new Date(),
       lastModifiedBy: updatedBy,
@@ -474,8 +493,13 @@ export class Course {
     endDate?: Date,
     updatedBy?: string
   ): Course {
-    if (this.data.status === "IN_PROGRESS" || this.data.status === "COMPLETED") {
-      throw new Error("Cannot update dates for courses in progress or completed");
+    if (
+      this.data.status === "IN_PROGRESS" ||
+      this.data.status === "COMPLETED"
+    ) {
+      throw new Error(
+        "Cannot update dates for courses in progress or completed"
+      );
     }
 
     const newStartDate = startDate || this.data.startDate;
@@ -499,10 +523,7 @@ export class Course {
   /**
    * Update course capacity
    */
-  public updateCapacity(
-    newCapacity: number,
-    updatedBy?: string
-  ): Course {
+  public updateCapacity(newCapacity: number, updatedBy?: string): Course {
     if (newCapacity <= 0) {
       throw new Error("Capacity must be positive");
     }
@@ -556,7 +577,10 @@ export class Course {
     minimumGrade?: number,
     updatedBy?: string
   ): Course {
-    if (attendancePercentage !== undefined && (attendancePercentage < 0 || attendancePercentage > 100)) {
+    if (
+      attendancePercentage !== undefined &&
+      (attendancePercentage < 0 || attendancePercentage > 100)
+    ) {
       throw new Error("Attendance percentage must be between 0 and 100");
     }
 
@@ -566,12 +590,14 @@ export class Course {
 
     const updatedData = {
       ...this.data,
-      attendancePercentageForApproval: attendancePercentage !== undefined 
-        ? attendancePercentage 
-        : this.data.attendancePercentageForApproval,
-      minimumGradeForApproval: minimumGrade !== undefined 
-        ? minimumGrade 
-        : this.data.minimumGradeForApproval,
+      attendancePercentageForApproval:
+        attendancePercentage !== undefined
+          ? attendancePercentage
+          : this.data.attendancePercentageForApproval,
+      minimumGradeForApproval:
+        minimumGrade !== undefined
+          ? minimumGrade
+          : this.data.minimumGradeForApproval,
       updatedAt: new Date(),
       lastModifiedBy: updatedBy,
     };
@@ -589,12 +615,14 @@ export class Course {
   ): Course {
     const updatedData = {
       ...this.data,
-      requiresDocumentVerification: requiresDocumentVerification !== undefined 
-        ? requiresDocumentVerification 
-        : this.data.requiresDocumentVerification,
-      requiresMotivationLetter: requiresMotivationLetter !== undefined 
-        ? requiresMotivationLetter 
-        : this.data.requiresMotivationLetter,
+      requiresDocumentVerification:
+        requiresDocumentVerification !== undefined
+          ? requiresDocumentVerification
+          : this.data.requiresDocumentVerification,
+      requiresMotivationLetter:
+        requiresMotivationLetter !== undefined
+          ? requiresMotivationLetter
+          : this.data.requiresMotivationLetter,
       updatedAt: new Date(),
       lastModifiedBy: updatedBy,
     };
@@ -605,12 +633,11 @@ export class Course {
   /**
    * Add career association
    */
-  public addCareerAssociation(
-    careerId: string,
-    updatedBy?: string
-  ): Course {
+  public addCareerAssociation(careerId: string, updatedBy?: string): Course {
     if (this.data.audienceType !== "CARRERA_ESPECIFICA") {
-      throw new Error("Can only associate careers with CARRERA_ESPECIFICA audience type");
+      throw new Error(
+        "Can only associate careers with CARRERA_ESPECIFICA audience type"
+      );
     }
 
     if (this.data.associatedCareers.includes(careerId)) {
@@ -630,13 +657,12 @@ export class Course {
   /**
    * Remove career association
    */
-  public removeCareerAssociation(
-    careerId: string,
-    updatedBy?: string
-  ): Course {
+  public removeCareerAssociation(careerId: string, updatedBy?: string): Course {
     const updatedData = {
       ...this.data,
-      associatedCareers: this.data.associatedCareers.filter(id => id !== careerId),
+      associatedCareers: this.data.associatedCareers.filter(
+        (id) => id !== careerId
+      ),
       updatedAt: new Date(),
       lastModifiedBy: updatedBy,
     };
@@ -672,10 +698,7 @@ export class Course {
   /**
    * Add prerequisite course
    */
-  public addPrerequisiteCourse(
-    courseId: string,
-    updatedBy?: string
-  ): Course {
+  public addPrerequisiteCourse(courseId: string, updatedBy?: string): Course {
     if (courseId === this.data.id) {
       throw new Error("Course cannot be a prerequisite of itself");
     }
@@ -708,7 +731,9 @@ export class Course {
   ): Course {
     const updatedPrerequisites = {
       ...this.data.prerequisites,
-      requiredCourses: this.data.prerequisites.requiredCourses.filter(id => id !== courseId),
+      requiredCourses: this.data.prerequisites.requiredCourses.filter(
+        (id) => id !== courseId
+      ),
     };
 
     const updatedData = {
@@ -724,10 +749,7 @@ export class Course {
   /**
    * Update required skills
    */
-  public updateRequiredSkills(
-    skills: string[],
-    updatedBy?: string
-  ): Course {
+  public updateRequiredSkills(skills: string[], updatedBy?: string): Course {
     const updatedPrerequisites = {
       ...this.data.prerequisites,
       requiredSkills: [...skills],
@@ -856,7 +878,8 @@ export class Course {
     }
 
     const newEnrollmentCount = this.data.currentEnrollments + 1;
-    const newStatus = newEnrollmentCount >= this.data.maxCapacity ? "FULL" : this.data.status;
+    const newStatus =
+      newEnrollmentCount >= this.data.maxCapacity ? "FULL" : this.data.status;
 
     const updatedData = {
       ...this.data,
@@ -896,18 +919,19 @@ export class Course {
    */
   public calculateProgress(): number {
     const now = new Date();
-    
+
     if (now < this.data.startDate) {
       return 0;
     }
-    
+
     if (now > this.data.endDate) {
       return 100;
     }
 
-    const totalDuration = this.data.endDate.getTime() - this.data.startDate.getTime();
+    const totalDuration =
+      this.data.endDate.getTime() - this.data.startDate.getTime();
     const elapsed = now.getTime() - this.data.startDate.getTime();
-    
+
     return Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
   }
 
@@ -915,18 +939,24 @@ export class Course {
    * Get course enrollment rate
    */
   public getEnrollmentRate(): number {
-    return this.data.maxCapacity > 0 ? (this.data.currentEnrollments / this.data.maxCapacity) * 100 : 0;
+    return this.data.maxCapacity > 0
+      ? (this.data.currentEnrollments / this.data.maxCapacity) * 100
+      : 0;
   }
 
   /**
    * Check if student passes the course based on criteria
    */
-  public checkPassingCriteria(attendancePercentage: number, finalGrade: number): {
+  public checkPassingCriteria(
+    attendancePercentage: number,
+    finalGrade: number
+  ): {
     passes: boolean;
     attendanceMet: boolean;
     gradeMet: boolean;
   } {
-    const attendanceMet = attendancePercentage >= this.data.attendancePercentageForApproval;
+    const attendanceMet =
+      attendancePercentage >= this.data.attendancePercentageForApproval;
     const gradeMet = finalGrade >= this.data.minimumGradeForApproval;
 
     return {
@@ -1026,7 +1056,8 @@ export class Course {
       requiere_carta_motivacion: this.data.requiresMotivationLetter,
       es_gratuito: this.data.isFree,
       precio: this.data.price,
-      porcentaje_asistencia_aprobacion: this.data.attendancePercentageForApproval,
+      porcentaje_asistencia_aprobacion:
+        this.data.attendancePercentageForApproval,
       nota_minima_aprobacion: this.data.minimumGradeForApproval,
       estado: this.data.status,
       createdAt: this.data.createdAt,

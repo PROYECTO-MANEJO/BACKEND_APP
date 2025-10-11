@@ -74,23 +74,36 @@ export interface AnalyticsDashboard {
 export interface CourseAnalyticsRepository {
   // Course metrics
   getCourseMetrics(courseId: string): Promise<CoursePerformanceMetrics>;
-  getBulkCourseMetrics(courseIds: string[]): Promise<CoursePerformanceMetrics[]>;
+  getBulkCourseMetrics(
+    courseIds: string[]
+  ): Promise<CoursePerformanceMetrics[]>;
   getAllCoursesMetrics(filters?: any): Promise<CoursePerformanceMetrics[]>;
 
   // Enrollment analytics
-  getEnrollmentTrends(period: string, startDate: Date, endDate: Date): Promise<EnrollmentTrend[]>;
+  getEnrollmentTrends(
+    period: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<EnrollmentTrend[]>;
   getEnrollmentsByCategory(categoryId?: string): Promise<any[]>;
   getEnrollmentsByOrganizer(organizerId?: string): Promise<any[]>;
   getEnrollmentsByPeriod(startDate: Date, endDate: Date): Promise<any[]>;
 
   // Performance analytics
   getCategoryPerformance(categoryId?: string): Promise<CategoryPerformance[]>;
-  getOrganizerPerformance(organizerId?: string): Promise<OrganizerPerformance[]>;
+  getOrganizerPerformance(
+    organizerId?: string
+  ): Promise<OrganizerPerformance[]>;
   getTopPerformingCourses(limit?: number): Promise<CoursePerformanceMetrics[]>;
-  getUnderperformingCourses(limit?: number): Promise<CoursePerformanceMetrics[]>;
+  getUnderperformingCourses(
+    limit?: number
+  ): Promise<CoursePerformanceMetrics[]>;
 
   // Dashboard data
-  getDashboardData(dateRange?: { start: Date; end: Date }): Promise<AnalyticsDashboard>;
+  getDashboardData(dateRange?: {
+    start: Date;
+    end: Date;
+  }): Promise<AnalyticsDashboard>;
 }
 
 export interface UserRepository {
@@ -134,18 +147,22 @@ export class CourseAnalytics {
     message: string;
   }> {
     try {
-      const dashboard = await this.analyticsRepository.getDashboardData(dateRange);
+      const dashboard = await this.analyticsRepository.getDashboardData(
+        dateRange
+      );
 
       return {
         success: true,
         dashboard,
         message: "Dashboard data retrieved successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to retrieve dashboard data",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to retrieve dashboard data",
       };
     }
   }
@@ -153,7 +170,10 @@ export class CourseAnalytics {
   /**
    * Get course performance metrics
    */
-  async getCoursePerformance(courseId?: string, filters?: AnalyticsFilters): Promise<{
+  async getCoursePerformance(
+    courseId?: string,
+    filters?: AnalyticsFilters
+  ): Promise<{
     success: boolean;
     metrics?: CoursePerformanceMetrics[];
     message: string;
@@ -162,7 +182,9 @@ export class CourseAnalytics {
       let metrics: CoursePerformanceMetrics[];
 
       if (courseId) {
-        const singleMetric = await this.analyticsRepository.getCourseMetrics(courseId);
+        const singleMetric = await this.analyticsRepository.getCourseMetrics(
+          courseId
+        );
         metrics = [singleMetric];
       } else {
         metrics = await this.analyticsRepository.getAllCoursesMetrics(filters);
@@ -178,11 +200,13 @@ export class CourseAnalytics {
         metrics,
         message: "Course performance metrics retrieved successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to retrieve course performance",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to retrieve course performance",
       };
     }
   }
@@ -200,18 +224,24 @@ export class CourseAnalytics {
     message: string;
   }> {
     try {
-      const trends = await this.analyticsRepository.getEnrollmentTrends(period, startDate, endDate);
+      const trends = await this.analyticsRepository.getEnrollmentTrends(
+        period,
+        startDate,
+        endDate
+      );
 
       return {
         success: true,
         trends,
         message: "Enrollment trends retrieved successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to retrieve enrollment trends",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to retrieve enrollment trends",
       };
     }
   }
@@ -225,12 +255,14 @@ export class CourseAnalytics {
     message: string;
   }> {
     try {
-      const categories = await this.analyticsRepository.getCategoryPerformance(categoryId);
+      const categories = await this.analyticsRepository.getCategoryPerformance(
+        categoryId
+      );
 
       // Sort by performance score (combination of completion rate and rating)
       categories.sort((a, b) => {
-        const scoreA = (a.completionRate * 0.6) + (a.averageRating * 20 * 0.4);
-        const scoreB = (b.completionRate * 0.6) + (b.averageRating * 20 * 0.4);
+        const scoreA = a.completionRate * 0.6 + a.averageRating * 20 * 0.4;
+        const scoreB = b.completionRate * 0.6 + b.averageRating * 20 * 0.4;
         return scoreB - scoreA;
       });
 
@@ -239,11 +271,13 @@ export class CourseAnalytics {
         categories,
         message: "Category analytics retrieved successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to retrieve category analytics",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to retrieve category analytics",
       };
     }
   }
@@ -257,12 +291,20 @@ export class CourseAnalytics {
     message: string;
   }> {
     try {
-      const organizers = await this.analyticsRepository.getOrganizerPerformance(organizerId);
+      const organizers = await this.analyticsRepository.getOrganizerPerformance(
+        organizerId
+      );
 
       // Sort by performance score
       organizers.sort((a, b) => {
-        const scoreA = (a.completionRate * 0.4) + (a.averageRating * 20 * 0.3) + (a.averageCapacityUtilization * 0.3);
-        const scoreB = (b.completionRate * 0.4) + (b.averageRating * 20 * 0.3) + (b.averageCapacityUtilization * 0.3);
+        const scoreA =
+          a.completionRate * 0.4 +
+          a.averageRating * 20 * 0.3 +
+          a.averageCapacityUtilization * 0.3;
+        const scoreB =
+          b.completionRate * 0.4 +
+          b.averageRating * 20 * 0.3 +
+          b.averageCapacityUtilization * 0.3;
         return scoreB - scoreA;
       });
 
@@ -271,11 +313,13 @@ export class CourseAnalytics {
         organizers,
         message: "Organizer analytics retrieved successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to retrieve organizer analytics",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to retrieve organizer analytics",
       };
     }
   }
@@ -289,18 +333,22 @@ export class CourseAnalytics {
     message: string;
   }> {
     try {
-      const courses = await this.analyticsRepository.getTopPerformingCourses(limit);
+      const courses = await this.analyticsRepository.getTopPerformingCourses(
+        limit
+      );
 
       return {
         success: true,
         courses,
         message: "Top performing courses retrieved successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to retrieve top performing courses",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to retrieve top performing courses",
       };
     }
   }
@@ -314,18 +362,22 @@ export class CourseAnalytics {
     message: string;
   }> {
     try {
-      const courses = await this.analyticsRepository.getUnderperformingCourses(limit);
+      const courses = await this.analyticsRepository.getUnderperformingCourses(
+        limit
+      );
 
       return {
         success: true,
         courses,
         message: "Underperforming courses retrieved successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to retrieve underperforming courses",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to retrieve underperforming courses",
       };
     }
   }
@@ -334,7 +386,11 @@ export class CourseAnalytics {
    * Generate analytics report
    */
   async generateReport(
-    reportType: "course_performance" | "enrollment_trends" | "category_analytics" | "organizer_analytics",
+    reportType:
+      | "course_performance"
+      | "enrollment_trends"
+      | "category_analytics"
+      | "organizer_analytics",
     filters?: AnalyticsFilters,
     format: "csv" | "pdf" = "csv"
   ): Promise<{
@@ -349,26 +405,45 @@ export class CourseAnalytics {
 
       switch (reportType) {
         case "course_performance":
-          const courseMetrics = await this.analyticsRepository.getAllCoursesMetrics(filters);
+          const courseMetrics =
+            await this.analyticsRepository.getAllCoursesMetrics(filters);
           data = this.applyPerformanceFilters(courseMetrics, filters || {});
-          filename = `course_performance_${new Date().toISOString().split('T')[0]}.${format}`;
+          filename = `course_performance_${
+            new Date().toISOString().split("T")[0]
+          }.${format}`;
           break;
 
         case "enrollment_trends":
-          const startDate = filters?.startDate || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+          const startDate =
+            filters?.startDate ||
+            new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
           const endDate = filters?.endDate || new Date();
-          data = await this.analyticsRepository.getEnrollmentTrends("monthly", startDate, endDate);
-          filename = `enrollment_trends_${new Date().toISOString().split('T')[0]}.${format}`;
+          data = await this.analyticsRepository.getEnrollmentTrends(
+            "monthly",
+            startDate,
+            endDate
+          );
+          filename = `enrollment_trends_${
+            new Date().toISOString().split("T")[0]
+          }.${format}`;
           break;
 
         case "category_analytics":
-          data = await this.analyticsRepository.getCategoryPerformance(filters?.categoryId);
-          filename = `category_analytics_${new Date().toISOString().split('T')[0]}.${format}`;
+          data = await this.analyticsRepository.getCategoryPerformance(
+            filters?.categoryId
+          );
+          filename = `category_analytics_${
+            new Date().toISOString().split("T")[0]
+          }.${format}`;
           break;
 
         case "organizer_analytics":
-          data = await this.analyticsRepository.getOrganizerPerformance(filters?.organizerId);
-          filename = `organizer_analytics_${new Date().toISOString().split('T')[0]}.${format}`;
+          data = await this.analyticsRepository.getOrganizerPerformance(
+            filters?.organizerId
+          );
+          filename = `organizer_analytics_${
+            new Date().toISOString().split("T")[0]
+          }.${format}`;
           break;
 
         default:
@@ -391,11 +466,11 @@ export class CourseAnalytics {
         filename,
         message: "Report generated successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to generate report",
+        message:
+          error instanceof Error ? error.message : "Failed to generate report",
       };
     }
   }
@@ -427,10 +502,20 @@ export class CourseAnalytics {
       ]);
 
       const growth = {
-        coursesGrowth: this.calculateGrowthPercentage(currentData.totalCourses, previousData.totalCourses),
-        enrollmentsGrowth: this.calculateGrowthPercentage(currentData.totalEnrollments, previousData.totalEnrollments),
-        completionsGrowth: this.calculateGrowthPercentage(currentData.totalCompletions, previousData.totalCompletions),
-        ratingImprovement: currentData.averageRating - previousData.averageRating,
+        coursesGrowth: this.calculateGrowthPercentage(
+          currentData.totalCourses,
+          previousData.totalCourses
+        ),
+        enrollmentsGrowth: this.calculateGrowthPercentage(
+          currentData.totalEnrollments,
+          previousData.totalEnrollments
+        ),
+        completionsGrowth: this.calculateGrowthPercentage(
+          currentData.totalCompletions,
+          previousData.totalCompletions
+        ),
+        ratingImprovement:
+          currentData.averageRating - previousData.averageRating,
       };
 
       return {
@@ -442,11 +527,13 @@ export class CourseAnalytics {
         },
         message: "Comparative analytics retrieved successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to retrieve comparative analytics",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to retrieve comparative analytics",
       };
     }
   }
@@ -463,7 +550,11 @@ export class CourseAnalytics {
       averageRating: number;
       totalLearningHours: number;
       categoriesEngaged: string[];
-      enrollmentTrend: Array<{ month: string; enrollments: number; completions: number }>;
+      enrollmentTrend: Array<{
+        month: string;
+        enrollments: number;
+        completions: number;
+      }>;
     };
     message: string;
   }> {
@@ -483,34 +574,54 @@ export class CourseAnalytics {
 
       const totalEnrollments = enrollments.length;
       const completedCourses = completions.length;
-      const completionRate = totalEnrollments > 0 ? (completedCourses / totalEnrollments) * 100 : 0;
+      const completionRate =
+        totalEnrollments > 0 ? (completedCourses / totalEnrollments) * 100 : 0;
 
-      const averageRating = completions.reduce((sum, completion) => 
-        sum + (completion.rating || 0), 0) / (completions.length || 1);
+      const averageRating =
+        completions.reduce(
+          (sum, completion) => sum + (completion.rating || 0),
+          0
+        ) / (completions.length || 1);
 
-      const totalLearningHours = completions.reduce((sum, completion) => 
-        sum + (completion.courseDuration || 0), 0);
+      const totalLearningHours = completions.reduce(
+        (sum, completion) => sum + (completion.courseDuration || 0),
+        0
+      );
 
-      const categoriesEngaged = [...new Set(enrollments.map(e => e.categoryName).filter(Boolean))];
+      const categoriesEngaged = [
+        ...new Set(enrollments.map((e) => e.categoryName).filter(Boolean)),
+      ];
 
       // Group by month for trend
-      const enrollmentsByMonth = enrollments.reduce((acc: any, enrollment: any) => {
-        const month = new Date(enrollment.enrolledAt).toISOString().slice(0, 7);
-        acc[month] = (acc[month] || 0) + 1;
-        return acc;
-      }, {});
+      const enrollmentsByMonth = enrollments.reduce(
+        (acc: any, enrollment: any) => {
+          const month = new Date(enrollment.enrolledAt)
+            .toISOString()
+            .slice(0, 7);
+          acc[month] = (acc[month] || 0) + 1;
+          return acc;
+        },
+        {}
+      );
 
-      const completionsByMonth = completions.reduce((acc: any, completion: any) => {
-        const month = new Date(completion.completedAt).toISOString().slice(0, 7);
-        acc[month] = (acc[month] || 0) + 1;
-        return acc;
-      }, {});
+      const completionsByMonth = completions.reduce(
+        (acc: any, completion: any) => {
+          const month = new Date(completion.completedAt)
+            .toISOString()
+            .slice(0, 7);
+          acc[month] = (acc[month] || 0) + 1;
+          return acc;
+        },
+        {}
+      );
 
-      const enrollmentTrend = Object.keys(enrollmentsByMonth).map(month => ({
-        month,
-        enrollments: enrollmentsByMonth[month] || 0,
-        completions: completionsByMonth[month] || 0,
-      })).sort();
+      const enrollmentTrend = Object.keys(enrollmentsByMonth)
+        .map((month) => ({
+          month,
+          enrollments: enrollmentsByMonth[month] || 0,
+          completions: completionsByMonth[month] || 0,
+        }))
+        .sort();
 
       return {
         success: true,
@@ -525,11 +636,13 @@ export class CourseAnalytics {
         },
         message: "User analytics retrieved successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Failed to retrieve user analytics",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to retrieve user analytics",
       };
     }
   }
@@ -537,23 +650,30 @@ export class CourseAnalytics {
   /**
    * Private helper methods
    */
-  private applyPerformanceFilters(metrics: CoursePerformanceMetrics[], filters: AnalyticsFilters): CoursePerformanceMetrics[] {
+  private applyPerformanceFilters(
+    metrics: CoursePerformanceMetrics[],
+    filters: AnalyticsFilters
+  ): CoursePerformanceMetrics[] {
     let filtered = metrics;
 
     if (filters.minEnrollments !== undefined) {
-      filtered = filtered.filter(m => m.enrollmentCount >= filters.minEnrollments!);
+      filtered = filtered.filter(
+        (m) => m.enrollmentCount >= filters.minEnrollments!
+      );
     }
 
     if (filters.maxEnrollments !== undefined) {
-      filtered = filtered.filter(m => m.enrollmentCount <= filters.maxEnrollments!);
+      filtered = filtered.filter(
+        (m) => m.enrollmentCount <= filters.maxEnrollments!
+      );
     }
 
     if (filters.minRating !== undefined) {
-      filtered = filtered.filter(m => m.averageRating >= filters.minRating!);
+      filtered = filtered.filter((m) => m.averageRating >= filters.minRating!);
     }
 
     if (filters.maxRating !== undefined) {
-      filtered = filtered.filter(m => m.averageRating <= filters.maxRating!);
+      filtered = filtered.filter((m) => m.averageRating <= filters.maxRating!);
     }
 
     return filtered;

@@ -35,6 +35,12 @@ import { InscriptionRepository } from "../repositories/InscriptionRepository";
 
 // Phase 7 - Infrastructure Implementations
 import { PrismaCertificateRepository } from "../repositories/PrismaCertificateRepository";
+// Infrastructure Layer - New Repositories
+import { PrismaUserRepository } from "../repositories/PrismaUserRepository";
+import { PrismaCourseRepository } from "../repositories/PrismaCourseRepository";  
+import { PrismaEventRepository } from "../repositories/PrismaEventRepository";
+import { PrismaEnrollmentRepository } from "../repositories/PrismaEnrollmentRepository";
+import { PrismaAuthenticationRepository } from "../repositories/PrismaAuthenticationRepository";
 
 // Phase 8 - Change Request System Infrastructure
 import { PrismaChangeRequestRepository } from "../repositories/PrismaChangeRequestRepository";
@@ -91,10 +97,17 @@ export class DIContainer {
   private _verificationTokenRepository: IVerificationTokenRepository;
   private _emailService: IEmailService;
 
-  // Phase 7 - Advanced Features
-  private _certificateRepository: CertificateRepository;
+  // Phase 7 - Advanced Features  
+  private _certificateRepository: PrismaCertificateRepository;
   private _reportRepository?: ReportRepository;
   private _changeRequestRepository?: LegacyChangeRequestRepository;
+  
+  // Infrastructure Layer - New Repositories
+  private _newUserRepository: PrismaUserRepository;
+  private _newCourseRepository: PrismaCourseRepository;
+  private _newEventRepository: PrismaEventRepository;  
+  private _newEnrollmentRepository: PrismaEnrollmentRepository;
+  private _newAuthenticationRepository: PrismaAuthenticationRepository;
   private _pdfGenerationService?: PDFGenerationService;
   private _githubIntegrationService?: GitHubIntegrationService;
   private _notificationService?: NotificationService;
@@ -276,7 +289,14 @@ export class DIContainer {
 
     // Phase 7 - Initialize Advanced Features
     // Initialize repositories
-    this._certificateRepository = new PrismaCertificateRepository();
+    this._certificateRepository = new PrismaCertificateRepository(this._prisma);
+    
+    // Initialize Infrastructure Layer - New Repositories
+    this._newUserRepository = new PrismaUserRepository(this._prisma);
+    this._newCourseRepository = new PrismaCourseRepository(this._prisma);
+    this._newEventRepository = new PrismaEventRepository(this._prisma);
+    this._newEnrollmentRepository = new PrismaEnrollmentRepository(this._prisma);
+    this._newAuthenticationRepository = new PrismaAuthenticationRepository(this._prisma);
 
     // TODO: Implement these repositories and services for complete Phase 7
     // this._reportRepository = new PrismaReportRepository();
@@ -395,8 +415,29 @@ export class DIContainer {
   }
 
   // Phase 7 - Advanced Features Getters
-  public get certificateRepository(): CertificateRepository {
+  public get certificateRepository(): PrismaCertificateRepository {
     return this._certificateRepository;
+  }
+  
+  // Infrastructure Layer - New Repositories Getters
+  public get newUserRepository(): PrismaUserRepository {
+    return this._newUserRepository;
+  }
+  
+  public get newCourseRepository(): PrismaCourseRepository {
+    return this._newCourseRepository;
+  }
+  
+  public get newEventRepository(): PrismaEventRepository {
+    return this._newEventRepository;
+  }
+  
+  public get newEnrollmentRepository(): PrismaEnrollmentRepository {
+    return this._newEnrollmentRepository;
+  }
+  
+  public get newAuthenticationRepository(): PrismaAuthenticationRepository {
+    return this._newAuthenticationRepository;
   }
 
   public get certificateManagementService(): CertificateManagementService {

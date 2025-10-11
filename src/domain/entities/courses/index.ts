@@ -1,6 +1,6 @@
 /**
  * Courses Domain Layer - Index
- * 
+ *
  * Clean Architecture Domain Layer for Courses System
  * Exports domain entities, value objects, and interfaces
  */
@@ -10,10 +10,7 @@ export { Course } from "./Course";
 export { CourseCategory } from "./CourseCategory";
 
 // Type Definitions and Interfaces
-export type {
-  CourseStatistics,
-  CourseFilters,
-} from "./Course";
+export type { CourseStatistics, CourseFilters } from "./Course";
 
 export type {
   CourseCategoryStatistics,
@@ -25,36 +22,36 @@ export const COURSE_DOMAIN_CONSTANTS = {
   // Course Status Values
   COURSE_STATUS: {
     DRAFT: "DRAFT",
-    ACTIVE: "ACTIVE", 
+    ACTIVE: "ACTIVE",
     FULL: "FULL",
     IN_PROGRESS: "IN_PROGRESS",
     COMPLETED: "COMPLETED",
     CANCELLED: "CANCELLED",
     ARCHIVED: "ARCHIVED",
   },
-  
+
   // Audience Types
   AUDIENCE_TYPE: {
     CAREER_SPECIFIC: "CARRERA_ESPECIFICA",
-    ALL_CAREERS: "TODAS_CARRERAS",  
+    ALL_CAREERS: "TODAS_CARRERAS",
     GENERAL_PUBLIC: "PUBLICO_GENERAL",
   },
-  
+
   // Certificate Types
   CERTIFICATE_TYPE: {
     PARTICIPATION: "PARTICIPATION",
     COMPLETION: "COMPLETION",
     ACHIEVEMENT: "ACHIEVEMENT",
   },
-  
+
   // Education Levels
   EDUCATION_LEVEL: {
     SECONDARY: "SECONDARY",
     TECHNICAL: "TECHNICAL",
-    UNIVERSITY: "UNIVERSITY", 
+    UNIVERSITY: "UNIVERSITY",
     POSTGRADUATE: "POSTGRADUATE",
   },
-  
+
   // Default Values
   DEFAULTS: {
     COURSE: {
@@ -74,7 +71,7 @@ export const COURSE_DOMAIN_CONSTANTS = {
       ALLOWED_DAYS: [1, 2, 3, 4, 5], // Monday to Friday
     },
   },
-  
+
   // Validation Limits
   LIMITS: {
     COURSE_NAME_MAX_LENGTH: 200,
@@ -97,7 +94,7 @@ export const COURSE_DOMAIN_EVENTS = {
   // Course Events
   COURSE_CREATED: "course.created",
   COURSE_UPDATED: "course.updated",
-  COURSE_PUBLISHED: "course.published", 
+  COURSE_PUBLISHED: "course.published",
   COURSE_STARTED: "course.started",
   COURSE_COMPLETED: "course.completed",
   COURSE_CANCELLED: "course.cancelled",
@@ -105,7 +102,7 @@ export const COURSE_DOMAIN_EVENTS = {
   COURSE_CAPACITY_UPDATED: "course.capacity.updated",
   COURSE_ENROLLMENT_ADDED: "course.enrollment.added",
   COURSE_ENROLLMENT_REMOVED: "course.enrollment.removed",
-  
+
   // Category Events
   CATEGORY_CREATED: "category.created",
   CATEGORY_UPDATED: "category.updated",
@@ -175,90 +172,105 @@ export const CourseDomainUtils = {
     if (!name || name.trim().length === 0) {
       return { isValid: false, error: "Course name is required" };
     }
-    
+
     if (name.length > COURSE_DOMAIN_CONSTANTS.LIMITS.COURSE_NAME_MAX_LENGTH) {
-      return { 
-        isValid: false, 
-        error: `Course name cannot exceed ${COURSE_DOMAIN_CONSTANTS.LIMITS.COURSE_NAME_MAX_LENGTH} characters` 
+      return {
+        isValid: false,
+        error: `Course name cannot exceed ${COURSE_DOMAIN_CONSTANTS.LIMITS.COURSE_NAME_MAX_LENGTH} characters`,
       };
     }
-    
+
     return { isValid: true };
   },
 
   /**
    * Validate course description
    */
-  validateCourseDescription(description: string): { isValid: boolean; error?: string } {
+  validateCourseDescription(description: string): {
+    isValid: boolean;
+    error?: string;
+  } {
     if (!description || description.trim().length === 0) {
       return { isValid: false, error: "Course description is required" };
     }
-    
-    if (description.length > COURSE_DOMAIN_CONSTANTS.LIMITS.COURSE_DESCRIPTION_MAX_LENGTH) {
-      return { 
-        isValid: false, 
-        error: `Course description cannot exceed ${COURSE_DOMAIN_CONSTANTS.LIMITS.COURSE_DESCRIPTION_MAX_LENGTH} characters` 
+
+    if (
+      description.length >
+      COURSE_DOMAIN_CONSTANTS.LIMITS.COURSE_DESCRIPTION_MAX_LENGTH
+    ) {
+      return {
+        isValid: false,
+        error: `Course description cannot exceed ${COURSE_DOMAIN_CONSTANTS.LIMITS.COURSE_DESCRIPTION_MAX_LENGTH} characters`,
       };
     }
-    
+
     return { isValid: true };
   },
 
   /**
    * Validate course duration
    */
-  validateCourseDuration(duration: number): { isValid: boolean; error?: string } {
+  validateCourseDuration(duration: number): {
+    isValid: boolean;
+    error?: string;
+  } {
     if (duration < COURSE_DOMAIN_CONSTANTS.LIMITS.MIN_DURATION_HOURS) {
-      return { 
-        isValid: false, 
-        error: `Course duration must be at least ${COURSE_DOMAIN_CONSTANTS.LIMITS.MIN_DURATION_HOURS} hour(s)` 
+      return {
+        isValid: false,
+        error: `Course duration must be at least ${COURSE_DOMAIN_CONSTANTS.LIMITS.MIN_DURATION_HOURS} hour(s)`,
       };
     }
-    
+
     if (duration > COURSE_DOMAIN_CONSTANTS.LIMITS.MAX_DURATION_HOURS) {
-      return { 
-        isValid: false, 
-        error: `Course duration cannot exceed ${COURSE_DOMAIN_CONSTANTS.LIMITS.MAX_DURATION_HOURS} hours` 
+      return {
+        isValid: false,
+        error: `Course duration cannot exceed ${COURSE_DOMAIN_CONSTANTS.LIMITS.MAX_DURATION_HOURS} hours`,
       };
     }
-    
+
     return { isValid: true };
   },
 
   /**
    * Validate course capacity
    */
-  validateCourseCapacity(capacity: number): { isValid: boolean; error?: string } {
+  validateCourseCapacity(capacity: number): {
+    isValid: boolean;
+    error?: string;
+  } {
     if (capacity < COURSE_DOMAIN_CONSTANTS.LIMITS.MIN_CAPACITY) {
-      return { 
-        isValid: false, 
-        error: `Course capacity must be at least ${COURSE_DOMAIN_CONSTANTS.LIMITS.MIN_CAPACITY}` 
+      return {
+        isValid: false,
+        error: `Course capacity must be at least ${COURSE_DOMAIN_CONSTANTS.LIMITS.MIN_CAPACITY}`,
       };
     }
-    
+
     if (capacity > COURSE_DOMAIN_CONSTANTS.LIMITS.MAX_CAPACITY) {
-      return { 
-        isValid: false, 
-        error: `Course capacity cannot exceed ${COURSE_DOMAIN_CONSTANTS.LIMITS.MAX_CAPACITY}` 
+      return {
+        isValid: false,
+        error: `Course capacity cannot exceed ${COURSE_DOMAIN_CONSTANTS.LIMITS.MAX_CAPACITY}`,
       };
     }
-    
+
     return { isValid: true };
   },
 
   /**
    * Validate date range
    */
-  validateDateRange(startDate: Date, endDate: Date): { isValid: boolean; error?: string } {
+  validateDateRange(
+    startDate: Date,
+    endDate: Date
+  ): { isValid: boolean; error?: string } {
     if (startDate >= endDate) {
       return { isValid: false, error: "Start date must be before end date" };
     }
-    
+
     const now = new Date();
     if (startDate < now) {
       return { isValid: false, error: "Start date cannot be in the past" };
     }
-    
+
     return { isValid: true };
   },
 
@@ -266,29 +278,36 @@ export const CourseDomainUtils = {
    * Validate grade
    */
   validateGrade(grade: number): { isValid: boolean; error?: string } {
-    if (grade < COURSE_DOMAIN_CONSTANTS.LIMITS.MIN_GRADE || 
-        grade > COURSE_DOMAIN_CONSTANTS.LIMITS.MAX_GRADE) {
-      return { 
-        isValid: false, 
-        error: `Grade must be between ${COURSE_DOMAIN_CONSTANTS.LIMITS.MIN_GRADE} and ${COURSE_DOMAIN_CONSTANTS.LIMITS.MAX_GRADE}` 
+    if (
+      grade < COURSE_DOMAIN_CONSTANTS.LIMITS.MIN_GRADE ||
+      grade > COURSE_DOMAIN_CONSTANTS.LIMITS.MAX_GRADE
+    ) {
+      return {
+        isValid: false,
+        error: `Grade must be between ${COURSE_DOMAIN_CONSTANTS.LIMITS.MIN_GRADE} and ${COURSE_DOMAIN_CONSTANTS.LIMITS.MAX_GRADE}`,
       };
     }
-    
+
     return { isValid: true };
   },
 
   /**
    * Validate attendance percentage
    */
-  validateAttendancePercentage(percentage: number): { isValid: boolean; error?: string } {
-    if (percentage < COURSE_DOMAIN_CONSTANTS.LIMITS.MIN_ATTENDANCE_PERCENTAGE || 
-        percentage > COURSE_DOMAIN_CONSTANTS.LIMITS.MAX_ATTENDANCE_PERCENTAGE) {
-      return { 
-        isValid: false, 
-        error: `Attendance percentage must be between ${COURSE_DOMAIN_CONSTANTS.LIMITS.MIN_ATTENDANCE_PERCENTAGE}% and ${COURSE_DOMAIN_CONSTANTS.LIMITS.MAX_ATTENDANCE_PERCENTAGE}%` 
+  validateAttendancePercentage(percentage: number): {
+    isValid: boolean;
+    error?: string;
+  } {
+    if (
+      percentage < COURSE_DOMAIN_CONSTANTS.LIMITS.MIN_ATTENDANCE_PERCENTAGE ||
+      percentage > COURSE_DOMAIN_CONSTANTS.LIMITS.MAX_ATTENDANCE_PERCENTAGE
+    ) {
+      return {
+        isValid: false,
+        error: `Attendance percentage must be between ${COURSE_DOMAIN_CONSTANTS.LIMITS.MIN_ATTENDANCE_PERCENTAGE}% and ${COURSE_DOMAIN_CONSTANTS.LIMITS.MAX_ATTENDANCE_PERCENTAGE}%`,
       };
     }
-    
+
     return { isValid: true };
   },
 
@@ -313,8 +332,10 @@ export const CourseDomainUtils = {
   generateCourseCode(categoryCode?: string): string {
     const timestamp = Date.now().toString().slice(-6);
     const random = Math.random().toString(36).substr(2, 4).toUpperCase();
-    const prefix = categoryCode ? categoryCode.substring(0, 3).toUpperCase() : 'CUR';
-    
+    const prefix = categoryCode
+      ? categoryCode.substring(0, 3).toUpperCase()
+      : "CUR";
+
     return `${prefix}-${timestamp}-${random}`;
   },
 
@@ -325,15 +346,17 @@ export const CourseDomainUtils = {
     if (hours < 1) {
       return `${Math.round(hours * 60)} minutes`;
     } else if (hours < 24) {
-      return `${hours} hour${hours !== 1 ? 's' : ''}`;
+      return `${hours} hour${hours !== 1 ? "s" : ""}`;
     } else {
       const days = Math.floor(hours / 24);
       const remainingHours = hours % 24;
-      
+
       if (remainingHours === 0) {
-        return `${days} day${days !== 1 ? 's' : ''}`;
+        return `${days} day${days !== 1 ? "s" : ""}`;
       } else {
-        return `${days} day${days !== 1 ? 's' : ''} ${remainingHours} hour${remainingHours !== 1 ? 's' : ''}`;
+        return `${days} day${days !== 1 ? "s" : ""} ${remainingHours} hour${
+          remainingHours !== 1 ? "s" : ""
+        }`;
       }
     }
   },
@@ -341,10 +364,14 @@ export const CourseDomainUtils = {
   /**
    * Calculate course intensity (hours per week)
    */
-  calculateCourseIntensity(duration: number, startDate: Date, endDate: Date): number {
+  calculateCourseIntensity(
+    duration: number,
+    startDate: Date,
+    endDate: Date
+  ): number {
     const totalDays = this.calculateDaysBetween(startDate, endDate);
     const weeks = totalDays / 7;
-    
+
     return weeks > 0 ? Math.round((duration / weeks) * 100) / 100 : duration;
   },
 
@@ -352,7 +379,11 @@ export const CourseDomainUtils = {
    * Check if course is intensive
    */
   isCourseIntensive(duration: number, startDate: Date, endDate: Date): boolean {
-    const intensity = this.calculateCourseIntensity(duration, startDate, endDate);
+    const intensity = this.calculateCourseIntensity(
+      duration,
+      startDate,
+      endDate
+    );
     return intensity >= 20; // 20+ hours per week is considered intensive
   },
 
@@ -360,14 +391,15 @@ export const CourseDomainUtils = {
    * Generate category path
    */
   generateCategoryPath(name: string, parentPath?: string): string {
-    const slug = name.toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '') // Remove accents
-      .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
-      .replace(/\s+/g, '-') // Replace spaces with hyphens
-      .replace(/-+/g, '-') // Remove duplicate hyphens
+    const slug = name
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // Remove accents
+      .replace(/[^a-z0-9\s-]/g, "") // Remove special characters
+      .replace(/\s+/g, "-") // Replace spaces with hyphens
+      .replace(/-+/g, "-") // Remove duplicate hyphens
       .trim();
-      
+
     return parentPath ? `${parentPath}/${slug}` : `/${slug}`;
   },
 };
