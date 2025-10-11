@@ -14,7 +14,7 @@ export interface User extends BaseEntity {
   phoneNumber?: string;
   password: string;
   careerId?: number;
-  
+
   // Campos de GitHub
   githubToken?: string;
   githubUsername?: string;

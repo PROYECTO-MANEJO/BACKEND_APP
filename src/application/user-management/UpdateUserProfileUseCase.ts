@@ -1,22 +1,25 @@
-import { UserManagementService } from '../../domain/services/UserManagementService';
-import { UpdateUserProfileDto } from '@shared/types/UserManagementTypes';
+import { UserManagementService } from "../../domain/services/UserManagementService";
+import { UpdateUserProfileDto } from "@shared/types/UserManagementTypes";
 
 export class UpdateUserProfileUseCase {
   constructor(private userManagementService: UserManagementService) {}
 
-  async execute(userId: number, updateData: UpdateUserProfileDto): Promise<{ success: boolean; message: string }> {
+  async execute(
+    userId: number,
+    updateData: UpdateUserProfileDto
+  ): Promise<{ success: boolean; message: string }> {
     // Validaciones básicas
     if (updateData.firstName && updateData.firstName.trim().length === 0) {
       return {
         success: false,
-        message: 'El nombre no puede estar vacío'
+        message: "El nombre no puede estar vacío",
       };
     }
 
     if (updateData.lastName && updateData.lastName.trim().length === 0) {
       return {
         success: false,
-        message: 'El apellido no puede estar vacío'
+        message: "El apellido no puede estar vacío",
       };
     }
 
@@ -26,7 +29,7 @@ export class UpdateUserProfileUseCase {
       if (!phoneRegex.test(updateData.phoneNumber)) {
         return {
           success: false,
-          message: 'El número de teléfono debe tener 10 dígitos'
+          message: "El número de teléfono debe tener 10 dígitos",
         };
       }
     }
@@ -37,7 +40,7 @@ export class UpdateUserProfileUseCase {
       if (updateData.dateOfBirth > today) {
         return {
           success: false,
-          message: 'La fecha de nacimiento no puede ser futura'
+          message: "La fecha de nacimiento no puede ser futura",
         };
       }
 
@@ -47,18 +50,21 @@ export class UpdateUserProfileUseCase {
       if (updateData.dateOfBirth > minAge) {
         return {
           success: false,
-          message: 'Debe ser mayor de 13 años'
+          message: "Debe ser mayor de 13 años",
         };
       }
     }
 
     try {
-      return await this.userManagementService.updateUserProfile(userId, updateData);
+      return await this.userManagementService.updateUserProfile(
+        userId,
+        updateData
+      );
     } catch (error) {
-      console.error('[UpdateUserProfileUseCase] Error:', error);
+      console.error("[UpdateUserProfileUseCase] Error:", error);
       return {
         success: false,
-        message: 'Error interno del servidor'
+        message: "Error interno del servidor",
       };
     }
   }

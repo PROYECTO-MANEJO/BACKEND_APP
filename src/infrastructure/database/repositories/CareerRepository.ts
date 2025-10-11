@@ -28,8 +28,8 @@ export class CareerRepository implements ICareerRepository {
     try {
       const careers = await this.prisma.carrera.findMany({
         orderBy: {
-          nom_car: 'asc'
-        }
+          nom_car: "asc",
+        },
       });
 
       return careers.map((career) => this.mapToEntity(career));
@@ -39,7 +39,9 @@ export class CareerRepository implements ICareerRepository {
     }
   }
 
-  async create(entity: Omit<Career, "id" | "createdAt" | "updatedAt">): Promise<Career> {
+  async create(
+    entity: Omit<Career, "id" | "createdAt" | "updatedAt">
+  ): Promise<Career> {
     try {
       const career = await this.prisma.carrera.create({
         data: {
@@ -59,7 +61,7 @@ export class CareerRepository implements ICareerRepository {
   async update(id: number, entity: Partial<Career>): Promise<Career | null> {
     try {
       const updateData: any = {};
-      
+
       if (entity.name) updateData.nom_car = entity.name;
       if (entity.code) updateData.des_car = entity.code;
       if (entity.faculty) updateData.nom_fac_per = entity.faculty;
@@ -93,8 +95,8 @@ export class CareerRepository implements ICareerRepository {
       // Como no hay campo isActive en el esquema actual, devolver todas
       const careers = await this.prisma.carrera.findMany({
         orderBy: {
-          nom_car: 'asc'
-        }
+          nom_car: "asc",
+        },
       });
 
       return careers.map((career) => this.mapToEntity(career));
@@ -133,13 +135,13 @@ export class CareerRepository implements ICareerRepository {
   async codeExists(code: string, excludeId?: number): Promise<boolean> {
     try {
       const where: any = { des_car: code };
-      
+
       if (excludeId) {
         where.NOT = { id_car: excludeId.toString() };
       }
 
       const career = await this.prisma.carrera.findFirst({ where });
-      
+
       return career !== null;
     } catch (error) {
       console.error("Error checking code existence:", error);

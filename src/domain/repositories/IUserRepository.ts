@@ -44,12 +44,18 @@ export interface IUserRepository extends BaseRepository<User> {
   /**
    * Obtener perfil completo con cuenta y carrera
    */
-  getCompleteProfile(userId: number): Promise<(User & { account: Account; career?: Career }) | null>;
+  getCompleteProfile(
+    userId: number
+  ): Promise<(User & { account: Account; career?: Career }) | null>;
 
   /**
    * Buscar usuarios con paginación
    */
-  findPaginated(page: number, limit: number, filters?: Partial<User>): Promise<{ users: User[]; total: number }>;
+  findPaginated(
+    page: number,
+    limit: number,
+    filters?: Partial<User>
+  ): Promise<{ users: User[]; total: number }>;
 
   /**
    * Eliminar usuario (soft delete)

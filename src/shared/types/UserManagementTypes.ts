@@ -25,7 +25,7 @@ export interface CreateUserDto {
   email: string;
   password: string;
   careerId?: number;
-  role: 'ESTUDIANTE' | 'USUARIO' | 'ADMINISTRADOR' | 'MASTER' | 'DESARROLLADOR';
+  role: "ESTUDIANTE" | "USUARIO" | "ADMINISTRADOR" | "MASTER" | "DESARROLLADOR";
 }
 
 export interface UserProfileResponse {

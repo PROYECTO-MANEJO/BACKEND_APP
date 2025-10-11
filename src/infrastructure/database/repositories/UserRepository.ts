@@ -319,23 +319,33 @@ export class UserRepository implements IUserRepository {
   /**
    * Actualizar perfil de usuario
    */
-  async updateProfile(userId: number, profileData: Partial<User>): Promise<boolean> {
+  async updateProfile(
+    userId: number,
+    profileData: Partial<User>
+  ): Promise<boolean> {
     try {
       const updateData: any = {};
-      
+
       if (profileData.firstName) updateData.nom_usu1 = profileData.firstName;
-      if (profileData.secondName !== undefined) updateData.nom_usu2 = profileData.secondName || "";
+      if (profileData.secondName !== undefined)
+        updateData.nom_usu2 = profileData.secondName || "";
       if (profileData.lastName) updateData.ape_usu1 = profileData.lastName;
-      if (profileData.secondLastName !== undefined) updateData.ape_usu2 = profileData.secondLastName || "";
-      if (profileData.dateOfBirth) updateData.fec_nac_usu = profileData.dateOfBirth;
-      if (profileData.phoneNumber !== undefined) updateData.num_tel_usu = profileData.phoneNumber;
-      if (profileData.careerId !== undefined) updateData.id_car_per = profileData.careerId?.toString();
-      if (profileData.githubToken !== undefined) updateData.github_token = profileData.githubToken;
-      if (profileData.githubUsername !== undefined) updateData.github_username = profileData.githubUsername;
+      if (profileData.secondLastName !== undefined)
+        updateData.ape_usu2 = profileData.secondLastName || "";
+      if (profileData.dateOfBirth)
+        updateData.fec_nac_usu = profileData.dateOfBirth;
+      if (profileData.phoneNumber !== undefined)
+        updateData.num_tel_usu = profileData.phoneNumber;
+      if (profileData.careerId !== undefined)
+        updateData.id_car_per = profileData.careerId?.toString();
+      if (profileData.githubToken !== undefined)
+        updateData.github_token = profileData.githubToken;
+      if (profileData.githubUsername !== undefined)
+        updateData.github_username = profileData.githubUsername;
 
       await this.prisma.usuario.update({
         where: { id_usu: userId.toString() },
-        data: updateData
+        data: updateData,
       });
 
       return true;
@@ -348,7 +358,9 @@ export class UserRepository implements IUserRepository {
   /**
    * Obtener perfil completo con cuenta y carrera
    */
-  async getCompleteProfile(userId: number): Promise<(User & { account: Account; career?: Career }) | null> {
+  async getCompleteProfile(
+    userId: number
+  ): Promise<(User & { account: Account; career?: Career }) | null> {
     try {
       const user = await this.prisma.usuario.findUnique({
         where: { id_usu: userId.toString() },
@@ -364,12 +376,14 @@ export class UserRepository implements IUserRepository {
 
       const mappedUser = this.mapToEntityComplete(user);
       const account = this.mapAccountToEntity(user.cuentas[0]);
-      const career = user.carrera ? this.mapCareerToEntity(user.carrera) : undefined;
+      const career = user.carrera
+        ? this.mapCareerToEntity(user.carrera)
+        : undefined;
 
       return {
         ...mappedUser,
         account,
-        career
+        career,
       };
     } catch (error) {
       console.error("Error getting complete profile:", error);
@@ -380,7 +394,11 @@ export class UserRepository implements IUserRepository {
   /**
    * Buscar usuarios con paginación
    */
-  async findPaginated(page: number, limit: number, filters?: Partial<User>): Promise<{ users: User[]; total: number }> {
+  async findPaginated(
+    page: number,
+    limit: number,
+    filters?: Partial<User>
+  ): Promise<{ users: User[]; total: number }> {
     try {
       const skip = (page - 1) * limit;
       const where: any = {};
@@ -399,15 +417,15 @@ export class UserRepository implements IUserRepository {
             cuentas: true,
           },
           orderBy: {
-            nom_usu1: 'asc'
-          }
+            nom_usu1: "asc",
+          },
         }),
-        this.prisma.usuario.count({ where })
+        this.prisma.usuario.count({ where }),
       ]);
 
       return {
-        users: users.map(user => this.mapToEntity(user)),
-        total
+        users: users.map((user) => this.mapToEntity(user)),
+        total,
       };
     } catch (error) {
       console.error("Error finding paginated users:", error);
@@ -423,7 +441,7 @@ export class UserRepository implements IUserRepository {
       // En lugar de eliminar, marcar como inactivo en la cuenta
       await this.prisma.cuenta.updateMany({
         where: { id_usu_per: userId.toString() },
-        data: { isVerified: false } // Usar isVerified como flag de soft delete temporalmente
+        data: { isVerified: false }, // Usar isVerified como flag de soft delete temporalmente
       });
       return true;
     } catch (error) {
@@ -446,7 +464,9 @@ export class UserRepository implements IUserRepository {
       dateOfBirth: prismaUser.fec_nac_usu,
       phoneNumber: prismaUser.num_tel_usu,
       password: prismaUser.pas_usu,
-      careerId: prismaUser.id_car_per ? parseInt(prismaUser.id_car_per) : undefined,
+      careerId: prismaUser.id_car_per
+        ? parseInt(prismaUser.id_car_per)
+        : undefined,
       githubToken: prismaUser.github_token,
       githubUsername: prismaUser.github_username,
       createdAt: new Date(),

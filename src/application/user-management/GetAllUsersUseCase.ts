@@ -1,5 +1,5 @@
-import { UserManagementService } from '../../domain/services/UserManagementService';
-import { UserProfileResponse } from '@shared/types/UserManagementTypes';
+import { UserManagementService } from "../../domain/services/UserManagementService";
+import { UserProfileResponse } from "@shared/types/UserManagementTypes";
 
 export interface GetAllUsersQuery {
   page?: number;
@@ -12,9 +12,9 @@ export interface GetAllUsersQuery {
 export class GetAllUsersUseCase {
   constructor(private userManagementService: UserManagementService) {}
 
-  async execute(query: GetAllUsersQuery): Promise<{ 
-    success: boolean; 
-    message: string; 
+  async execute(query: GetAllUsersQuery): Promise<{
+    success: boolean;
+    message: string;
     data?: {
       users: UserProfileResponse[];
       pagination: {
@@ -33,26 +33,30 @@ export class GetAllUsersUseCase {
       const filters: any = {};
       if (query.careerId) filters.careerId = query.careerId;
 
-      const result = await this.userManagementService.getAllUsers(page, limit, filters);
+      const result = await this.userManagementService.getAllUsers(
+        page,
+        limit,
+        filters
+      );
 
       return {
         success: true,
-        message: 'Usuarios obtenidos exitosamente',
+        message: "Usuarios obtenidos exitosamente",
         data: {
           users: result.users,
           pagination: {
             currentPage: page,
             totalPages: result.totalPages,
             totalItems: result.total,
-            limit
-          }
-        }
+            limit,
+          },
+        },
       };
     } catch (error) {
-      console.error('[GetAllUsersUseCase] Error:', error);
+      console.error("[GetAllUsersUseCase] Error:", error);
       return {
         success: false,
-        message: 'Error interno del servidor'
+        message: "Error interno del servidor",
       };
     }
   }
