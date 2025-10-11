@@ -1,6 +1,9 @@
 import { PrismaClient } from "@prisma/client";
 import { ChangeRequest } from "@domain/entities/ChangeRequest";
-import { ChangeRequestRepository, ChangeRequestFilters } from "@domain/repositories/IChangeRequestRepository";
+import {
+  ChangeRequestRepository,
+  ChangeRequestFilters,
+} from "@domain/repositories/IChangeRequestRepository";
 
 export class PrismaChangeRequestRepository implements ChangeRequestRepository {
   constructor(private prisma: PrismaClient) {}
@@ -17,26 +20,26 @@ export class PrismaChangeRequestRepository implements ChangeRequestRepository {
             nom_usu2: true,
             ape_usu1: true,
             ape_usu2: true,
-            ced_usu: true
-          }
+            ced_usu: true,
+          },
         },
         adminResponsable: {
           select: {
             nom_usu1: true,
             nom_usu2: true,
             ape_usu1: true,
-            ape_usu2: true
-          }
+            ape_usu2: true,
+          },
         },
         desarrolladorAsignado: {
           select: {
             nom_usu1: true,
             nom_usu2: true,
             ape_usu1: true,
-            ape_usu2: true
-          }
-        }
-      }
+            ape_usu2: true,
+          },
+        },
+      },
     });
 
     return this.mapFromDatabase(created);
@@ -52,26 +55,26 @@ export class PrismaChangeRequestRepository implements ChangeRequestRepository {
             nom_usu2: true,
             ape_usu1: true,
             ape_usu2: true,
-            ced_usu: true
-          }
+            ced_usu: true,
+          },
         },
         adminResponsable: {
           select: {
             nom_usu1: true,
             nom_usu2: true,
             ape_usu1: true,
-            ape_usu2: true
-          }
+            ape_usu2: true,
+          },
         },
         desarrolladorAsignado: {
           select: {
             nom_usu1: true,
             nom_usu2: true,
             ape_usu1: true,
-            ape_usu2: true
-          }
-        }
-      }
+            ape_usu2: true,
+          },
+        },
+      },
     });
 
     if (!solicitud) {
@@ -102,57 +105,60 @@ export class PrismaChangeRequestRepository implements ChangeRequestRepository {
               nom_usu2: true,
               ape_usu1: true,
               ape_usu2: true,
-              ced_usu: true
-            }
+              ced_usu: true,
+            },
           },
           adminResponsable: {
             select: {
               nom_usu1: true,
               nom_usu2: true,
               ape_usu1: true,
-              ape_usu2: true
-            }
+              ape_usu2: true,
+            },
           },
           desarrolladorAsignado: {
             select: {
               nom_usu1: true,
               nom_usu2: true,
               ape_usu1: true,
-              ape_usu2: true
-            }
-          }
+              ape_usu2: true,
+            },
+          },
         },
         orderBy: {
-          fec_creacion_sol: 'desc'
+          fec_creacion_sol: "desc",
         },
         skip,
-        take: limit
+        take: limit,
       }),
-      this.prisma.solicitudCambio.count({ where })
+      this.prisma.solicitudCambio.count({ where }),
     ]);
 
-    const items = solicitudes.map(s => this.mapFromDatabase(s));
+    const items = solicitudes.map((s) => this.mapFromDatabase(s));
     const totalPages = Math.ceil(total / limit);
 
     return {
       items,
       total,
       page,
-      totalPages
+      totalPages,
     };
   }
 
-  public async findByRequesterId(requesterId: string, filters?: ChangeRequestFilters): Promise<{
+  public async findByRequesterId(
+    requesterId: string,
+    filters?: ChangeRequestFilters
+  ): Promise<{
     items: ChangeRequest[];
     total: number;
   }> {
     const where = {
       id_usuario_sol: requesterId,
-      ...this.buildWhereClause(filters)
+      ...this.buildWhereClause(filters),
     };
 
     const limit = Math.min(filters?.limit || 10, 50);
-    const skip = filters?.page ? ((filters.page - 1) * limit) : 0;
+    const skip = filters?.page ? (filters.page - 1) * limit : 0;
 
     const [solicitudes, total] = await Promise.all([
       this.prisma.solicitudCambio.findMany({
@@ -164,38 +170,41 @@ export class PrismaChangeRequestRepository implements ChangeRequestRepository {
               nom_usu2: true,
               ape_usu1: true,
               ape_usu2: true,
-              ced_usu: true
-            }
-          }
+              ced_usu: true,
+            },
+          },
         },
         orderBy: {
-          fec_creacion_sol: 'desc'
+          fec_creacion_sol: "desc",
         },
         skip,
-        take: limit
+        take: limit,
       }),
-      this.prisma.solicitudCambio.count({ where })
+      this.prisma.solicitudCambio.count({ where }),
     ]);
 
-    const items = solicitudes.map(s => this.mapFromDatabase(s));
+    const items = solicitudes.map((s) => this.mapFromDatabase(s));
 
     return {
       items,
-      total
+      total,
     };
   }
 
-  public async findByDeveloperId(developerId: string, filters?: ChangeRequestFilters): Promise<{
+  public async findByDeveloperId(
+    developerId: string,
+    filters?: ChangeRequestFilters
+  ): Promise<{
     items: ChangeRequest[];
     total: number;
   }> {
     const where = {
       id_desarrollador_asignado: developerId,
-      ...this.buildWhereClause(filters)
+      ...this.buildWhereClause(filters),
     };
 
     const limit = Math.min(filters?.limit || 10, 50);
-    const skip = filters?.page ? ((filters.page - 1) * limit) : 0;
+    const skip = filters?.page ? (filters.page - 1) * limit : 0;
 
     const [solicitudes, total] = await Promise.all([
       this.prisma.solicitudCambio.findMany({
@@ -207,43 +216,43 @@ export class PrismaChangeRequestRepository implements ChangeRequestRepository {
               nom_usu2: true,
               ape_usu1: true,
               ape_usu2: true,
-              ced_usu: true
-            }
+              ced_usu: true,
+            },
           },
           desarrolladorAsignado: {
             select: {
               nom_usu1: true,
               nom_usu2: true,
               ape_usu1: true,
-              ape_usu2: true
-            }
-          }
+              ape_usu2: true,
+            },
+          },
         },
         orderBy: {
-          fec_creacion_sol: 'desc'
+          fec_creacion_sol: "desc",
         },
         skip,
-        take: limit
+        take: limit,
       }),
-      this.prisma.solicitudCambio.count({ where })
+      this.prisma.solicitudCambio.count({ where }),
     ]);
 
-    const items = solicitudes.map(s => this.mapFromDatabase(s));
+    const items = solicitudes.map((s) => this.mapFromDatabase(s));
 
     return {
       items,
-      total
+      total,
     };
   }
 
   public async update(changeRequest: ChangeRequest): Promise<ChangeRequest> {
     const data = this.mapToDatabase(changeRequest);
-    
+
     const updated = await this.prisma.solicitudCambio.update({
       where: { id_sol: changeRequest.id! },
       data: {
         ...data,
-        fec_ultima_actualizacion: new Date()
+        fec_ultima_actualizacion: new Date(),
       },
       include: {
         usuario: {
@@ -252,26 +261,26 @@ export class PrismaChangeRequestRepository implements ChangeRequestRepository {
             nom_usu2: true,
             ape_usu1: true,
             ape_usu2: true,
-            ced_usu: true
-          }
+            ced_usu: true,
+          },
         },
         adminResponsable: {
           select: {
             nom_usu1: true,
             nom_usu2: true,
             ape_usu1: true,
-            ape_usu2: true
-          }
+            ape_usu2: true,
+          },
         },
         desarrolladorAsignado: {
           select: {
             nom_usu1: true,
             nom_usu2: true,
             ape_usu1: true,
-            ape_usu2: true
-          }
-        }
-      }
+            ape_usu2: true,
+          },
+        },
+      },
     });
 
     return this.mapFromDatabase(updated);
@@ -279,7 +288,7 @@ export class PrismaChangeRequestRepository implements ChangeRequestRepository {
 
   public async delete(id: string): Promise<void> {
     await this.prisma.solicitudCambio.delete({
-      where: { id_sol: id }
+      where: { id_sol: id },
     });
   }
 
@@ -299,53 +308,59 @@ export class PrismaChangeRequestRepository implements ChangeRequestRepository {
       typeStats,
       completedThisMonth,
       pendingCount,
-      completedRequests
+      completedRequests,
     ] = await Promise.all([
       this.prisma.solicitudCambio.count(),
-      
+
       this.prisma.solicitudCambio.groupBy({
-        by: ['estado_sol'],
-        _count: true
+        by: ["estado_sol"],
+        _count: true,
       }),
-      
+
       this.prisma.solicitudCambio.groupBy({
-        by: ['prioridad_sol'],
-        _count: true
+        by: ["prioridad_sol"],
+        _count: true,
       }),
-      
+
       this.prisma.solicitudCambio.groupBy({
-        by: ['tipo_cambio_sol'],
-        _count: true
+        by: ["tipo_cambio_sol"],
+        _count: true,
       }),
-      
+
       this.prisma.solicitudCambio.count({
         where: {
-          estado_sol: 'COMPLETADA',
+          estado_sol: "COMPLETADA",
           fec_respuesta_sol: {
-            gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-          }
-        }
+            gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+          },
+        },
       }),
-      
+
       this.prisma.solicitudCambio.count({
         where: {
           estado_sol: {
-            in: ['PENDIENTE', 'EN_REVISION', 'APROBADA', 'EN_DESARROLLO', 'EN_TESTING']
-          }
-        }
+            in: [
+              "PENDIENTE",
+              "EN_REVISION",
+              "APROBADA",
+              "EN_DESARROLLO",
+              "EN_TESTING",
+            ],
+          },
+        },
       }),
-      
+
       this.prisma.solicitudCambio.findMany({
         where: {
-          estado_sol: 'COMPLETADA',
+          estado_sol: "COMPLETADA",
           fec_creacion_sol: { not: undefined },
-          fec_respuesta_sol: { not: undefined }
+          fec_respuesta_sol: { not: undefined },
         },
         select: {
           fec_creacion_sol: true,
-          fec_respuesta_sol: true
-        }
-      })
+          fec_respuesta_sol: true,
+        },
+      }),
     ]);
 
     // Calcular tiempo promedio de resolución
@@ -353,8 +368,9 @@ export class PrismaChangeRequestRepository implements ChangeRequestRepository {
     if (completedRequests.length > 0) {
       const totalResolutionTime = completedRequests.reduce((sum, req) => {
         if (req.fec_respuesta_sol && req.fec_creacion_sol) {
-          const diff = req.fec_respuesta_sol.getTime() - req.fec_creacion_sol.getTime();
-          return sum + (diff / (1000 * 60 * 60 * 24)); // días
+          const diff =
+            req.fec_respuesta_sol.getTime() - req.fec_creacion_sol.getTime();
+          return sum + diff / (1000 * 60 * 60 * 24); // días
         }
         return sum;
       }, 0);
@@ -384,7 +400,7 @@ export class PrismaChangeRequestRepository implements ChangeRequestRepository {
       byType,
       averageResolutionTime,
       pendingRequests: pendingCount,
-      completedThisMonth
+      completedThisMonth,
     };
   }
 
@@ -392,7 +408,7 @@ export class PrismaChangeRequestRepository implements ChangeRequestRepository {
     const solicitudes = await this.prisma.solicitudCambio.findMany({
       where: {
         planes_enviados_revision: true,
-        planes_aprobados: null // Pendiente de aprobación
+        planes_aprobados: null, // Pendiente de aprobación
       },
       include: {
         usuario: {
@@ -401,30 +417,33 @@ export class PrismaChangeRequestRepository implements ChangeRequestRepository {
             nom_usu2: true,
             ape_usu1: true,
             ape_usu2: true,
-            ced_usu: true
-          }
+            ced_usu: true,
+          },
         },
         desarrolladorAsignado: {
           select: {
             nom_usu1: true,
             nom_usu2: true,
             ape_usu1: true,
-            ape_usu2: true
-          }
-        }
-      }
+            ape_usu2: true,
+          },
+        },
+      },
     });
 
-    return solicitudes.map(s => this.mapFromDatabase(s));
+    return solicitudes.map((s) => this.mapFromDatabase(s));
   }
 
-  public async canUserEdit(requestId: string, userId: string): Promise<boolean> {
+  public async canUserEdit(
+    requestId: string,
+    userId: string
+  ): Promise<boolean> {
     const solicitud = await this.prisma.solicitudCambio.findUnique({
       where: { id_sol: requestId },
       select: {
         id_usuario_sol: true,
-        estado_sol: true
-      }
+        estado_sol: true,
+      },
     });
 
     if (!solicitud) {
@@ -432,23 +451,27 @@ export class PrismaChangeRequestRepository implements ChangeRequestRepository {
     }
 
     // Solo puede editar el solicitante y solo en estado BORRADOR
-    return solicitud.id_usuario_sol === userId && solicitud.estado_sol === 'BORRADOR';
+    return (
+      solicitud.id_usuario_sol === userId && solicitud.estado_sol === "BORRADOR"
+    );
   }
 
-  public async getAvailableDevelopers(): Promise<Array<{
-    id: string;
-    name: string;
-    currentWorkload: number;
-    skills: string[];
-  }>> {
+  public async getAvailableDevelopers(): Promise<
+    Array<{
+      id: string;
+      name: string;
+      currentWorkload: number;
+      skills: string[];
+    }>
+  > {
     // Obtener usuarios con rol de desarrollador
     const developers = await this.prisma.usuario.findMany({
       where: {
         cuentas: {
           some: {
-            rol_cue: 'DESARROLLADOR'
-          }
-        }
+            rol_cue: "DESARROLLADOR",
+          },
+        },
       },
       select: {
         id_usu: true,
@@ -461,20 +484,22 @@ export class PrismaChangeRequestRepository implements ChangeRequestRepository {
             solicitudesAsignadas: {
               where: {
                 estado_sol: {
-                  in: ['EN_DESARROLLO', 'EN_TESTING']
-                }
-              }
-            }
-          }
-        }
-      }
+                  in: ["EN_DESARROLLO", "EN_TESTING"],
+                },
+              },
+            },
+          },
+        },
+      },
     });
 
-    return developers.map(dev => ({
+    return developers.map((dev) => ({
       id: dev.id_usu,
-      name: `${dev.nom_usu1} ${dev.nom_usu2 || ''} ${dev.ape_usu1} ${dev.ape_usu2 || ''}`.trim(),
+      name: `${dev.nom_usu1} ${dev.nom_usu2 || ""} ${dev.ape_usu1} ${
+        dev.ape_usu2 || ""
+      }`.trim(),
       currentWorkload: dev._count.solicitudesAsignadas,
-      skills: [] // Las habilidades se pueden agregar más adelante como campo separado
+      skills: [], // Las habilidades se pueden agregar más adelante como campo separado
     }));
   }
 
@@ -488,14 +513,16 @@ export class PrismaChangeRequestRepository implements ChangeRequestRepository {
     return true;
   }
 
-  public async getChangeHistory(requestId: string): Promise<Array<{
-    timestamp: Date;
-    action: string;
-    user: string;
-    details: string;
-    oldValue?: string;
-    newValue?: string;
-  }>> {
+  public async getChangeHistory(requestId: string): Promise<
+    Array<{
+      timestamp: Date;
+      action: string;
+      user: string;
+      details: string;
+      oldValue?: string;
+      newValue?: string;
+    }>
+  > {
     // Por ahora retornamos array vacío
     // En el futuro se puede implementar una tabla de audit log
     return [];
@@ -542,16 +569,26 @@ export class PrismaChangeRequestRepository implements ChangeRequestRepository {
   }
 
   private mapFromDatabase(dbRecord: any): ChangeRequest {
-    const requesterName = dbRecord.usuario 
-      ? `${dbRecord.usuario.nom_usu1} ${dbRecord.usuario.nom_usu2 || ''} ${dbRecord.usuario.ape_usu1} ${dbRecord.usuario.ape_usu2 || ''}`.trim()
+    const requesterName = dbRecord.usuario
+      ? `${dbRecord.usuario.nom_usu1} ${dbRecord.usuario.nom_usu2 || ""} ${
+          dbRecord.usuario.ape_usu1
+        } ${dbRecord.usuario.ape_usu2 || ""}`.trim()
       : undefined;
 
     const developerName = dbRecord.desarrolladorAsignado
-      ? `${dbRecord.desarrolladorAsignado.nom_usu1} ${dbRecord.desarrolladorAsignado.nom_usu2 || ''} ${dbRecord.desarrolladorAsignado.ape_usu1} ${dbRecord.desarrolladorAsignado.ape_usu2 || ''}`.trim()
+      ? `${dbRecord.desarrolladorAsignado.nom_usu1} ${
+          dbRecord.desarrolladorAsignado.nom_usu2 || ""
+        } ${dbRecord.desarrolladorAsignado.ape_usu1} ${
+          dbRecord.desarrolladorAsignado.ape_usu2 || ""
+        }`.trim()
       : undefined;
 
     const reviewerName = dbRecord.adminResponsable
-      ? `${dbRecord.adminResponsable.nom_usu1} ${dbRecord.adminResponsable.nom_usu2 || ''} ${dbRecord.adminResponsable.ape_usu1} ${dbRecord.adminResponsable.ape_usu2 || ''}`.trim()
+      ? `${dbRecord.adminResponsable.nom_usu1} ${
+          dbRecord.adminResponsable.nom_usu2 || ""
+        } ${dbRecord.adminResponsable.ape_usu1} ${
+          dbRecord.adminResponsable.ape_usu2 || ""
+        }`.trim()
       : undefined;
 
     return ChangeRequest.fromData({
@@ -584,18 +621,18 @@ export class PrismaChangeRequestRepository implements ChangeRequestRepository {
       technicalRisk: dbRecord.impacto_tecnico_sol || undefined,
       version: 1,
       createdAt: dbRecord.fec_creacion_sol,
-      updatedAt: dbRecord.fec_ultima_actualizacion
+      updatedAt: dbRecord.fec_ultima_actualizacion,
     });
   }
 
   private mapToDatabase(changeRequest: ChangeRequest): any {
     const data = changeRequest.toPlainObject();
-    
+
     return {
       id_sol: changeRequest.id,
       titulo_sol: changeRequest.title,
       descripcion_sol: changeRequest.description,
-      justificacion_sol: data.justification || '',
+      justificacion_sol: data.justification || "",
       tipo_cambio_sol: changeRequest.changeType,
       prioridad_sol: changeRequest.priority,
       urgencia_sol: changeRequest.urgency,
@@ -614,7 +651,7 @@ export class PrismaChangeRequestRepository implements ChangeRequestRepository {
       comentarios_internos_sol: data.implementationNotes || null,
       plan_implementacion_sol: data.technicalDetails || null,
       impacto_negocio_sol: data.businessImpact || null,
-      impacto_tecnico_sol: data.technicalRisk || null
+      impacto_tecnico_sol: data.technicalRisk || null,
     };
   }
 }

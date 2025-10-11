@@ -95,7 +95,10 @@ export class Developer {
 
   // Business Methods
   public canTakeNewRequest(): boolean {
-    return this.data.availability && this.data.currentWorkload < this.getMaxWorkload();
+    return (
+      this.data.availability &&
+      this.data.currentWorkload < this.getMaxWorkload()
+    );
   }
 
   public hasGithubIntegration(): boolean {

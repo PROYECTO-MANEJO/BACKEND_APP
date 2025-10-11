@@ -1,6 +1,9 @@
 import { PrismaClient } from "@prisma/client";
 import { Developer } from "@domain/entities/Developer";
-import { DeveloperRepository, DeveloperFilters } from "@domain/repositories/IDeveloperRepository";
+import {
+  DeveloperRepository,
+  DeveloperFilters,
+} from "@domain/repositories/IDeveloperRepository";
 
 export class PrismaDeveloperRepository implements DeveloperRepository {
   constructor(private prisma: PrismaClient) {}
@@ -11,23 +14,23 @@ export class PrismaDeveloperRepository implements DeveloperRepository {
       include: {
         cuentas: {
           where: {
-            rol_cue: 'DESARROLLADOR'
-          }
+            rol_cue: "DESARROLLADOR",
+          },
         },
         solicitudesAsignadas: {
           where: {
             estado_sol: {
-              in: ['EN_DESARROLLO', 'EN_TESTING']
-            }
+              in: ["EN_DESARROLLO", "EN_TESTING"],
+            },
           },
           select: {
             id_sol: true,
             titulo_sol: true,
             estado_sol: true,
-            prioridad_sol: true
-          }
-        }
-      }
+            prioridad_sol: true,
+          },
+        },
+      },
     });
 
     if (!usuario || usuario.cuentas.length === 0) {
@@ -43,34 +46,34 @@ export class PrismaDeveloperRepository implements DeveloperRepository {
 
   public async findByEmail(email: string): Promise<Developer | null> {
     const cuenta = await this.prisma.cuenta.findFirst({
-      where: { 
+      where: {
         cor_cue: email,
-        rol_cue: 'DESARROLLADOR'
+        rol_cue: "DESARROLLADOR",
       },
       include: {
         usuario: {
           include: {
             cuentas: {
               where: {
-                rol_cue: 'DESARROLLADOR'
-              }
+                rol_cue: "DESARROLLADOR",
+              },
             },
             solicitudesAsignadas: {
               where: {
                 estado_sol: {
-                  in: ['EN_DESARROLLO', 'EN_TESTING']
-                }
+                  in: ["EN_DESARROLLO", "EN_TESTING"],
+                },
               },
               select: {
                 id_sol: true,
                 titulo_sol: true,
                 estado_sol: true,
-                prioridad_sol: true
-              }
-            }
-          }
-        }
-      }
+                prioridad_sol: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!cuenta || !cuenta.usuario) {
@@ -84,9 +87,9 @@ export class PrismaDeveloperRepository implements DeveloperRepository {
     const whereClause: any = {
       cuentas: {
         some: {
-          rol_cue: 'DESARROLLADOR'
-        }
-      }
+          rol_cue: "DESARROLLADOR",
+        },
+      },
     };
 
     const usuarios = await this.prisma.usuario.findMany({
@@ -94,41 +97,43 @@ export class PrismaDeveloperRepository implements DeveloperRepository {
       include: {
         cuentas: {
           where: {
-            rol_cue: 'DESARROLLADOR'
-          }
+            rol_cue: "DESARROLLADOR",
+          },
         },
         solicitudesAsignadas: {
           where: {
             estado_sol: {
-              in: ['EN_DESARROLLO', 'EN_TESTING']
-            }
+              in: ["EN_DESARROLLO", "EN_TESTING"],
+            },
           },
           select: {
             id_sol: true,
             titulo_sol: true,
             estado_sol: true,
-            prioridad_sol: true
-          }
-        }
+            prioridad_sol: true,
+          },
+        },
       },
       orderBy: {
-        nom_usu1: 'asc'
-      }
+        nom_usu1: "asc",
+      },
     });
 
     let developers = usuarios
-      .filter(u => u.cuentas.length > 0)
-      .map(u => this.mapFromDatabase(u));
+      .filter((u) => u.cuentas.length > 0)
+      .map((u) => this.mapFromDatabase(u));
 
     // Aplicar filtros adicionales en memoria
     if (filters?.maxWorkload !== undefined) {
-      developers = developers.filter(dev => 
-        dev.getCurrentWorkload() <= filters.maxWorkload!
+      developers = developers.filter(
+        (dev) => dev.getCurrentWorkload() <= filters.maxWorkload!
       );
     }
 
     if (filters?.available) {
-      developers = developers.filter(dev => dev.getCurrentWorkload() < dev.getMaxWorkload());
+      developers = developers.filter(
+        (dev) => dev.getCurrentWorkload() < dev.getMaxWorkload()
+      );
     }
 
     return developers;
@@ -139,36 +144,36 @@ export class PrismaDeveloperRepository implements DeveloperRepository {
       where: {
         cuentas: {
           some: {
-            rol_cue: 'DESARROLLADOR'
-          }
-        }
+            rol_cue: "DESARROLLADOR",
+          },
+        },
       },
       include: {
         cuentas: {
           where: {
-            rol_cue: 'DESARROLLADOR'
-          }
+            rol_cue: "DESARROLLADOR",
+          },
         },
         solicitudesAsignadas: {
           where: {
             estado_sol: {
-              in: ['EN_DESARROLLO', 'EN_TESTING']
-            }
+              in: ["EN_DESARROLLO", "EN_TESTING"],
+            },
           },
           select: {
             id_sol: true,
             titulo_sol: true,
             estado_sol: true,
-            prioridad_sol: true
-          }
-        }
-      }
+            prioridad_sol: true,
+          },
+        },
+      },
     });
 
     return usuarios
-      .filter(u => u.cuentas.length > 0)
-      .map(u => this.mapFromDatabase(u))
-      .filter(dev => dev.getCurrentWorkload() < dev.getMaxWorkload())
+      .filter((u) => u.cuentas.length > 0)
+      .map((u) => this.mapFromDatabase(u))
+      .filter((dev) => dev.getCurrentWorkload() < dev.getMaxWorkload())
       .sort((a, b) => a.getCurrentWorkload() - b.getCurrentWorkload());
   }
 
@@ -178,63 +183,71 @@ export class PrismaDeveloperRepository implements DeveloperRepository {
     return this.findAvailable();
   }
 
-  public async getDeveloperWorkloadStats(): Promise<Array<{
-    developerId: string;
-    developerName: string;
-    totalAssigned: number;
-    inDevelopment: number;
-    inTesting: number;
-    averageCompletionTime: number;
-  }>> {
+  public async getDeveloperWorkloadStats(): Promise<
+    Array<{
+      developerId: string;
+      developerName: string;
+      totalAssigned: number;
+      inDevelopment: number;
+      inTesting: number;
+      averageCompletionTime: number;
+    }>
+  > {
     const developers = await this.prisma.usuario.findMany({
       where: {
         cuentas: {
           some: {
-            rol_cue: 'DESARROLLADOR'
-          }
-        }
+            rol_cue: "DESARROLLADOR",
+          },
+        },
       },
       include: {
         solicitudesAsignadas: {
           select: {
             estado_sol: true,
             fec_creacion_sol: true,
-            fec_respuesta_sol: true
-          }
-        }
-      }
+            fec_respuesta_sol: true,
+          },
+        },
+      },
     });
 
-    return developers.map(dev => {
+    return developers.map((dev) => {
       const totalAssigned = dev.solicitudesAsignadas.length;
       const inDevelopment = dev.solicitudesAsignadas.filter(
-        s => s.estado_sol === 'EN_DESARROLLO'
+        (s) => s.estado_sol === "EN_DESARROLLO"
       ).length;
       const inTesting = dev.solicitudesAsignadas.filter(
-        s => s.estado_sol === 'EN_TESTING'
+        (s) => s.estado_sol === "EN_TESTING"
       ).length;
 
       // Calcular tiempo promedio de completación
       const completedRequests = dev.solicitudesAsignadas.filter(
-        s => s.estado_sol === 'COMPLETADA' && s.fec_creacion_sol && s.fec_respuesta_sol
+        (s) =>
+          s.estado_sol === "COMPLETADA" &&
+          s.fec_creacion_sol &&
+          s.fec_respuesta_sol
       );
 
       let averageCompletionTime = 0;
       if (completedRequests.length > 0) {
         const totalTime = completedRequests.reduce((sum, req) => {
-          const diff = req.fec_respuesta_sol!.getTime() - req.fec_creacion_sol!.getTime();
-          return sum + (diff / (1000 * 60 * 60 * 24)); // días
+          const diff =
+            req.fec_respuesta_sol!.getTime() - req.fec_creacion_sol!.getTime();
+          return sum + diff / (1000 * 60 * 60 * 24); // días
         }, 0);
         averageCompletionTime = totalTime / completedRequests.length;
       }
 
       return {
         developerId: dev.id_usu,
-        developerName: `${dev.nom_usu1} ${dev.nom_usu2 || ''} ${dev.ape_usu1} ${dev.ape_usu2 || ''}`.trim(),
+        developerName: `${dev.nom_usu1} ${dev.nom_usu2 || ""} ${dev.ape_usu1} ${
+          dev.ape_usu2 || ""
+        }`.trim(),
         totalAssigned,
         inDevelopment,
         inTesting,
-        averageCompletionTime
+        averageCompletionTime,
       };
     });
   }
@@ -242,26 +255,30 @@ export class PrismaDeveloperRepository implements DeveloperRepository {
   public async create(developer: Developer): Promise<Developer> {
     // En este sistema, los desarrolladores son usuarios con cuentas específicas
     // Este método podría no ser necesario si los desarrolladores se crean como usuarios normales
-    throw new Error("Los desarrolladores se crean como usuarios con roles específicos");
+    throw new Error(
+      "Los desarrolladores se crean como usuarios con roles específicos"
+    );
   }
 
   public async update(developer: Developer): Promise<Developer> {
     const developerId = developer.getId();
-    
+
     // Por ahora solo actualizamos los campos específicos del developer
     // Los datos del usuario (nombre, email) se manejan por separado
-    
+
     // Retornar developer actualizado
     return (await this.findById(developerId))!;
   }
 
   public async delete(id: string): Promise<void> {
-    // En este sistema no eliminamos desarrolladores, 
+    // En este sistema no eliminamos desarrolladores,
     // solo los mantenemos como usuarios regulares
     // La lógica de negocio se maneja en el dominio
   }
 
-  public async findByGitHubUsername(githubUsername: string): Promise<Developer | null> {
+  public async findByGitHubUsername(
+    githubUsername: string
+  ): Promise<Developer | null> {
     // Por ahora no hay campo específico para GitHub en la BD
     // Buscar por el campo github_username si existe
     const usuario = await this.prisma.usuario.findFirst({
@@ -269,30 +286,30 @@ export class PrismaDeveloperRepository implements DeveloperRepository {
         github_username: githubUsername,
         cuentas: {
           some: {
-            rol_cue: 'DESARROLLADOR'
-          }
-        }
+            rol_cue: "DESARROLLADOR",
+          },
+        },
       },
       include: {
         cuentas: {
           where: {
-            rol_cue: 'DESARROLLADOR'
-          }
+            rol_cue: "DESARROLLADOR",
+          },
         },
         solicitudesAsignadas: {
           where: {
             estado_sol: {
-              in: ['EN_DESARROLLO', 'EN_TESTING']
-            }
+              in: ["EN_DESARROLLO", "EN_TESTING"],
+            },
           },
           select: {
             id_sol: true,
             titulo_sol: true,
             estado_sol: true,
-            prioridad_sol: true
-          }
-        }
-      }
+            prioridad_sol: true,
+          },
+        },
+      },
     });
 
     if (!usuario) {
@@ -305,7 +322,7 @@ export class PrismaDeveloperRepository implements DeveloperRepository {
   private mapFromDatabase(dbRecord: any): Developer {
     const cuenta = dbRecord.cuentas?.[0] || {};
     const currentWorkload = dbRecord.solicitudesAsignadas?.length || 0;
-    
+
     return Developer.create(
       dbRecord.id_usu,
       dbRecord.id_usu, // userId es el mismo que id en este caso
@@ -333,21 +350,21 @@ export class PrismaDeveloperRepository implements DeveloperRepository {
         where: {
           cuentas: {
             some: {
-              rol_cue: 'DESARROLLADOR'
-            }
-          }
-        }
+              rol_cue: "DESARROLLADOR",
+            },
+          },
+        },
       }),
       this.prisma.usuario.count({
         where: {
           github_username: { not: null },
           cuentas: {
             some: {
-              rol_cue: 'DESARROLLADOR'
-            }
-          }
-        }
-      })
+              rol_cue: "DESARROLLADOR",
+            },
+          },
+        },
+      }),
     ]);
 
     return {
@@ -355,20 +372,22 @@ export class PrismaDeveloperRepository implements DeveloperRepository {
       availableDevelopers: total, // Por simplicidad
       averageWorkload: 2.5, // Valor estimado
       developersWithGithub: withGithub,
-      topSkills: [] // Por implementar
+      topSkills: [], // Por implementar
     };
   }
 
-  public async existsByGithubUsername(githubUsername: string): Promise<boolean> {
+  public async existsByGithubUsername(
+    githubUsername: string
+  ): Promise<boolean> {
     const count = await this.prisma.usuario.count({
       where: {
         github_username: githubUsername,
         cuentas: {
           some: {
-            rol_cue: 'DESARROLLADOR'
-          }
-        }
-      }
+            rol_cue: "DESARROLLADOR",
+          },
+        },
+      },
     });
 
     return count > 0;
@@ -379,15 +398,15 @@ export class PrismaDeveloperRepository implements DeveloperRepository {
     if (developers.length === 0) {
       return null;
     }
-    
+
     // Retornar el desarrollador con menor carga de trabajo
-    return developers.reduce((min, current) => 
+    return developers.reduce((min, current) =>
       current.getCurrentWorkload() < min.getCurrentWorkload() ? current : min
     );
   }
 
   public async findRecommendedForRequest(
-    requestType: string, 
+    requestType: string,
     skills?: string[]
   ): Promise<Developer[]> {
     // Por ahora retorna desarrolladores disponibles

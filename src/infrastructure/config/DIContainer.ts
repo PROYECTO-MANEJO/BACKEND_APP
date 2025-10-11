@@ -423,7 +423,9 @@ export class DIContainer {
   // Phase 8 - Change Request System Getters
   public get newChangeRequestRepository(): ChangeRequestRepository {
     if (!this._newChangeRequestRepository) {
-      this._newChangeRequestRepository = new PrismaChangeRequestRepository(this._prisma);
+      this._newChangeRequestRepository = new PrismaChangeRequestRepository(
+        this._prisma
+      );
     }
     return this._newChangeRequestRepository;
   }
@@ -471,10 +473,11 @@ export class DIContainer {
 
   public get updateChangeRequestStatusUseCase(): UpdateChangeRequestStatusUseCase {
     if (!this._updateChangeRequestStatusUseCase) {
-      this._updateChangeRequestStatusUseCase = new UpdateChangeRequestStatusUseCase(
-        this.newChangeRequestRepository,
-        this.changeRequestWorkflowService
-      );
+      this._updateChangeRequestStatusUseCase =
+        new UpdateChangeRequestStatusUseCase(
+          this.newChangeRequestRepository,
+          this.changeRequestWorkflowService
+        );
     }
     return this._updateChangeRequestStatusUseCase;
   }

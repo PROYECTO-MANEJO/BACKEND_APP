@@ -34,7 +34,7 @@ export class ChangeRequestWorkflowService {
       from: "EN_REVISION",
       to: "APROBADA",
       requiredRole: ["ADMINISTRADOR", "MASTER"],
-      conditions: (request) => !!request.id // Debe tener ID válido
+      conditions: (request) => !!request.id, // Debe tener ID válido
     },
     {
       from: "EN_REVISION",
@@ -248,13 +248,13 @@ export class ChangeRequestWorkflowService {
 
     // Verificar que tiene descripción técnica detallada
     if (!request.description || request.description.trim().length < 50) {
-      missingPlans.push('Descripción técnica detallada');
+      missingPlans.push("Descripción técnica detallada");
     }
 
     // Para cambios de alta prioridad o críticos, requiere más detalles
     if (summary.priority === "ALTA" || summary.priority === "CRITICA") {
       if (request.description.length < 200) {
-        missingPlans.push('Descripción extendida para alta prioridad');
+        missingPlans.push("Descripción extendida para alta prioridad");
       }
     }
 
@@ -276,34 +276,41 @@ export class ChangeRequestWorkflowService {
 
     // Ajustar por tipo de cambio
     const typeMultipliers = {
-      'FUNCIONALIDAD': 1.5,
-      'CORRECCION': 0.8,
-      'MEJORA': 1.2,
-      'CONFIGURACION': 0.5,
-      'SEGURIDAD': 1.3,
-      'RENDIMIENTO': 1.4,
-      'DOCUMENTACION': 0.6
+      FUNCIONALIDAD: 1.5,
+      CORRECCION: 0.8,
+      MEJORA: 1.2,
+      CONFIGURACION: 0.5,
+      SEGURIDAD: 1.3,
+      RENDIMIENTO: 1.4,
+      DOCUMENTACION: 0.6,
     };
 
-    baseDays *= typeMultipliers[summary.type as keyof typeof typeMultipliers] || 1;
+    baseDays *=
+      typeMultipliers[summary.type as keyof typeof typeMultipliers] || 1;
 
     // Ajustar por prioridad
     const priorityMultipliers = {
-      'BAJA': 1.2,
-      'MEDIA': 1.0,
-      'ALTA': 0.8,
-      'CRITICA': 0.6
+      BAJA: 1.2,
+      MEDIA: 1.0,
+      ALTA: 0.8,
+      CRITICA: 0.6,
     };
 
-    baseDays *= priorityMultipliers[summary.priority as keyof typeof priorityMultipliers] || 1;
+    baseDays *=
+      priorityMultipliers[
+        summary.priority as keyof typeof priorityMultipliers
+      ] || 1;
 
     // Determinar confianza basada en la complejidad estimada
-    let confidence: 'LOW' | 'MEDIUM' | 'HIGH' = 'MEDIUM';
-    
-    if (request.description.length > 1000 || summary.type === 'FUNCIONALIDAD') {
-      confidence = 'LOW';
-    } else if (summary.type === 'CORRECCION' || summary.type === 'CONFIGURACION') {
-      confidence = 'HIGH';
+    let confidence: "LOW" | "MEDIUM" | "HIGH" = "MEDIUM";
+
+    if (request.description.length > 1000 || summary.type === "FUNCIONALIDAD") {
+      confidence = "LOW";
+    } else if (
+      summary.type === "CORRECCION" ||
+      summary.type === "CONFIGURACION"
+    ) {
+      confidence = "HIGH";
     }
 
     return {
@@ -317,10 +324,12 @@ export class ChangeRequestWorkflowService {
    */
   public canAutoApprove(request: ChangeRequest): boolean {
     const summary = request.getSummary();
-    
-    return summary.type === 'CORRECCION' && 
-           summary.priority === 'BAJA' &&
-           summary.urgency === 'NORMAL' &&
-           request.description.length < 200;
+
+    return (
+      summary.type === "CORRECCION" &&
+      summary.priority === "BAJA" &&
+      summary.urgency === "NORMAL" &&
+      request.description.length < 200
+    );
   }
 }
