@@ -462,7 +462,7 @@ export class ChangeRequestManagementService {
   ): Promise<ChangeRequest> {
     const changeRequest = await this.getChangeRequestById(changeRequestId);
 
-    if (changeRequest.status !== "EN_PRUEBAS") {
+    if (changeRequest.status !== "EN_TESTING") {
       throw new Error(
         "Solo se pueden implementar solicitudes que han pasado pruebas"
       );

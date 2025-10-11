@@ -18,7 +18,11 @@ import { IInscriptionRepository } from "@domain/repositories/IInscriptionReposit
 // Phase 7 - Advanced Features Repositories
 import { CertificateRepository } from "@domain/repositories/CertificateRepository";
 import { ReportRepository } from "@domain/repositories/ReportRepository";
-import { ChangeRequestRepository } from "@domain/repositories/ChangeRequestRepository";
+import { ChangeRequestRepository as LegacyChangeRequestRepository } from "@domain/repositories/ChangeRequestRepository";
+
+// Phase 8 - Change Request System Repositories
+import { ChangeRequestRepository } from "@domain/repositories/IChangeRequestRepository";
+import { DeveloperRepository } from "@domain/repositories/IDeveloperRepository";
 
 // Repositories Implementations
 import { UserRepository } from "../database/repositories/UserRepository";
@@ -31,6 +35,10 @@ import { InscriptionRepository } from "../repositories/InscriptionRepository";
 
 // Phase 7 - Infrastructure Implementations
 import { PrismaCertificateRepository } from "../repositories/PrismaCertificateRepository";
+
+// Phase 8 - Change Request System Infrastructure
+import { PrismaChangeRequestRepository } from "../repositories/PrismaChangeRequestRepository";
+import { PrismaDeveloperRepository } from "../repositories/PrismaDeveloperRepository";
 
 // External Services
 import { EmailService } from "../external/email/EmailService";
@@ -48,6 +56,16 @@ import { InscriptionManagementService } from "@domain/services/InscriptionManage
 // Phase 7 - Advanced Features Domain Services
 import { CertificateManagementService } from "@domain/services/CertificateManagementService";
 import { ReportManagementService } from "@domain/services/ReportManagementService";
+
+// Phase 8 - Change Request System Domain Services
+import { ChangeRequestWorkflowService } from "@domain/services/ChangeRequestWorkflowService";
+
+// Phase 8 - Change Request System Use Cases
+import { CreateChangeRequestUseCase } from "@application/change-request-management/CreateChangeRequestUseCase";
+import { GetChangeRequestByIdUseCase } from "@application/change-request-management/GetChangeRequestByIdUseCase";
+import { GetMyChangeRequestsUseCase } from "@application/change-request-management/GetMyChangeRequestsUseCase";
+import { UpdateChangeRequestStatusUseCase } from "@application/change-request-management/UpdateChangeRequestStatusUseCase";
+import { AssignDeveloperUseCase } from "@application/change-request-management/AssignDeveloperUseCase";
 import { ChangeRequestManagementService } from "@domain/services/ChangeRequestManagementService";
 
 // Phase 7 - External Services Interfaces
@@ -76,10 +94,20 @@ export class DIContainer {
   // Phase 7 - Advanced Features
   private _certificateRepository: CertificateRepository;
   private _reportRepository?: ReportRepository;
-  private _changeRequestRepository?: ChangeRequestRepository;
+  private _changeRequestRepository?: LegacyChangeRequestRepository;
   private _pdfGenerationService?: PDFGenerationService;
   private _githubIntegrationService?: GitHubIntegrationService;
   private _notificationService?: NotificationService;
+
+  // Phase 8 - Change Request System
+  private _newChangeRequestRepository?: ChangeRequestRepository;
+  private _developerRepository?: DeveloperRepository;
+  private _changeRequestWorkflowService?: ChangeRequestWorkflowService;
+  private _createChangeRequestUseCase?: CreateChangeRequestUseCase;
+  private _getChangeRequestByIdUseCase?: GetChangeRequestByIdUseCase;
+  private _getMyChangeRequestsUseCase?: GetMyChangeRequestsUseCase;
+  private _updateChangeRequestStatusUseCase?: UpdateChangeRequestStatusUseCase;
+  private _assignDeveloperUseCase?: AssignDeveloperUseCase;
 
   // Domain Services
   private _authenticationService: AuthenticationService;
@@ -391,6 +419,76 @@ export class DIContainer {
   // public get changeRequestManagementService(): ChangeRequestManagementService {
   //   return this._changeRequestManagementService;
   // }
+
+  // Phase 8 - Change Request System Getters
+  public get newChangeRequestRepository(): ChangeRequestRepository {
+    if (!this._newChangeRequestRepository) {
+      this._newChangeRequestRepository = new PrismaChangeRequestRepository(this._prisma);
+    }
+    return this._newChangeRequestRepository;
+  }
+
+  public get developerRepository(): DeveloperRepository {
+    if (!this._developerRepository) {
+      this._developerRepository = new PrismaDeveloperRepository(this._prisma);
+    }
+    return this._developerRepository;
+  }
+
+  public get changeRequestWorkflowService(): ChangeRequestWorkflowService {
+    if (!this._changeRequestWorkflowService) {
+      this._changeRequestWorkflowService = new ChangeRequestWorkflowService();
+    }
+    return this._changeRequestWorkflowService;
+  }
+
+  public get createChangeRequestUseCase(): CreateChangeRequestUseCase {
+    if (!this._createChangeRequestUseCase) {
+      this._createChangeRequestUseCase = new CreateChangeRequestUseCase(
+        this.newChangeRequestRepository
+      );
+    }
+    return this._createChangeRequestUseCase;
+  }
+
+  public get getChangeRequestByIdUseCase(): GetChangeRequestByIdUseCase {
+    if (!this._getChangeRequestByIdUseCase) {
+      this._getChangeRequestByIdUseCase = new GetChangeRequestByIdUseCase(
+        this.newChangeRequestRepository
+      );
+    }
+    return this._getChangeRequestByIdUseCase;
+  }
+
+  public get getMyChangeRequestsUseCase(): GetMyChangeRequestsUseCase {
+    if (!this._getMyChangeRequestsUseCase) {
+      this._getMyChangeRequestsUseCase = new GetMyChangeRequestsUseCase(
+        this.newChangeRequestRepository
+      );
+    }
+    return this._getMyChangeRequestsUseCase;
+  }
+
+  public get updateChangeRequestStatusUseCase(): UpdateChangeRequestStatusUseCase {
+    if (!this._updateChangeRequestStatusUseCase) {
+      this._updateChangeRequestStatusUseCase = new UpdateChangeRequestStatusUseCase(
+        this.newChangeRequestRepository,
+        this.changeRequestWorkflowService
+      );
+    }
+    return this._updateChangeRequestStatusUseCase;
+  }
+
+  public get assignDeveloperUseCase(): AssignDeveloperUseCase {
+    if (!this._assignDeveloperUseCase) {
+      this._assignDeveloperUseCase = new AssignDeveloperUseCase(
+        this.newChangeRequestRepository,
+        this.developerRepository,
+        this.changeRequestWorkflowService
+      );
+    }
+    return this._assignDeveloperUseCase;
+  }
 
   public async dispose(): Promise<void> {
     await this._prisma.$disconnect();

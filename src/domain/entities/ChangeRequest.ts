@@ -6,27 +6,29 @@
  */
 
 export type ChangeRequestType =
-  | "FEATURE"
-  | "BUG_FIX"
-  | "ENHANCEMENT"
-  | "MAINTENANCE"
-  | "DOCUMENTATION"
-  | "SECURITY"
-  | "PERFORMANCE";
+  | "FUNCIONALIDAD"
+  | "CORRECCION"
+  | "MEJORA"
+  | "CONFIGURACION"
+  | "SEGURIDAD"
+  | "RENDIMIENTO"
+  | "DOCUMENTACION";
 
 export type Priority = "BAJA" | "MEDIA" | "ALTA" | "CRITICA";
 
-export type Urgency = "NORMAL" | "URGENTE" | "CRITICA";
+export type Urgency = "NORMAL" | "URGENTE" | "INMEDIATA";
 
 export type ChangeRequestStatus =
   | "BORRADOR"
-  | "ENVIADA"
+  | "PENDIENTE"
   | "EN_REVISION"
   | "APROBADA"
   | "RECHAZADA"
+  | "ESPERANDO_INFORMACION"
   | "EN_DESARROLLO"
-  | "EN_PRUEBAS"
-  | "IMPLEMENTADA"
+  | "EN_TESTING"
+  | "EN_PAUSA"
+  | "COMPLETADA"
   | "CERRADA"
   | "CANCELADA";
 
@@ -171,7 +173,7 @@ export class ChangeRequest {
 
     this.validateRequiredFieldsForSubmission();
 
-    this.data.status = "ENVIADA";
+    this.data.status = "PENDIENTE";
     this.data.updatedAt = new Date();
   }
 
@@ -179,7 +181,7 @@ export class ChangeRequest {
    * Poner solicitud en revisión
    */
   startReview(reviewerId: string, reviewerName?: string): void {
-    if (this.data.status !== "ENVIADA") {
+    if (this.data.status !== "PENDIENTE") {
       throw new Error("Solo se pueden revisar solicitudes enviadas");
     }
 
@@ -263,7 +265,7 @@ export class ChangeRequest {
       );
     }
 
-    this.data.status = "EN_PRUEBAS";
+    this.data.status = "EN_TESTING";
     if (implementationNotes) {
       this.data.implementationNotes = implementationNotes;
     }
@@ -274,13 +276,13 @@ export class ChangeRequest {
    * Marcar como implementada
    */
   markAsImplemented(actualHours?: number): void {
-    if (this.data.status !== "EN_PRUEBAS") {
+    if (this.data.status !== "EN_TESTING") {
       throw new Error(
         "Solo se pueden implementar solicitudes que han pasado pruebas"
       );
     }
 
-    this.data.status = "IMPLEMENTADA";
+    this.data.status = "COMPLETADA";
     this.data.completionDate = new Date();
     if (actualHours !== undefined) {
       this.data.actualHours = actualHours;
@@ -292,7 +294,7 @@ export class ChangeRequest {
    * Cerrar solicitud
    */
   close(customerSatisfactionScore?: number): void {
-    if (this.data.status !== "IMPLEMENTADA") {
+    if (this.data.status !== "COMPLETADA") {
       throw new Error("Solo se pueden cerrar solicitudes implementadas");
     }
 
@@ -310,7 +312,7 @@ export class ChangeRequest {
   cancel(reason?: string): void {
     const cancellableStatuses: ChangeRequestStatus[] = [
       "BORRADOR",
-      "ENVIADA",
+      "PENDIENTE",
       "EN_REVISION",
       "APROBADA",
       "EN_DESARROLLO",
@@ -404,9 +406,9 @@ export class ChangeRequest {
    * Actualizar criterios de aceptación
    */
   updateAcceptanceCriteria(criteria: string[]): void {
-    if (this.data.status === "IMPLEMENTADA" || this.data.status === "CERRADA") {
+    if (this.data.status === "COMPLETADA" || this.data.status === "CERRADA") {
       throw new Error(
-        "No se pueden modificar criterios de aceptación en solicitudes implementadas"
+        "No se pueden modificar criterios de aceptación en solicitudes completadas"
       );
     }
 
@@ -420,9 +422,9 @@ export class ChangeRequest {
    * Actualizar detalles técnicos
    */
   updateTechnicalDetails(technicalDetails: string): void {
-    if (this.data.status === "IMPLEMENTADA" || this.data.status === "CERRADA") {
+    if (this.data.status === "COMPLETADA" || this.data.status === "CERRADA") {
       throw new Error(
-        "No se pueden modificar detalles técnicos en solicitudes implementadas"
+        "No se pueden modificar detalles técnicos en solicitudes completadas"
       );
     }
 
@@ -535,7 +537,7 @@ export class ChangeRequest {
   }
 
   isSubmitted(): boolean {
-    return this.data.status === "ENVIADA";
+    return this.data.status === "PENDIENTE";
   }
 
   isUnderReview(): boolean {
@@ -555,11 +557,11 @@ export class ChangeRequest {
   }
 
   isInTesting(): boolean {
-    return this.data.status === "EN_PRUEBAS";
+    return this.data.status === "EN_TESTING";
   }
 
   isImplemented(): boolean {
-    return this.data.status === "IMPLEMENTADA";
+    return this.data.status === "COMPLETADA";
   }
 
   isClosed(): boolean {
@@ -612,12 +614,14 @@ export class ChangeRequest {
   getProgressPercentage(): number {
     const statusWeights: Record<ChangeRequestStatus, number> = {
       BORRADOR: 0,
-      ENVIADA: 10,
+      PENDIENTE: 10,
       EN_REVISION: 20,
+      ESPERANDO_INFORMACION: 15,
       APROBADA: 30,
       EN_DESARROLLO: 60,
-      EN_PRUEBAS: 80,
-      IMPLEMENTADA: 90,
+      EN_TESTING: 80,
+      EN_PAUSA: 50,
+      COMPLETADA: 90,
       CERRADA: 100,
       CANCELADA: 0,
       RECHAZADA: 0,
