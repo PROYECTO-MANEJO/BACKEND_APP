@@ -5,52 +5,50 @@
  */
 
 // GitHub Repository Entity
-export { GitHubRepository } from './GitHubRepository';
-export type { 
-  GitHubRepositoryData
-} from './GitHubRepository';
+export { GitHubRepository } from "./GitHubRepository";
+export type { GitHubRepositoryData } from "./GitHubRepository";
 
 // GitHub Branch Entity
-export { GitHubBranch } from './GitHubBranch';
-export type { 
+export { GitHubBranch } from "./GitHubBranch";
+export type {
   GitHubBranchData,
   BranchType,
-  BranchStatus
-} from './GitHubBranch';
+  BranchStatus,
+} from "./GitHubBranch";
 
 // GitHub Pull Request Entity
-export { GitHubPullRequest } from './GitHubPullRequest';
-export type { 
+export { GitHubPullRequest } from "./GitHubPullRequest";
+export type {
   GitHubPullRequestData,
   PullRequestState,
   PullRequestStatus,
-  PullRequestReviewer
-} from './GitHubPullRequest';
+  PullRequestReviewer,
+} from "./GitHubPullRequest";
 
 // GitHub Issue Entity
-export { GitHubIssue } from './GitHubIssue';
-export type { 
+export { GitHubIssue } from "./GitHubIssue";
+export type {
   GitHubIssueData,
   IssueState,
   IssueType,
   IssueLabel,
-  IssueAssignee 
-} from './GitHubIssue';
+  IssueAssignee,
+} from "./GitHubIssue";
 
 // GitHub Commit Entity
-export { GitHubCommit } from './GitHubCommit';
-export type { 
+export { GitHubCommit } from "./GitHubCommit";
+export type {
   GitHubCommitData,
   CommitStatus,
   CommitAuthor,
   CommitCommitter,
   FileChange,
   CommitVerification,
-  CommitStats 
-} from './GitHubCommit';
+  CommitStats,
+} from "./GitHubCommit";
 
 // GitHub Configuration Entity
-export { GitHubConfiguration } from './GitHubConfiguration';
+export { GitHubConfiguration } from "./GitHubConfiguration";
 
 // Common GitHub Types
 export type GitHubEntityId = string;
@@ -69,7 +67,7 @@ export interface GitHubAPIError {
 }
 
 // GitHub Webhook Event Types
-export type GitHubWebhookEvent = 
+export type GitHubWebhookEvent =
   | "push"
   | "pull_request"
   | "pull_request_review"

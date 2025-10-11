@@ -28,10 +28,16 @@ export interface CreatePullRequestResponse {
 
 export interface IGitHubPullRequestRepository {
   create(pullRequest: GitHubPullRequest): Promise<GitHubPullRequest>;
-  findByNumber(number: number, repositoryId: string): Promise<GitHubPullRequest | null>;
+  findByNumber(
+    number: number,
+    repositoryId: string
+  ): Promise<GitHubPullRequest | null>;
   findById(id: string): Promise<GitHubPullRequest | null>;
   findByRepository(repositoryId: string): Promise<GitHubPullRequest[]>;
-  findByBranch(branchName: string, repositoryId: string): Promise<GitHubPullRequest[]>;
+  findByBranch(
+    branchName: string,
+    repositoryId: string
+  ): Promise<GitHubPullRequest[]>;
   findByChangeRequest(changeRequestId: string): Promise<GitHubPullRequest[]>;
   update(pullRequest: GitHubPullRequest): Promise<GitHubPullRequest>;
   delete(id: string): Promise<void>;
@@ -40,13 +46,33 @@ export interface IGitHubPullRequestRepository {
 export interface IGitHubPullRequestAPIService {
   createPullRequest(request: CreatePullRequestRequest): Promise<any>;
   getPullRequest(number: number, repositoryFullName: string): Promise<any>;
-  updatePullRequest(number: number, repositoryFullName: string, data: any): Promise<any>;
+  updatePullRequest(
+    number: number,
+    repositoryFullName: string,
+    data: any
+  ): Promise<any>;
   closePullRequest(number: number, repositoryFullName: string): Promise<any>;
-  mergePullRequest(number: number, repositoryFullName: string, mergeMethod?: string): Promise<any>;
+  mergePullRequest(
+    number: number,
+    repositoryFullName: string,
+    mergeMethod?: string
+  ): Promise<any>;
   listPullRequests(repositoryFullName: string, state?: string): Promise<any[]>;
-  requestReview(number: number, repositoryFullName: string, reviewers: string[]): Promise<void>;
-  addAssignees(number: number, repositoryFullName: string, assignees: string[]): Promise<void>;
-  addLabels(number: number, repositoryFullName: string, labels: string[]): Promise<void>;
+  requestReview(
+    number: number,
+    repositoryFullName: string,
+    reviewers: string[]
+  ): Promise<void>;
+  addAssignees(
+    number: number,
+    repositoryFullName: string,
+    assignees: string[]
+  ): Promise<void>;
+  addLabels(
+    number: number,
+    repositoryFullName: string,
+    labels: string[]
+  ): Promise<void>;
 }
 
 export class CreatePullRequestUseCase {
@@ -55,20 +81,27 @@ export class CreatePullRequestUseCase {
     private githubAPI: IGitHubPullRequestAPIService
   ) {}
 
-  public async execute(request: CreatePullRequestRequest): Promise<CreatePullRequestResponse> {
+  public async execute(
+    request: CreatePullRequestRequest
+  ): Promise<CreatePullRequestResponse> {
     try {
       // Validar entrada
       this.validateRequest(request);
 
       // Verificar si ya existe un PR para esta rama
-      const existingPRs = await this.pullRequestRepo.findByBranch(request.headBranch, request.repositoryId);
-      const openPR = existingPRs.find(pr => pr.isOpen());
-      
+      const existingPRs = await this.pullRequestRepo.findByBranch(
+        request.headBranch,
+        request.repositoryId
+      );
+      const openPR = existingPRs.find((pr) => pr.isOpen());
+
       if (openPR) {
         return {
           pullRequest: openPR,
           success: false,
-          message: `Ya existe un Pull Request abierto (#${openPR.getNumber()}) para la rama '${request.headBranch}'`
+          message: `Ya existe un Pull Request abierto (#${openPR.getNumber()}) para la rama '${
+            request.headBranch
+          }'`,
         };
       }
 
@@ -76,7 +109,11 @@ export class CreatePullRequestUseCase {
       const githubPRData = await this.githubAPI.createPullRequest(request);
 
       // Crear entidad de dominio desde los datos de GitHub API
-      const pullRequest = GitHubPullRequest.fromGitHubAPI(githubPRData, request.repositoryId, request.changeRequestId);
+      const pullRequest = GitHubPullRequest.fromGitHubAPI(
+        githubPRData,
+        request.repositoryId,
+        request.changeRequestId
+      );
 
       // Guardar en base de datos
       const savedPR = await this.pullRequestRepo.create(pullRequest);
@@ -87,14 +124,19 @@ export class CreatePullRequestUseCase {
       return {
         pullRequest: savedPR,
         success: true,
-        message: `Pull Request #${githubPRData.number} creado exitosamente: '${request.title}'`
+        message: `Pull Request #${githubPRData.number} creado exitosamente: '${request.title}'`,
       };
-
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Error desconocido";
-      
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+
       // En caso de error, crear entidad básica si tenemos los datos mínimos
-      if (request.title && request.repositoryId && request.headBranch && request.baseBranch) {
+      if (
+        request.title &&
+        request.repositoryId &&
+        request.headBranch &&
+        request.baseBranch
+      ) {
         const basicPR = GitHubPullRequest.create(
           0, // Número temporal
           request.title,
@@ -110,7 +152,7 @@ export class CreatePullRequestUseCase {
         return {
           pullRequest: basicPR,
           success: false,
-          message: `Error al crear Pull Request: ${errorMessage}`
+          message: `Error al crear Pull Request: ${errorMessage}`,
         };
       }
 
@@ -118,25 +160,43 @@ export class CreatePullRequestUseCase {
     }
   }
 
-  private async configurePostCreation(prNumber: number, request: CreatePullRequestRequest): Promise<void> {
+  private async configurePostCreation(
+    prNumber: number,
+    request: CreatePullRequestRequest
+  ): Promise<void> {
     try {
       // Agregar assignees
       if (request.assignees && request.assignees.length > 0) {
-        await this.githubAPI.addAssignees(prNumber, request.repositoryFullName, request.assignees);
+        await this.githubAPI.addAssignees(
+          prNumber,
+          request.repositoryFullName,
+          request.assignees
+        );
       }
 
       // Solicitar revisiones
       if (request.reviewers && request.reviewers.length > 0) {
-        await this.githubAPI.requestReview(prNumber, request.repositoryFullName, request.reviewers);
+        await this.githubAPI.requestReview(
+          prNumber,
+          request.repositoryFullName,
+          request.reviewers
+        );
       }
 
       // Agregar labels
       if (request.labels && request.labels.length > 0) {
-        await this.githubAPI.addLabels(prNumber, request.repositoryFullName, request.labels);
+        await this.githubAPI.addLabels(
+          prNumber,
+          request.repositoryFullName,
+          request.labels
+        );
       }
     } catch (error) {
       // Log error but don't fail the entire operation
-      console.warn(`Warning: Failed to configure PR #${prNumber} post-creation:`, error);
+      console.warn(
+        `Warning: Failed to configure PR #${prNumber} post-creation:`,
+        error
+      );
     }
   }
 
@@ -153,7 +213,10 @@ export class CreatePullRequestUseCase {
       throw new Error("El ID del repositorio es requerido");
     }
 
-    if (!request.repositoryFullName || request.repositoryFullName.trim().length === 0) {
+    if (
+      !request.repositoryFullName ||
+      request.repositoryFullName.trim().length === 0
+    ) {
       throw new Error("El nombre completo del repositorio es requerido");
     }
 
@@ -179,8 +242,9 @@ export class CreatePullRequestUseCase {
         throw new Error("No se pueden asignar más de 10 usuarios");
       }
 
-      const invalidAssignees = request.assignees.filter(assignee => 
-        !assignee || assignee.trim().length === 0 || assignee.length > 39
+      const invalidAssignees = request.assignees.filter(
+        (assignee) =>
+          !assignee || assignee.trim().length === 0 || assignee.length > 39
       );
 
       if (invalidAssignees.length > 0) {
@@ -194,12 +258,15 @@ export class CreatePullRequestUseCase {
         throw new Error("No se pueden solicitar más de 15 revisores");
       }
 
-      const invalidReviewers = request.reviewers.filter(reviewer => 
-        !reviewer || reviewer.trim().length === 0 || reviewer.length > 39
+      const invalidReviewers = request.reviewers.filter(
+        (reviewer) =>
+          !reviewer || reviewer.trim().length === 0 || reviewer.length > 39
       );
 
       if (invalidReviewers.length > 0) {
-        throw new Error("Los nombres de usuario de los revisores son inválidos");
+        throw new Error(
+          "Los nombres de usuario de los revisores son inválidos"
+        );
       }
     }
 
@@ -209,12 +276,14 @@ export class CreatePullRequestUseCase {
         throw new Error("No se pueden agregar más de 100 labels");
       }
 
-      const invalidLabels = request.labels.filter(label => 
-        !label || label.trim().length === 0 || label.length > 50
+      const invalidLabels = request.labels.filter(
+        (label) => !label || label.trim().length === 0 || label.length > 50
       );
 
       if (invalidLabels.length > 0) {
-        throw new Error("Algunos labels son inválidos (máximo 50 caracteres por label)");
+        throw new Error(
+          "Algunos labels son inválidos (máximo 50 caracteres por label)"
+        );
       }
     }
   }
@@ -239,9 +308,14 @@ export class CreateChangeRequestPullRequestUseCase {
     assignees?: string[],
     reviewers?: string[]
   ): Promise<CreatePullRequestResponse> {
-    
-    const title = this.generatePullRequestTitle(changeRequestId, changeRequestTitle);
-    const body = this.generatePullRequestBody(changeRequestId, changeRequestDescription);
+    const title = this.generatePullRequestTitle(
+      changeRequestId,
+      changeRequestTitle
+    );
+    const body = this.generatePullRequestBody(
+      changeRequestId,
+      changeRequestDescription
+    );
     const labels = this.getChangeRequestLabels();
 
     const request: CreatePullRequestRequest = {
@@ -255,17 +329,23 @@ export class CreateChangeRequestPullRequestUseCase {
       isDraft: false,
       assignees,
       reviewers,
-      labels
+      labels,
     };
 
     return await this.createPullRequestUseCase.execute(request);
   }
 
-  private generatePullRequestTitle(changeRequestId: string, title: string): string {
+  private generatePullRequestTitle(
+    changeRequestId: string,
+    title: string
+  ): string {
     return `[CR-${changeRequestId}] ${title}`;
   }
 
-  private generatePullRequestBody(changeRequestId: string, description: string): string {
+  private generatePullRequestBody(
+    changeRequestId: string,
+    description: string
+  ): string {
     return `## 📋 Solicitud de Cambio
 
 **ID:** ${changeRequestId}

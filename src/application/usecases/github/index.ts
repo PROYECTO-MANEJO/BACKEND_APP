@@ -5,41 +5,41 @@
  */
 
 // Repository Use Cases
-export { CreateRepositoryUseCase } from './CreateRepositoryUseCase';
-export type { 
+export { CreateRepositoryUseCase } from "./CreateRepositoryUseCase";
+export type {
   CreateRepositoryRequest,
   CreateRepositoryResponse,
   IGitHubRepositoryRepository,
-  IGitHubAPIService
-} from './CreateRepositoryUseCase';
+  IGitHubAPIService,
+} from "./CreateRepositoryUseCase";
 
-// Branch Use Cases  
-export { 
+// Branch Use Cases
+export {
   CreateBranchUseCase,
   CreateFeatureBranchUseCase,
-  CreateHotfixBranchUseCase
-} from './CreateBranchUseCase';
+  CreateHotfixBranchUseCase,
+} from "./CreateBranchUseCase";
 export type {
   CreateBranchRequest,
   CreateBranchResponse,
   IGitHubBranchRepository,
-  IGitHubBranchAPIService
-} from './CreateBranchUseCase';
+  IGitHubBranchAPIService,
+} from "./CreateBranchUseCase";
 
 // Pull Request Use Cases
-export { 
+export {
   CreatePullRequestUseCase,
-  CreateChangeRequestPullRequestUseCase
-} from './CreatePullRequestUseCase';
+  CreateChangeRequestPullRequestUseCase,
+} from "./CreatePullRequestUseCase";
 export type {
   CreatePullRequestRequest,
   CreatePullRequestResponse,
   IGitHubPullRequestRepository,
-  IGitHubPullRequestAPIService
-} from './CreatePullRequestUseCase';
+  IGitHubPullRequestAPIService,
+} from "./CreatePullRequestUseCase";
 
 // Sync Use Cases
-export { SyncRepositoryUseCase } from './SyncRepositoryUseCase';
+export { SyncRepositoryUseCase } from "./SyncRepositoryUseCase";
 export type {
   SyncRepositoryRequest,
   SyncRepositoryResponse,
@@ -48,8 +48,8 @@ export type {
   IGitHubBranchSyncRepository,
   IGitHubPullRequestSyncRepository,
   IGitHubIssueSyncRepository,
-  IGitHubCommitSyncRepository
-} from './SyncRepositoryUseCase';
+  IGitHubCommitSyncRepository,
+} from "./SyncRepositoryUseCase";
 
 // Common Types for GitHub Use Cases
 export interface GitHubUseCaseError {
@@ -105,7 +105,13 @@ export interface GitHubIssueWebhookPayload extends GitHubWebhookPayload {
 // GitHub Integration Events
 export interface GitHubIntegrationEvent {
   id: string;
-  type: "repository" | "branch" | "pull_request" | "issue" | "commit" | "webhook";
+  type:
+    | "repository"
+    | "branch"
+    | "pull_request"
+    | "issue"
+    | "commit"
+    | "webhook";
   action: string;
   entityId: string;
   repositoryId: string;

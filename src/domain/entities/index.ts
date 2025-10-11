@@ -7,6 +7,9 @@
 // GitHub Entities
 export * from './github';
 
+// Administration Entities
+export * from './administration';
+
 // Base Entity Types
 export interface BaseEntity {
   id: string;
