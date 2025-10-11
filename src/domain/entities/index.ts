@@ -10,6 +10,9 @@ export * from './github';
 // Administration Entities
 export * from './administration';
 
+// Homepage Entities
+export * from './homepage';
+
 // Base Entity Types
 export interface BaseEntity {
   id: string;
