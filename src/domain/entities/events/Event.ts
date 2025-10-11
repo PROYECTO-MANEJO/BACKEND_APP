@@ -4,9 +4,25 @@
  * Representa un evento con todas sus propiedades, validaciones y reglas de negocio
  */
 
-export type EventArea = 'PRACTICA' | 'INVESTIGACION' | 'ACADEMICA' | 'TECNICA' | 'INDUSTRIAL' | 'EMPRESARIAL' | 'IA' | 'REDES';
-export type EventAudience = 'CARRERA_ESPECIFICA' | 'TODAS_CARRERAS' | 'PUBLICO_GENERAL';
-export type EventStatus = 'ACTIVO' | 'INACTIVO' | 'CANCELADO' | 'COMPLETADO' | 'EN_PROCESO';
+export type EventArea =
+  | "PRACTICA"
+  | "INVESTIGACION"
+  | "ACADEMICA"
+  | "TECNICA"
+  | "INDUSTRIAL"
+  | "EMPRESARIAL"
+  | "IA"
+  | "REDES";
+export type EventAudience =
+  | "CARRERA_ESPECIFICA"
+  | "TODAS_CARRERAS"
+  | "PUBLICO_GENERAL";
+export type EventStatus =
+  | "ACTIVO"
+  | "INACTIVO"
+  | "CANCELADO"
+  | "COMPLETADO"
+  | "EN_PROCESO";
 
 export interface EventSchedule {
   startDate: Date;
@@ -75,19 +91,19 @@ export interface EventFeedback {
 
 export interface EventData {
   id: string;
-  
+
   // Basic Information
   name: string;
   description: string;
   categoryId: string;
   categoryName?: string;
-  
+
   // Scheduling
   schedule: EventSchedule;
-  
+
   // Location and Capacity
   location: EventLocation;
-  
+
   // Organizational Details
   organizerId: string;
   organizerName?: string;
@@ -99,51 +115,51 @@ export interface EventData {
     role: string;
     biography?: string;
   }>;
-  
+
   // Event Classification
   area: EventArea;
   audience: EventAudience;
   tags: string[];
-  
+
   // Pricing
   pricing: EventPricing;
-  
+
   // Requirements and Approval
   requirements: EventRequirements;
-  
+
   // Registration Management
   registration: EventRegistration;
-  
+
   // Associated Careers (if audience is specific)
   associatedCareers: Array<{
     id: string;
     name: string;
     code: string;
   }>;
-  
+
   // Content and Materials
   materials: EventMaterials;
-  
+
   // Feedback and Analytics
   feedback: EventFeedback;
-  
+
   // Status and Metadata
   status: EventStatus;
   createdAt: Date;
   updatedAt: Date;
   createdBy?: string;
   lastModifiedBy?: string;
-  
+
   // Analytics
   viewCount: number;
   shareCount: number;
   completionRate?: number;
-  
+
   // Publication and Visibility
   isPublished: boolean;
   publishDate?: Date;
   featuredUntil?: Date;
-  
+
   // External Integration
   externalEventId?: string;
   syncWithCalendar: boolean;
@@ -165,7 +181,7 @@ export class Event {
     capacity: number,
     organizerId: string,
     area: EventArea,
-    audience: EventAudience = 'PUBLICO_GENERAL',
+    audience: EventAudience = "PUBLICO_GENERAL",
     isFree: boolean = true,
     price?: number,
     endDate?: Date,
@@ -174,7 +190,7 @@ export class Event {
     createdBy?: string
   ): Event {
     const now = new Date();
-    
+
     const eventData: EventData = {
       id: `event-${Date.now()}`,
       name: name.trim(),
@@ -185,12 +201,12 @@ export class Event {
         endDate,
         startTime,
         endTime,
-        duration
+        duration,
       },
       location: {
         venue: venue.trim(),
         capacity,
-        hasVirtualOption: false
+        hasVirtualOption: false,
       },
       organizerId,
       instructors: [],
@@ -200,40 +216,40 @@ export class Event {
       pricing: {
         isFree,
         price: isFree ? undefined : price,
-        currency: 'CRC'
+        currency: "CRC",
       },
       requirements: {
         requiresMotivationLetter: true,
         requiresDocumentVerification: false,
         minimumAttendancePercentage,
         requiredDocuments: [],
-        prerequisites: []
+        prerequisites: [],
       },
       registration: {
         isOpen: true,
         maxCapacity: capacity,
         currentEnrollments: 0,
         waitingListEnabled: true,
-        autoApproval: true
+        autoApproval: true,
       },
       associatedCareers: [],
       materials: {
         presentationFiles: [],
         resourceLinks: [],
-        handoutFiles: []
+        handoutFiles: [],
       },
       feedback: {
         totalReviews: 0,
-        improvementSuggestions: []
+        improvementSuggestions: [],
       },
-      status: 'ACTIVO',
+      status: "ACTIVO",
       createdAt: now,
       updatedAt: now,
       createdBy,
       viewCount: 0,
       shareCount: 0,
       isPublished: false,
-      syncWithCalendar: false
+      syncWithCalendar: false,
     };
 
     return new Event(eventData);
@@ -246,78 +262,93 @@ export class Event {
       description: eventData.des_eve,
       categoryId: eventData.id_cat_eve?.toString(),
       categoryName: eventData.categoriaEvento?.nom_cat,
-      
+
       schedule: {
         startDate: new Date(eventData.fec_ini_eve),
-        endDate: eventData.fec_fin_eve ? new Date(eventData.fec_fin_eve) : undefined,
-        startTime: eventData.hor_ini_eve ? new Date(eventData.hor_ini_eve) : new Date(),
-        endTime: eventData.hor_fin_eve ? new Date(eventData.hor_fin_eve) : undefined,
-        duration: eventData.dur_eve || 1
+        endDate: eventData.fec_fin_eve
+          ? new Date(eventData.fec_fin_eve)
+          : undefined,
+        startTime: eventData.hor_ini_eve
+          ? new Date(eventData.hor_ini_eve)
+          : new Date(),
+        endTime: eventData.hor_fin_eve
+          ? new Date(eventData.hor_fin_eve)
+          : undefined,
+        duration: eventData.dur_eve || 1,
       },
-      
+
       location: {
-        venue: eventData.ubi_eve || '',
+        venue: eventData.ubi_eve || "",
         capacity: eventData.capacidad_max_eve || 0,
-        hasVirtualOption: false
+        hasVirtualOption: false,
       },
-      
-      organizerId: eventData.ced_org_eve?.toString() || '',
+
+      organizerId: eventData.ced_org_eve?.toString() || "",
       organizerName: eventData.organizador?.nom_org,
       organizerEmail: eventData.organizador?.email_org,
       instructors: [],
-      
-      area: (eventData.are_eve as EventArea) || 'ACADEMICA',
-      audience: (eventData.tipo_audiencia_eve as EventAudience) || 'PUBLICO_GENERAL',
+
+      area: (eventData.are_eve as EventArea) || "ACADEMICA",
+      audience:
+        (eventData.tipo_audiencia_eve as EventAudience) || "PUBLICO_GENERAL",
       tags: [],
-      
+
       pricing: {
         isFree: eventData.es_gratuito !== false,
         price: eventData.precio || undefined,
-        currency: 'CRC'
+        currency: "CRC",
       },
-      
+
       requirements: {
         requiresMotivationLetter: eventData.requiere_carta_motivacion !== false,
-        requiresDocumentVerification: eventData.requiere_verificacion_docs === true,
-        minimumAttendancePercentage: eventData.porcentaje_asistencia_aprobacion || 80,
+        requiresDocumentVerification:
+          eventData.requiere_verificacion_docs === true,
+        minimumAttendancePercentage:
+          eventData.porcentaje_asistencia_aprobacion || 80,
         requiresApproval: eventData.requiere_aprobacion === true,
         requiredDocuments: [],
-        prerequisites: []
+        prerequisites: [],
       },
-      
+
       registration: {
-        isOpen: eventData.estado === 'ACTIVO',
+        isOpen: eventData.estado === "ACTIVO",
         maxCapacity: eventData.capacidad_max_eve || 0,
         currentEnrollments: eventData._count?.inscripciones || 0,
         waitingListEnabled: true,
-        autoApproval: eventData.requiere_aprobacion !== true
+        autoApproval: eventData.requiere_aprobacion !== true,
       },
-      
-      associatedCareers: (eventData.eventosPorCarrera || []).map((epc: any) => ({
-        id: epc.carrera?.id_car?.toString() || '',
-        name: epc.carrera?.nom_car || '',
-        code: epc.carrera?.codigo_car || ''
-      })),
-      
+
+      associatedCareers: (eventData.eventosPorCarrera || []).map(
+        (epc: any) => ({
+          id: epc.carrera?.id_car?.toString() || "",
+          name: epc.carrera?.nom_car || "",
+          code: epc.carrera?.codigo_car || "",
+        })
+      ),
+
       materials: {
         presentationFiles: [],
         resourceLinks: [],
-        handoutFiles: []
+        handoutFiles: [],
       },
-      
+
       feedback: {
         totalReviews: 0,
-        improvementSuggestions: []
+        improvementSuggestions: [],
       },
-      
-      status: (eventData.estado as EventStatus) || 'ACTIVO',
-      createdAt: eventData.created_at ? new Date(eventData.created_at) : new Date(),
-      updatedAt: eventData.updated_at ? new Date(eventData.updated_at) : new Date(),
-      
+
+      status: (eventData.estado as EventStatus) || "ACTIVO",
+      createdAt: eventData.created_at
+        ? new Date(eventData.created_at)
+        : new Date(),
+      updatedAt: eventData.updated_at
+        ? new Date(eventData.updated_at)
+        : new Date(),
+
       viewCount: 0,
       shareCount: 0,
-      isPublished: eventData.estado === 'ACTIVO',
-      syncWithCalendar: false
+      isPublished: eventData.estado === "ACTIVO",
+      syncWithCalendar: false,
     };
 
     return new Event(event);
@@ -352,20 +383,30 @@ export class Event {
       throw new Error("Event duration must be greater than 0");
     }
 
-    if (this.data.schedule.startDate < new Date('2000-01-01')) {
+    if (this.data.schedule.startDate < new Date("2000-01-01")) {
       throw new Error("Event start date must be valid");
     }
 
-    if (this.data.schedule.endDate && this.data.schedule.endDate < this.data.schedule.startDate) {
+    if (
+      this.data.schedule.endDate &&
+      this.data.schedule.endDate < this.data.schedule.startDate
+    ) {
       throw new Error("Event end date must be after start date");
     }
 
-    if (this.data.requirements.minimumAttendancePercentage < 0 || 
-        this.data.requirements.minimumAttendancePercentage > 100) {
-      throw new Error("Minimum attendance percentage must be between 0 and 100");
+    if (
+      this.data.requirements.minimumAttendancePercentage < 0 ||
+      this.data.requirements.minimumAttendancePercentage > 100
+    ) {
+      throw new Error(
+        "Minimum attendance percentage must be between 0 and 100"
+      );
     }
 
-    if (!this.data.pricing.isFree && (!this.data.pricing.price || this.data.pricing.price <= 0)) {
+    if (
+      !this.data.pricing.isFree &&
+      (!this.data.pricing.price || this.data.pricing.price <= 0)
+    ) {
       throw new Error("Paid events must have a positive price");
     }
 
@@ -377,7 +418,10 @@ export class Event {
       throw new Error("Current enrollments cannot be negative");
     }
 
-    if (this.data.registration.currentEnrollments > this.data.registration.maxCapacity) {
+    if (
+      this.data.registration.currentEnrollments >
+      this.data.registration.maxCapacity
+    ) {
       throw new Error("Current enrollments cannot exceed maximum capacity");
     }
   }
@@ -419,7 +463,13 @@ export class Event {
     return this.data.organizerName;
   }
 
-  public getInstructors(): Array<{id: string; name: string; email: string; role: string; biography?: string}> {
+  public getInstructors(): Array<{
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    biography?: string;
+  }> {
     return [...this.data.instructors];
   }
 
@@ -447,7 +497,11 @@ export class Event {
     return { ...this.data.registration };
   }
 
-  public getAssociatedCareers(): Array<{id: string; name: string; code: string}> {
+  public getAssociatedCareers(): Array<{
+    id: string;
+    name: string;
+    code: string;
+  }> {
     return [...this.data.associatedCareers];
   }
 
@@ -484,24 +538,26 @@ export class Event {
   }
 
   public isFeatured(): boolean {
-    return this.data.featuredUntil ? new Date() < this.data.featuredUntil : false;
+    return this.data.featuredUntil
+      ? new Date() < this.data.featuredUntil
+      : false;
   }
 
   // Status checks
   public isActive(): boolean {
-    return this.data.status === 'ACTIVO';
+    return this.data.status === "ACTIVO";
   }
 
   public isCompleted(): boolean {
-    return this.data.status === 'COMPLETADO';
+    return this.data.status === "COMPLETADO";
   }
 
   public isCancelled(): boolean {
-    return this.data.status === 'CANCELADO';
+    return this.data.status === "CANCELADO";
   }
 
   public isInProgress(): boolean {
-    return this.data.status === 'EN_PROCESO';
+    return this.data.status === "EN_PROCESO";
   }
 
   public isFree(): boolean {
@@ -510,14 +566,21 @@ export class Event {
 
   public isRegistrationOpen(): boolean {
     const now = new Date();
-    return this.data.registration.isOpen && 
-           this.data.status === 'ACTIVO' &&
-           (!this.data.registration.closeDate || now <= this.data.registration.closeDate) &&
-           (!this.data.registration.openDate || now >= this.data.registration.openDate);
+    return (
+      this.data.registration.isOpen &&
+      this.data.status === "ACTIVO" &&
+      (!this.data.registration.closeDate ||
+        now <= this.data.registration.closeDate) &&
+      (!this.data.registration.openDate ||
+        now >= this.data.registration.openDate)
+    );
   }
 
   public hasCapacity(): boolean {
-    return this.data.registration.currentEnrollments < this.data.registration.maxCapacity;
+    return (
+      this.data.registration.currentEnrollments <
+      this.data.registration.maxCapacity
+    );
   }
 
   public isWaitingListEnabled(): boolean {
@@ -550,17 +613,19 @@ export class Event {
   }
 
   public canEnroll(): boolean {
-    return this.isRegistrationOpen() && 
-           (this.hasCapacity() || this.isWaitingListEnabled()) &&
-           this.isUpcoming();
+    return (
+      this.isRegistrationOpen() &&
+      (this.hasCapacity() || this.isWaitingListEnabled()) &&
+      this.isUpcoming()
+    );
   }
 
   public canEdit(): boolean {
-    return !this.hasStarted() || this.data.status === 'ACTIVO';
+    return !this.hasStarted() || this.data.status === "ACTIVO";
   }
 
   public canCancel(): boolean {
-    return this.data.status === 'ACTIVO' && !this.hasEnded();
+    return this.data.status === "ACTIVO" && !this.hasEnded();
   }
 
   // Actions
@@ -575,7 +640,7 @@ export class Event {
 
     const updates: Partial<EventData> = {
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     if (name && name.trim()) {
@@ -637,7 +702,7 @@ export class Event {
       ...this.data,
       schedule: updatedSchedule,
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new Event(updatedData);
@@ -697,7 +762,7 @@ export class Event {
       location: updatedLocation,
       registration: updatedRegistration,
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new Event(updatedData);
@@ -737,7 +802,7 @@ export class Event {
       ...this.data,
       pricing: updatedPricing,
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new Event(updatedData);
@@ -755,10 +820,16 @@ export class Event {
     const updatedRequirements = { ...this.data.requirements };
 
     if (minimumAttendancePercentage !== undefined) {
-      if (minimumAttendancePercentage < 0 || minimumAttendancePercentage > 100) {
-        throw new Error("Minimum attendance percentage must be between 0 and 100");
+      if (
+        minimumAttendancePercentage < 0 ||
+        minimumAttendancePercentage > 100
+      ) {
+        throw new Error(
+          "Minimum attendance percentage must be between 0 and 100"
+        );
       }
-      updatedRequirements.minimumAttendancePercentage = minimumAttendancePercentage;
+      updatedRequirements.minimumAttendancePercentage =
+        minimumAttendancePercentage;
     }
 
     if (requiresMotivationLetter !== undefined) {
@@ -766,7 +837,8 @@ export class Event {
     }
 
     if (requiresDocumentVerification !== undefined) {
-      updatedRequirements.requiresDocumentVerification = requiresDocumentVerification;
+      updatedRequirements.requiresDocumentVerification =
+        requiresDocumentVerification;
     }
 
     if (requiresApproval !== undefined) {
@@ -785,7 +857,7 @@ export class Event {
       ...this.data,
       requirements: updatedRequirements,
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new Event(updatedData);
@@ -799,7 +871,7 @@ export class Event {
     biography?: string,
     updatedBy?: string
   ): Event {
-    if (this.data.instructors.some(instructor => instructor.id === id)) {
+    if (this.data.instructors.some((instructor) => instructor.id === id)) {
       throw new Error("Instructor already exists for this event");
     }
 
@@ -808,14 +880,14 @@ export class Event {
       name: name.trim(),
       email: email.trim(),
       role: role.trim(),
-      biography: biography?.trim()
+      biography: biography?.trim(),
     };
 
     const updatedData = {
       ...this.data,
       instructors: [...this.data.instructors, newInstructor],
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new Event(updatedData);
@@ -823,7 +895,7 @@ export class Event {
 
   public removeInstructor(instructorId: string, updatedBy?: string): Event {
     const updatedInstructors = this.data.instructors.filter(
-      instructor => instructor.id !== instructorId
+      (instructor) => instructor.id !== instructorId
     );
 
     if (updatedInstructors.length === this.data.instructors.length) {
@@ -834,17 +906,17 @@ export class Event {
       ...this.data,
       instructors: updatedInstructors,
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new Event(updatedData);
   }
 
   public associateWithCareers(
-    careers: Array<{id: string; name: string; code: string}>,
+    careers: Array<{ id: string; name: string; code: string }>,
     updatedBy?: string
   ): Event {
-    if (this.data.audience !== 'CARRERA_ESPECIFICA') {
+    if (this.data.audience !== "CARRERA_ESPECIFICA") {
       throw new Error("Can only associate careers with career-specific events");
     }
 
@@ -852,7 +924,7 @@ export class Event {
       ...this.data,
       associatedCareers: [...careers],
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new Event(updatedData);
@@ -872,20 +944,20 @@ export class Event {
       ...this.data,
       tags: [...this.data.tags, trimmedTag],
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new Event(updatedData);
   }
 
   public removeTag(tag: string, updatedBy?: string): Event {
-    const updatedTags = this.data.tags.filter(t => t !== tag.toLowerCase());
+    const updatedTags = this.data.tags.filter((t) => t !== tag.toLowerCase());
 
     const updatedData = {
       ...this.data,
       tags: updatedTags,
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new Event(updatedData);
@@ -894,13 +966,13 @@ export class Event {
   public incrementEnrollment(): Event {
     const updatedRegistration = {
       ...this.data.registration,
-      currentEnrollments: this.data.registration.currentEnrollments + 1
+      currentEnrollments: this.data.registration.currentEnrollments + 1,
     };
 
     const updatedData = {
       ...this.data,
       registration: updatedRegistration,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     return new Event(updatedData);
@@ -913,27 +985,24 @@ export class Event {
 
     const updatedRegistration = {
       ...this.data.registration,
-      currentEnrollments: this.data.registration.currentEnrollments - 1
+      currentEnrollments: this.data.registration.currentEnrollments - 1,
     };
 
     const updatedData = {
       ...this.data,
       registration: updatedRegistration,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     return new Event(updatedData);
   }
 
-  public updateStatus(
-    status: EventStatus,
-    updatedBy?: string
-  ): Event {
+  public updateStatus(status: EventStatus, updatedBy?: string): Event {
     const updatedData = {
       ...this.data,
       status,
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new Event(updatedData);
@@ -946,9 +1015,9 @@ export class Event {
 
     const updatedData = {
       ...this.data,
-      status: 'CANCELADO' as EventStatus,
+      status: "CANCELADO" as EventStatus,
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new Event(updatedData);
@@ -956,13 +1025,13 @@ export class Event {
 
   public publish(updatedBy?: string): Event {
     const now = new Date();
-    
+
     const updatedData = {
       ...this.data,
       isPublished: true,
       publishDate: now,
       updatedAt: now,
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new Event(updatedData);
@@ -973,7 +1042,7 @@ export class Event {
       ...this.data,
       isPublished: false,
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new Event(updatedData);
@@ -983,7 +1052,7 @@ export class Event {
     const updatedData = {
       ...this.data,
       viewCount: this.data.viewCount + 1,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     return new Event(updatedData);
@@ -993,7 +1062,7 @@ export class Event {
     const updatedData = {
       ...this.data,
       shareCount: this.data.shareCount + 1,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     return new Event(updatedData);
@@ -1007,7 +1076,7 @@ export class Event {
     const updatedData = {
       ...this.data,
       completionRate,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     return new Event(updatedData);
@@ -1015,12 +1084,20 @@ export class Event {
 
   // Analytics and reporting
   public getAvailableSpots(): number {
-    return Math.max(0, this.data.registration.maxCapacity - this.data.registration.currentEnrollments);
+    return Math.max(
+      0,
+      this.data.registration.maxCapacity -
+        this.data.registration.currentEnrollments
+    );
   }
 
   public getOccupancyRate(): number {
     if (this.data.registration.maxCapacity === 0) return 0;
-    return (this.data.registration.currentEnrollments / this.data.registration.maxCapacity) * 100;
+    return (
+      (this.data.registration.currentEnrollments /
+        this.data.registration.maxCapacity) *
+      100
+    );
   }
 
   public getDaysUntilStart(): number {
@@ -1031,8 +1108,10 @@ export class Event {
 
   public getDurationInDays(): number {
     if (!this.data.schedule.endDate) return 1;
-    
-    const diffTime = this.data.schedule.endDate.getTime() - this.data.schedule.startDate.getTime();
+
+    const diffTime =
+      this.data.schedule.endDate.getTime() -
+      this.data.schedule.startDate.getTime();
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
   }
 
@@ -1059,7 +1138,7 @@ export class Event {
       daysUntilStart: this.getDaysUntilStart(),
       isPublished: this.data.isPublished,
       viewCount: this.data.viewCount,
-      organizerName: this.data.organizerName
+      organizerName: this.data.organizerName,
     };
   }
 
@@ -1082,7 +1161,7 @@ export class Event {
       completionRate: this.data.completionRate,
       shareCount: this.data.shareCount,
       publishDate: this.data.publishDate,
-      featuredUntil: this.data.featuredUntil
+      featuredUntil: this.data.featuredUntil,
     };
   }
 }

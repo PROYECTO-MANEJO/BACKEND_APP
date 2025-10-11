@@ -5,8 +5,8 @@
  */
 
 // Enrollment Management Use Case
-import { EnrollmentManagement } from './EnrollmentManagement';
-import { ParticipationTracking } from './ParticipationTracking';
+import { EnrollmentManagement } from "./EnrollmentManagement";
+import { ParticipationTracking } from "./ParticipationTracking";
 
 export {
   EnrollmentManagement,
@@ -18,8 +18,8 @@ export {
   type EnrollmentManagementInput,
   type BulkEnrollmentInput,
   type ApprovalInput,
-  type PaymentUpdateInput
-} from './EnrollmentManagement';
+  type PaymentUpdateInput,
+} from "./EnrollmentManagement";
 
 // Participation Tracking Use Case
 export {
@@ -32,8 +32,8 @@ export {
   type GradeInput,
   type AttendanceUpdateInput,
   type BulkAttendanceInput,
-  type BulkGradeInput
-} from './ParticipationTracking';
+  type BulkGradeInput,
+} from "./ParticipationTracking";
 
 // Common interfaces for participation use cases
 export interface ParticipationUseCaseResult<T = any> {
@@ -47,11 +47,11 @@ export interface PaginationOptions {
   page: number;
   limit: number;
   sortBy?: string;
-  sortOrder?: 'ASC' | 'DESC';
+  sortOrder?: "ASC" | "DESC";
 }
 
 export interface ParticipationReportFilters {
-  activityType?: 'EVENT' | 'COURSE';
+  activityType?: "EVENT" | "COURSE";
   startDate?: Date;
   endDate?: Date;
   status?: string;
@@ -71,34 +71,34 @@ export interface ParticipationDashboardData {
     certificatesGenerated: number;
     averageCompletionRate: number;
   };
-  
+
   recentActivity: Array<{
-    type: 'ENROLLMENT' | 'ATTENDANCE' | 'GRADE' | 'CERTIFICATE' | 'WITHDRAWAL';
+    type: "ENROLLMENT" | "ATTENDANCE" | "GRADE" | "CERTIFICATE" | "WITHDRAWAL";
     participantName: string;
     activityName: string;
     timestamp: Date;
     details: string;
   }>;
-  
+
   upcomingDeadlines: Array<{
     activityName: string;
     participantCount: number;
     deadline: Date;
-    type: 'START' | 'END' | 'EVALUATION';
+    type: "START" | "END" | "EVALUATION";
   }>;
-  
+
   performanceMetrics: {
     attendanceByMonth: Array<{
       month: string;
       averageAttendance: number;
     }>;
-    
+
     gradeDistribution: Array<{
       gradeRange: string;
       count: number;
       percentage: number;
     }>;
-    
+
     completionTrends: Array<{
       month: string;
       enrolled: number;
@@ -106,12 +106,16 @@ export interface ParticipationDashboardData {
       completionRate: number;
     }>;
   };
-  
+
   alerts: Array<{
-    type: 'LOW_ATTENDANCE' | 'MISSING_GRADES' | 'PENDING_CERTIFICATES' | 'CAPACITY_FULL';
+    type:
+      | "LOW_ATTENDANCE"
+      | "MISSING_GRADES"
+      | "PENDING_CERTIFICATES"
+      | "CAPACITY_FULL";
     message: string;
     count: number;
-    priority: 'HIGH' | 'MEDIUM' | 'LOW';
+    priority: "HIGH" | "MEDIUM" | "LOW";
     activityId?: string;
   }>;
 }
@@ -154,108 +158,112 @@ export class ParticipationUseCaseFactory {
 export class ParticipationValidation {
   static validateAttendanceInput(input: any): string[] {
     const errors: string[] = [];
-    
+
     if (!input.participationId?.trim()) {
       errors.push("Participation ID is required");
     }
-    
+
     if (!input.sessionDate) {
       errors.push("Session date is required");
     }
-    
+
     if (input.sessionDate && input.sessionDate > new Date()) {
       errors.push("Session date cannot be in the future");
     }
-    
-    if (input.checkInTime && input.checkOutTime && input.checkInTime > input.checkOutTime) {
+
+    if (
+      input.checkInTime &&
+      input.checkOutTime &&
+      input.checkInTime > input.checkOutTime
+    ) {
       errors.push("Check-in time cannot be after check-out time");
     }
-    
+
     return errors;
   }
-  
+
   static validateGradeInput(input: any): string[] {
     const errors: string[] = [];
-    
+
     if (!input.participationId?.trim()) {
       errors.push("Participation ID is required");
     }
-    
+
     if (input.finalGrade < 0 || input.finalGrade > 10) {
       errors.push("Final grade must be between 0 and 10");
     }
-    
+
     if (!input.evaluatedBy?.trim()) {
       errors.push("Evaluator is required");
     }
-    
+
     return errors;
   }
-  
+
   static validateEnrollmentInput(input: any): string[] {
     const errors: string[] = [];
-    
+
     if (!input.participantId?.trim()) {
       errors.push("Participant ID is required");
     }
-    
+
     if (!input.activityId?.trim()) {
       errors.push("Activity ID is required");
     }
-    
+
     if (input.priority !== undefined && input.priority < 0) {
       errors.push("Priority cannot be negative");
     }
-    
+
     return errors;
   }
 }
 
 // Event types for domain events
-export type ParticipationDomainEvent = 
+export type ParticipationDomainEvent =
   | {
-      type: 'ENROLLMENT_CREATED';
+      type: "ENROLLMENT_CREATED";
       enrollmentId: string;
       participantId: string;
       activityId: string;
       timestamp: Date;
     }
   | {
-      type: 'ENROLLMENT_CONFIRMED';
+      type: "ENROLLMENT_CONFIRMED";
       enrollmentId: string;
       participantId: string;
       activityId: string;
       timestamp: Date;
     }
   | {
-      type: 'ATTENDANCE_RECORDED';
+      type: "ATTENDANCE_RECORDED";
       participationId: string;
       sessionDate: Date;
       present: boolean;
       timestamp: Date;
     }
   | {
-      type: 'GRADE_UPDATED';
+      type: "GRADE_UPDATED";
       participationId: string;
       finalGrade: number;
       evaluatedBy: string;
       timestamp: Date;
     }
   | {
-      type: 'CERTIFICATE_GENERATED';
+      type: "CERTIFICATE_GENERATED";
       participationId: string;
       certificateId: string;
       timestamp: Date;
     }
   | {
-      type: 'PARTICIPATION_COMPLETED';
+      type: "PARTICIPATION_COMPLETED";
       participationId: string;
       participantId: string;
       activityId: string;
       timestamp: Date;
     }
   | {
-      type: 'PARTICIPANT_WITHDRAWN';
+      type: "PARTICIPANT_WITHDRAWN";
       participationId: string;
       reason: string;
       timestamp: Date;
@@ -263,40 +271,36 @@ export type ParticipationDomainEvent =
 
 // Error types specific to participation domain
 export class ParticipationError extends Error {
-  constructor(
-    message: string,
-    public code: string,
-    public details?: any
-  ) {
+  constructor(message: string, public code: string, public details?: any) {
     super(message);
-    this.name = 'ParticipationError';
+    this.name = "ParticipationError";
   }
 }
 
 export class EnrollmentError extends ParticipationError {
   constructor(message: string, code: string, details?: any) {
     super(message, code, details);
-    this.name = 'EnrollmentError';
+    this.name = "EnrollmentError";
   }
 }
 
 export class AttendanceError extends ParticipationError {
   constructor(message: string, code: string, details?: any) {
     super(message, code, details);
-    this.name = 'AttendanceError';
+    this.name = "AttendanceError";
   }
 }
 
 export class GradingError extends ParticipationError {
   constructor(message: string, code: string, details?: any) {
     super(message, code, details);
-    this.name = 'GradingError';
+    this.name = "GradingError";
   }
 }
 
 export class CertificateError extends ParticipationError {
   constructor(message: string, code: string, details?: any) {
     super(message, code, details);
-    this.name = 'CertificateError';
+    this.name = "CertificateError";
   }
 }

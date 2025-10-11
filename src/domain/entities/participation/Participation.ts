@@ -4,8 +4,14 @@
  * Representa la participación de un usuario en eventos o cursos
  */
 
-export type ParticipationType = 'EVENT' | 'COURSE';
-export type ParticipationStatus = 'ENROLLED' | 'ATTENDING' | 'COMPLETED' | 'FAILED' | 'WITHDRAWN' | 'PENDING_EVALUATION';
+export type ParticipationType = "EVENT" | "COURSE";
+export type ParticipationStatus =
+  | "ENROLLED"
+  | "ATTENDING"
+  | "COMPLETED"
+  | "FAILED"
+  | "WITHDRAWN"
+  | "PENDING_EVALUATION";
 
 export interface ParticipationGrading {
   finalGrade?: number;
@@ -30,46 +36,46 @@ export interface AttendanceRecord {
 
 export interface ParticipationData {
   id: string;
-  
+
   // Activity Information
   activityId: string;
   activityName: string;
   activityType: ParticipationType;
-  
+
   // Participant Information
   participantId: string;
   participantName: string;
   participantEmail: string;
   participantCedula: string;
-  
+
   // Enrollment Information
   enrollmentId: string;
   enrollmentDate: Date;
-  paymentStatus: 'APPROVED' | 'PENDING' | 'REJECTED';
-  
+  paymentStatus: "APPROVED" | "PENDING" | "REJECTED";
+
   // Participation Status
   status: ParticipationStatus;
   startDate?: Date;
   completionDate?: Date;
   withdrawalDate?: Date;
   withdrawalReason?: string;
-  
+
   // Academic Information
   grading: ParticipationGrading;
   attendanceRecords: AttendanceRecord[];
-  
+
   // Activity Requirements
   minimumAttendancePercentage: number;
   minimumGradeRequired?: number; // Only for courses
   totalSessions: number;
   sessionsAttended: number;
-  
+
   // Metadata
   createdAt: Date;
   updatedAt: Date;
   createdBy?: string;
   lastEvaluatedBy?: string;
-  
+
   // Notifications
   notificationsEnabled: boolean;
   remindersSent: number;
@@ -95,7 +101,7 @@ export class Participation {
     createdBy?: string
   ): Participation {
     const now = new Date();
-    
+
     const participationData: ParticipationData = {
       id: `participation-${activityType.toLowerCase()}-${Date.now()}`,
       activityId,
@@ -107,12 +113,12 @@ export class Participation {
       participantCedula: participantCedula.trim(),
       enrollmentId,
       enrollmentDate: now,
-      paymentStatus: 'PENDING',
-      status: 'ENROLLED',
+      paymentStatus: "PENDING",
+      status: "ENROLLED",
       grading: {
         attendancePercentage: 0,
         isApproved: false,
-        certificateGenerated: false
+        certificateGenerated: false,
       },
       attendanceRecords: [],
       minimumAttendancePercentage,
@@ -123,134 +129,187 @@ export class Participation {
       updatedAt: now,
       createdBy,
       notificationsEnabled: true,
-      remindersSent: 0
+      remindersSent: 0,
     };
 
     return new Participation(participationData);
   }
 
-  public static fromPrismaData(participationData: any, activityType: ParticipationType): Participation {
+  public static fromPrismaData(
+    participationData: any,
+    activityType: ParticipationType
+  ): Participation {
     // Map from database structure based on activity type
-    if (activityType === 'EVENT') {
+    if (activityType === "EVENT") {
       return Participation.fromEventParticipation(participationData);
     } else {
       return Participation.fromCourseParticipation(participationData);
     }
   }
 
-  private static fromEventParticipation(eventParticipation: any): Participation {
+  private static fromEventParticipation(
+    eventParticipation: any
+  ): Participation {
     const inscription = eventParticipation.inscripcion || eventParticipation;
     const evento = inscription.evento || eventParticipation.evento;
     const usuario = inscription.usuario || eventParticipation.usuario;
-    
+
     const participationData: ParticipationData = {
-      id: eventParticipation.id_par?.toString() || `event-participation-${inscription.id_ins}`,
+      id:
+        eventParticipation.id_par?.toString() ||
+        `event-participation-${inscription.id_ins}`,
       activityId: evento.id_eve.toString(),
       activityName: evento.nom_eve,
-      activityType: 'EVENT',
+      activityType: "EVENT",
       participantId: usuario.id_usu.toString(),
-      participantName: `${usuario.nom_usu1} ${usuario.nom_usu2 || ''} ${usuario.ape_usu1} ${usuario.ape_usu2 || ''}`.trim(),
-      participantEmail: usuario.email_usu || '',
+      participantName: `${usuario.nom_usu1} ${usuario.nom_usu2 || ""} ${
+        usuario.ape_usu1
+      } ${usuario.ape_usu2 || ""}`.trim(),
+      participantEmail: usuario.email_usu || "",
       participantCedula: usuario.ced_usu,
       enrollmentId: inscription.id_ins.toString(),
       enrollmentDate: new Date(inscription.fec_ins),
-      paymentStatus: inscription.estado_pago as 'APPROVED' | 'PENDING' | 'REJECTED',
-      status: Participation.mapParticipationStatus(eventParticipation.asi_par, evento.porcentaje_asistencia_aprobacion),
+      paymentStatus: inscription.estado_pago as
+        | "APPROVED"
+        | "PENDING"
+        | "REJECTED",
+      status: Participation.mapParticipationStatus(
+        eventParticipation.asi_par,
+        evento.porcentaje_asistencia_aprobacion
+      ),
       grading: {
         attendancePercentage: eventParticipation.asi_par || 0,
-        evaluationDate: eventParticipation.fec_evaluacion ? new Date(eventParticipation.fec_evaluacion) : undefined,
+        evaluationDate: eventParticipation.fec_evaluacion
+          ? new Date(eventParticipation.fec_evaluacion)
+          : undefined,
         isApproved: eventParticipation.aprobado || false,
-        certificateGenerated: false // Would need to check certificate table
+        certificateGenerated: false, // Would need to check certificate table
       },
       attendanceRecords: [],
-      minimumAttendancePercentage: evento.porcentaje_asistencia_aprobacion || 80,
+      minimumAttendancePercentage:
+        evento.porcentaje_asistencia_aprobacion || 80,
       totalSessions: 1, // Events typically have 1 session
       sessionsAttended: eventParticipation.asi_par >= 80 ? 1 : 0,
       createdAt: new Date(inscription.fec_ins),
-      updatedAt: eventParticipation.fec_evaluacion ? new Date(eventParticipation.fec_evaluacion) : new Date(inscription.fec_ins),
+      updatedAt: eventParticipation.fec_evaluacion
+        ? new Date(eventParticipation.fec_evaluacion)
+        : new Date(inscription.fec_ins),
       notificationsEnabled: true,
-      remindersSent: 0
+      remindersSent: 0,
     };
 
     return new Participation(participationData);
   }
 
-  private static fromCourseParticipation(courseParticipation: any): Participation {
-    const inscripcionCurso = courseParticipation.inscripcionCurso || courseParticipation;
+  private static fromCourseParticipation(
+    courseParticipation: any
+  ): Participation {
+    const inscripcionCurso =
+      courseParticipation.inscripcionCurso || courseParticipation;
     const curso = inscripcionCurso.curso || courseParticipation.curso;
     const usuario = inscripcionCurso.usuario || courseParticipation.usuario;
-    
+
     const participationData: ParticipationData = {
-      id: courseParticipation.id_par_cur?.toString() || `course-participation-${inscripcionCurso.id_ins_cur}`,
+      id:
+        courseParticipation.id_par_cur?.toString() ||
+        `course-participation-${inscripcionCurso.id_ins_cur}`,
       activityId: curso.id_cur.toString(),
       activityName: curso.nom_cur,
-      activityType: 'COURSE',
+      activityType: "COURSE",
       participantId: usuario.id_usu.toString(),
-      participantName: `${usuario.nom_usu1} ${usuario.nom_usu2 || ''} ${usuario.ape_usu1} ${usuario.ape_usu2 || ''}`.trim(),
-      participantEmail: usuario.email_usu || '',
+      participantName: `${usuario.nom_usu1} ${usuario.nom_usu2 || ""} ${
+        usuario.ape_usu1
+      } ${usuario.ape_usu2 || ""}`.trim(),
+      participantEmail: usuario.email_usu || "",
       participantCedula: usuario.ced_usu,
       enrollmentId: inscripcionCurso.id_ins_cur.toString(),
       enrollmentDate: new Date(inscripcionCurso.fec_ins_cur),
-      paymentStatus: inscripcionCurso.estado_pago_cur as 'APPROVED' | 'PENDING' | 'REJECTED',
-      status: Participation.mapCourseStatus(courseParticipation.nota_final, courseParticipation.asistencia_porcentaje, curso),
+      paymentStatus: inscripcionCurso.estado_pago_cur as
+        | "APPROVED"
+        | "PENDING"
+        | "REJECTED",
+      status: Participation.mapCourseStatus(
+        courseParticipation.nota_final,
+        courseParticipation.asistencia_porcentaje,
+        curso
+      ),
       grading: {
         finalGrade: courseParticipation.nota_final,
         attendancePercentage: courseParticipation.asistencia_porcentaje || 0,
-        evaluationDate: courseParticipation.fecha_evaluacion ? new Date(courseParticipation.fecha_evaluacion) : undefined,
+        evaluationDate: courseParticipation.fecha_evaluacion
+          ? new Date(courseParticipation.fecha_evaluacion)
+          : undefined,
         isApproved: courseParticipation.aprobado || false,
-        certificateGenerated: false // Would need to check certificate table
+        certificateGenerated: false, // Would need to check certificate table
       },
       attendanceRecords: [],
       minimumAttendancePercentage: curso.porcentaje_asistencia_aprobacion || 70,
       minimumGradeRequired: curso.nota_minima_aprobacion || 7.0,
       totalSessions: curso.dur_cur || 1, // Use duration as session count estimate
-      sessionsAttended: Math.floor((courseParticipation.asistencia_porcentaje || 0) / 100 * (curso.dur_cur || 1)),
+      sessionsAttended: Math.floor(
+        ((courseParticipation.asistencia_porcentaje || 0) / 100) *
+          (curso.dur_cur || 1)
+      ),
       createdAt: new Date(inscripcionCurso.fec_ins_cur),
-      updatedAt: courseParticipation.fecha_evaluacion ? new Date(courseParticipation.fecha_evaluacion) : new Date(inscripcionCurso.fec_ins_cur),
+      updatedAt: courseParticipation.fecha_evaluacion
+        ? new Date(courseParticipation.fecha_evaluacion)
+        : new Date(inscripcionCurso.fec_ins_cur),
       notificationsEnabled: true,
-      remindersSent: 0
+      remindersSent: 0,
     };
 
     return new Participation(participationData);
   }
 
-  private static mapParticipationStatus(attendancePercentage: number, minimumRequired: number): ParticipationStatus {
+  private static mapParticipationStatus(
+    attendancePercentage: number,
+    minimumRequired: number
+  ): ParticipationStatus {
     if (attendancePercentage === undefined || attendancePercentage === null) {
-      return 'ENROLLED';
+      return "ENROLLED";
     }
-    
+
     if (attendancePercentage > 0 && attendancePercentage < 100) {
-      return 'ATTENDING';
+      return "ATTENDING";
     }
-    
+
     if (attendancePercentage >= (minimumRequired || 80)) {
-      return 'COMPLETED';
+      return "COMPLETED";
     }
-    
-    return 'FAILED';
+
+    return "FAILED";
   }
 
-  private static mapCourseStatus(finalGrade: number, attendancePercentage: number, curso: any): ParticipationStatus {
-    if (finalGrade === undefined || finalGrade === null || attendancePercentage === undefined || attendancePercentage === null) {
-      return 'ENROLLED';
+  private static mapCourseStatus(
+    finalGrade: number,
+    attendancePercentage: number,
+    curso: any
+  ): ParticipationStatus {
+    if (
+      finalGrade === undefined ||
+      finalGrade === null ||
+      attendancePercentage === undefined ||
+      attendancePercentage === null
+    ) {
+      return "ENROLLED";
     }
 
     const minGrade = curso.nota_minima_aprobacion || 7.0;
     const minAttendance = curso.porcentaje_asistencia_aprobacion || 70;
-    
+
     if (attendancePercentage > 0 && (finalGrade === 0 || finalGrade === null)) {
-      return 'ATTENDING';
+      return "ATTENDING";
     }
-    
+
     if (finalGrade >= minGrade && attendancePercentage >= minAttendance) {
-      return 'COMPLETED';
+      return "COMPLETED";
     }
-    
+
     if (finalGrade > 0 || attendancePercentage > 0) {
-      return 'PENDING_EVALUATION';
+      return "PENDING_EVALUATION";
     }
-    
-    return 'FAILED';
+
+    return "FAILED";
   }
 
   private validateData(): void {
@@ -282,15 +341,26 @@ export class Participation {
       throw new Error("Enrollment ID is required");
     }
 
-    if (this.data.minimumAttendancePercentage < 0 || this.data.minimumAttendancePercentage > 100) {
-      throw new Error("Minimum attendance percentage must be between 0 and 100");
+    if (
+      this.data.minimumAttendancePercentage < 0 ||
+      this.data.minimumAttendancePercentage > 100
+    ) {
+      throw new Error(
+        "Minimum attendance percentage must be between 0 and 100"
+      );
     }
 
-    if (this.data.grading.attendancePercentage < 0 || this.data.grading.attendancePercentage > 100) {
+    if (
+      this.data.grading.attendancePercentage < 0 ||
+      this.data.grading.attendancePercentage > 100
+    ) {
       throw new Error("Attendance percentage must be between 0 and 100");
     }
 
-    if (this.data.grading.finalGrade !== undefined && (this.data.grading.finalGrade < 0 || this.data.grading.finalGrade > 10)) {
+    if (
+      this.data.grading.finalGrade !== undefined &&
+      (this.data.grading.finalGrade < 0 || this.data.grading.finalGrade > 10)
+    ) {
       throw new Error("Final grade must be between 0 and 10");
     }
 
@@ -298,8 +368,13 @@ export class Participation {
       throw new Error("Total sessions must be at least 1");
     }
 
-    if (this.data.sessionsAttended < 0 || this.data.sessionsAttended > this.data.totalSessions) {
-      throw new Error("Sessions attended cannot be negative or exceed total sessions");
+    if (
+      this.data.sessionsAttended < 0 ||
+      this.data.sessionsAttended > this.data.totalSessions
+    ) {
+      throw new Error(
+        "Sessions attended cannot be negative or exceed total sessions"
+      );
     }
   }
 
@@ -344,7 +419,7 @@ export class Participation {
     return this.data.enrollmentDate;
   }
 
-  public getPaymentStatus(): 'APPROVED' | 'PENDING' | 'REJECTED' {
+  public getPaymentStatus(): "APPROVED" | "PENDING" | "REJECTED" {
     return this.data.paymentStatus;
   }
 
@@ -398,27 +473,27 @@ export class Participation {
 
   // Status checks
   public isEnrolled(): boolean {
-    return this.data.status === 'ENROLLED';
+    return this.data.status === "ENROLLED";
   }
 
   public isAttending(): boolean {
-    return this.data.status === 'ATTENDING';
+    return this.data.status === "ATTENDING";
   }
 
   public isCompleted(): boolean {
-    return this.data.status === 'COMPLETED';
+    return this.data.status === "COMPLETED";
   }
 
   public isFailed(): boolean {
-    return this.data.status === 'FAILED';
+    return this.data.status === "FAILED";
   }
 
   public isWithdrawn(): boolean {
-    return this.data.status === 'WITHDRAWN';
+    return this.data.status === "WITHDRAWN";
   }
 
   public isPendingEvaluation(): boolean {
-    return this.data.status === 'PENDING_EVALUATION';
+    return this.data.status === "PENDING_EVALUATION";
   }
 
   public isApproved(): boolean {
@@ -430,21 +505,30 @@ export class Participation {
   }
 
   public canBeEvaluated(): boolean {
-    return ['ATTENDING', 'PENDING_EVALUATION'].includes(this.data.status) && 
-           this.data.paymentStatus === 'APPROVED';
+    return (
+      ["ATTENDING", "PENDING_EVALUATION"].includes(this.data.status) &&
+      this.data.paymentStatus === "APPROVED"
+    );
   }
 
   public canGenerateCertificate(): boolean {
-    return this.data.grading.isApproved && !this.data.grading.certificateGenerated;
+    return (
+      this.data.grading.isApproved && !this.data.grading.certificateGenerated
+    );
   }
 
   public isEligibleForCertificate(): boolean {
-    const meetsAttendance = this.data.grading.attendancePercentage >= this.data.minimumAttendancePercentage;
-    const meetsGrade = this.data.activityType === 'EVENT' || 
-                      (this.data.grading.finalGrade !== undefined && 
-                       this.data.grading.finalGrade >= (this.data.minimumGradeRequired || 0));
-    
-    return meetsAttendance && meetsGrade && this.data.paymentStatus === 'APPROVED';
+    const meetsAttendance =
+      this.data.grading.attendancePercentage >=
+      this.data.minimumAttendancePercentage;
+    const meetsGrade =
+      this.data.activityType === "EVENT" ||
+      (this.data.grading.finalGrade !== undefined &&
+        this.data.grading.finalGrade >= (this.data.minimumGradeRequired || 0));
+
+    return (
+      meetsAttendance && meetsGrade && this.data.paymentStatus === "APPROVED"
+    );
   }
 
   // Actions
@@ -467,23 +551,32 @@ export class Participation {
       checkInTime,
       checkOutTime,
       notes,
-      recordedBy: recordedBy || 'system'
+      recordedBy: recordedBy || "system",
     };
 
-    const updatedAttendanceRecords = [...this.data.attendanceRecords, attendanceRecord];
-    const sessionsAttended = present ? this.data.sessionsAttended + 1 : this.data.sessionsAttended;
-    const attendancePercentage = (sessionsAttended / this.data.totalSessions) * 100;
+    const updatedAttendanceRecords = [
+      ...this.data.attendanceRecords,
+      attendanceRecord,
+    ];
+    const sessionsAttended = present
+      ? this.data.sessionsAttended + 1
+      : this.data.sessionsAttended;
+    const attendancePercentage =
+      (sessionsAttended / this.data.totalSessions) * 100;
 
     // Update status based on progress
     let newStatus = this.data.status;
-    if (this.data.status === 'ENROLLED' && sessionsAttended > 0) {
-      newStatus = 'ATTENDING';
+    if (this.data.status === "ENROLLED" && sessionsAttended > 0) {
+      newStatus = "ATTENDING";
     }
 
     const updatedGrading = {
       ...this.data.grading,
       attendancePercentage,
-      isApproved: this.calculateApprovalStatus(this.data.grading.finalGrade, attendancePercentage)
+      isApproved: this.calculateApprovalStatus(
+        this.data.grading.finalGrade,
+        attendancePercentage
+      ),
     };
 
     const updatedData = {
@@ -493,7 +586,7 @@ export class Participation {
       attendanceRecords: updatedAttendanceRecords,
       sessionsAttended,
       updatedAt: new Date(),
-      lastEvaluatedBy: recordedBy
+      lastEvaluatedBy: recordedBy,
     };
 
     return new Participation(updatedData);
@@ -504,7 +597,7 @@ export class Participation {
     evaluatedBy: string,
     comments?: string
   ): Participation {
-    if (this.data.activityType !== 'COURSE') {
+    if (this.data.activityType !== "COURSE") {
       throw new Error("Grades can only be assigned to course participations");
     }
 
@@ -516,23 +609,26 @@ export class Participation {
       throw new Error("Final grade must be between 0 and 10");
     }
 
-    const isApproved = this.calculateApprovalStatus(finalGrade, this.data.grading.attendancePercentage);
-    
+    const isApproved = this.calculateApprovalStatus(
+      finalGrade,
+      this.data.grading.attendancePercentage
+    );
+
     const updatedGrading = {
       ...this.data.grading,
       finalGrade,
       evaluationDate: new Date(),
       evaluatedBy,
       comments,
-      isApproved
+      isApproved,
     };
 
     // Update status based on completion
     let newStatus: ParticipationStatus = this.data.status;
     if (isApproved) {
-      newStatus = 'COMPLETED';
+      newStatus = "COMPLETED";
     } else if (finalGrade > 0) {
-      newStatus = 'FAILED';
+      newStatus = "FAILED";
     }
 
     const updatedData = {
@@ -540,7 +636,7 @@ export class Participation {
       status: newStatus,
       grading: updatedGrading,
       updatedAt: new Date(),
-      lastEvaluatedBy: evaluatedBy
+      lastEvaluatedBy: evaluatedBy,
     };
 
     return new Participation(updatedData);
@@ -558,25 +654,30 @@ export class Participation {
       throw new Error("Attendance percentage must be between 0 and 100");
     }
 
-    const isApproved = this.calculateApprovalStatus(this.data.grading.finalGrade, attendancePercentage);
-    const sessionsAttended = Math.floor((attendancePercentage / 100) * this.data.totalSessions);
-    
+    const isApproved = this.calculateApprovalStatus(
+      this.data.grading.finalGrade,
+      attendancePercentage
+    );
+    const sessionsAttended = Math.floor(
+      (attendancePercentage / 100) * this.data.totalSessions
+    );
+
     const updatedGrading = {
       ...this.data.grading,
       attendancePercentage,
       evaluationDate: new Date(),
       evaluatedBy,
-      isApproved
+      isApproved,
     };
 
     // Update status based on progress
     let newStatus: ParticipationStatus = this.data.status;
-    if (this.data.status === 'ENROLLED' && attendancePercentage > 0) {
-      newStatus = 'ATTENDING';
+    if (this.data.status === "ENROLLED" && attendancePercentage > 0) {
+      newStatus = "ATTENDING";
     } else if (isApproved) {
-      newStatus = 'COMPLETED';
+      newStatus = "COMPLETED";
     } else if (attendancePercentage >= 50) {
-      newStatus = 'PENDING_EVALUATION';
+      newStatus = "PENDING_EVALUATION";
     }
 
     const updatedData = {
@@ -585,7 +686,7 @@ export class Participation {
       grading: updatedGrading,
       sessionsAttended,
       updatedAt: new Date(),
-      lastEvaluatedBy: evaluatedBy
+      lastEvaluatedBy: evaluatedBy,
     };
 
     return new Participation(updatedData);
@@ -599,67 +700,76 @@ export class Participation {
     const updatedGrading = {
       ...this.data.grading,
       certificateGenerated: true,
-      certificateId
+      certificateId,
     };
 
     const updatedData = {
       ...this.data,
       grading: updatedGrading,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     return new Participation(updatedData);
   }
 
   public withdraw(reason: string, withdrawnBy?: string): Participation {
-    if (this.data.status === 'COMPLETED' || this.data.status === 'WITHDRAWN') {
-      throw new Error("Cannot withdraw from completed or already withdrawn participation");
+    if (this.data.status === "COMPLETED" || this.data.status === "WITHDRAWN") {
+      throw new Error(
+        "Cannot withdraw from completed or already withdrawn participation"
+      );
     }
 
     const updatedData = {
       ...this.data,
-      status: 'WITHDRAWN' as ParticipationStatus,
+      status: "WITHDRAWN" as ParticipationStatus,
       withdrawalDate: new Date(),
       withdrawalReason: reason,
       updatedAt: new Date(),
-      lastEvaluatedBy: withdrawnBy
+      lastEvaluatedBy: withdrawnBy,
     };
 
     return new Participation(updatedData);
   }
 
-  public updatePaymentStatus(paymentStatus: 'APPROVED' | 'PENDING' | 'REJECTED'): Participation {
+  public updatePaymentStatus(
+    paymentStatus: "APPROVED" | "PENDING" | "REJECTED"
+  ): Participation {
     const updatedData = {
       ...this.data,
       paymentStatus,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     return new Participation(updatedData);
   }
 
-  private calculateApprovalStatus(finalGrade?: number, attendancePercentage?: number): boolean {
-    const meetsAttendance = (attendancePercentage || 0) >= this.data.minimumAttendancePercentage;
-    
-    if (this.data.activityType === 'EVENT') {
+  private calculateApprovalStatus(
+    finalGrade?: number,
+    attendancePercentage?: number
+  ): boolean {
+    const meetsAttendance =
+      (attendancePercentage || 0) >= this.data.minimumAttendancePercentage;
+
+    if (this.data.activityType === "EVENT") {
       return meetsAttendance;
     } else {
-      const meetsGrade = (finalGrade || 0) >= (this.data.minimumGradeRequired || 0);
+      const meetsGrade =
+        (finalGrade || 0) >= (this.data.minimumGradeRequired || 0);
       return meetsAttendance && meetsGrade;
     }
   }
 
   // Statistics and analysis
   public getProgressPercentage(): number {
-    if (this.data.activityType === 'EVENT') {
+    if (this.data.activityType === "EVENT") {
       return this.data.grading.attendancePercentage;
     } else {
       // For courses, consider both attendance and grade progress
       const attendanceProgress = this.data.grading.attendancePercentage;
-      const gradeProgress = this.data.grading.finalGrade 
-        ? (this.data.grading.finalGrade / 10) * 100 
+      const gradeProgress = this.data.grading.finalGrade
+        ? (this.data.grading.finalGrade / 10) * 100
         : 0;
-      
+
       return Math.max(attendanceProgress, gradeProgress);
     }
   }
@@ -677,7 +787,7 @@ export class Participation {
       enrollmentDate: this.data.enrollmentDate,
       completionDate: this.data.completionDate,
       progressPercentage: this.getProgressPercentage(),
-      paymentStatus: this.data.paymentStatus
+      paymentStatus: this.data.paymentStatus,
     };
   }
 
@@ -698,7 +808,7 @@ export class Participation {
       comments: this.data.grading.comments,
       withdrawalReason: this.data.withdrawalReason,
       createdAt: this.data.createdAt,
-      updatedAt: this.data.updatedAt
+      updatedAt: this.data.updatedAt,
     };
   }
 }

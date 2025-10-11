@@ -10,8 +10,8 @@ import { ParticipationRegistration } from "../../../domain/entities/administrati
 
 export interface GenerateActivityReportRequest {
   activityIds?: string[];
-  activityType?: 'EVENTO' | 'CURSO' | 'ALL';
-  reportType: 'FINANCIAL' | 'PARTICIPATION' | 'COMPLETION' | 'COMPREHENSIVE';
+  activityType?: "EVENTO" | "CURSO" | "ALL";
+  reportType: "FINANCIAL" | "PARTICIPATION" | "COMPLETION" | "COMPREHENSIVE";
   dateFrom?: Date;
   dateTo?: Date;
   categoryIds?: string[];
@@ -19,7 +19,7 @@ export interface GenerateActivityReportRequest {
   includeParticipants?: boolean;
   includeStatistics?: boolean;
   includeFinancials?: boolean;
-  format?: 'JSON' | 'PDF' | 'EXCEL';
+  format?: "JSON" | "PDF" | "EXCEL";
   generatedBy: string;
 }
 
@@ -53,7 +53,7 @@ export interface ActivityReportData {
 export interface ActivityReportItem {
   id: string;
   name: string;
-  type: 'EVENTO' | 'CURSO';
+  type: "EVENTO" | "CURSO";
   category: string;
   organizer: string;
   startDate: Date;
@@ -145,14 +145,19 @@ export interface ICourseAdministrationRepository {
 }
 
 export interface IParticipationRegistrationRepository {
-  findByActivityIds(activityIds: string[]): Promise<ParticipationRegistration[]>;
-  findByDateRange(dateFrom: Date, dateTo: Date): Promise<ParticipationRegistration[]>;
+  findByActivityIds(
+    activityIds: string[]
+  ): Promise<ParticipationRegistration[]>;
+  findByDateRange(
+    dateFrom: Date,
+    dateTo: Date
+  ): Promise<ParticipationRegistration[]>;
 }
 
 export interface IReportGenerationService {
   generateReport(
-    reportData: ActivityReportData, 
-    format: 'JSON' | 'PDF' | 'EXCEL', 
+    reportData: ActivityReportData,
+    format: "JSON" | "PDF" | "EXCEL",
     templateType: string
   ): Promise<{ reportId: string; reportUrl: string; expiresAt: Date }>;
 }
@@ -165,7 +170,9 @@ export class GenerateActivityReportUseCase {
     private reportService: IReportGenerationService
   ) {}
 
-  public async execute(request: GenerateActivityReportRequest): Promise<GenerateActivityReportResponse> {
+  public async execute(
+    request: GenerateActivityReportRequest
+  ): Promise<GenerateActivityReportResponse> {
     try {
       // Validar entrada
       this.validateRequest(request);
@@ -175,24 +182,36 @@ export class GenerateActivityReportUseCase {
 
       // Obtener datos según el tipo de actividad
       const [events, courses] = await Promise.all([
-        request.activityType !== 'CURSO' ? this.eventRepo.findByFilters(filters) : Promise.resolve([]),
-        request.activityType !== 'EVENTO' ? this.courseRepo.findByFilters(filters) : Promise.resolve([])
+        request.activityType !== "CURSO"
+          ? this.eventRepo.findByFilters(filters)
+          : Promise.resolve([]),
+        request.activityType !== "EVENTO"
+          ? this.courseRepo.findByFilters(filters)
+          : Promise.resolve([]),
       ]);
 
       // Obtener participaciones si se requiere
       let participations: ParticipationRegistration[] = [];
-      if (request.includeParticipants || request.reportType === 'PARTICIPATION') {
-        const allActivityIds = [...events.map(e => e.getId()), ...courses.map(c => c.getId())];
+      if (
+        request.includeParticipants ||
+        request.reportType === "PARTICIPATION"
+      ) {
+        const allActivityIds = [
+          ...events.map((e) => e.getId()),
+          ...courses.map((c) => c.getId()),
+        ];
         if (allActivityIds.length > 0) {
-          participations = await this.participationRepo.findByActivityIds(allActivityIds);
+          participations = await this.participationRepo.findByActivityIds(
+            allActivityIds
+          );
         }
       }
 
       // Generar datos del reporte
       const reportData = await this.generateReportData(
-        events, 
-        courses, 
-        participations, 
+        events,
+        courses,
+        participations,
         request
       );
 
@@ -201,13 +220,13 @@ export class GenerateActivityReportUseCase {
       let reportId: string | undefined;
       let expiresAt: Date | undefined;
 
-      if (request.format && request.format !== 'JSON') {
+      if (request.format && request.format !== "JSON") {
         const reportFile = await this.reportService.generateReport(
           reportData,
           request.format,
           request.reportType
         );
-        
+
         reportId = reportFile.reportId;
         reportUrl = reportFile.reportUrl;
         expiresAt = reportFile.expiresAt;
@@ -218,18 +237,18 @@ export class GenerateActivityReportUseCase {
         message: `Report generated successfully with ${reportData.activities.length} activities`,
         reportId,
         reportUrl,
-        reportData: request.format === 'JSON' ? reportData : undefined,
+        reportData: request.format === "JSON" ? reportData : undefined,
         generatedAt: new Date(),
-        expiresAt
+        expiresAt,
       };
-
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+
       return {
         success: false,
         message: `Error generating report: ${errorMessage}`,
-        generatedAt: new Date()
+        generatedAt: new Date(),
       };
     }
   }
@@ -239,19 +258,30 @@ export class GenerateActivityReportUseCase {
       throw new Error("Generated by is required");
     }
 
-    if (!['FINANCIAL', 'PARTICIPATION', 'COMPLETION', 'COMPREHENSIVE'].includes(request.reportType)) {
+    if (
+      !["FINANCIAL", "PARTICIPATION", "COMPLETION", "COMPREHENSIVE"].includes(
+        request.reportType
+      )
+    ) {
       throw new Error("Invalid report type");
     }
 
-    if (request.activityType && !['EVENTO', 'CURSO', 'ALL'].includes(request.activityType)) {
+    if (
+      request.activityType &&
+      !["EVENTO", "CURSO", "ALL"].includes(request.activityType)
+    ) {
       throw new Error("Invalid activity type");
     }
 
-    if (request.format && !['JSON', 'PDF', 'EXCEL'].includes(request.format)) {
+    if (request.format && !["JSON", "PDF", "EXCEL"].includes(request.format)) {
       throw new Error("Invalid report format");
     }
 
-    if (request.dateFrom && request.dateTo && request.dateFrom > request.dateTo) {
+    if (
+      request.dateFrom &&
+      request.dateTo &&
+      request.dateFrom > request.dateTo
+    ) {
       throw new Error("Date from cannot be after date to");
     }
 
@@ -267,7 +297,7 @@ export class GenerateActivityReportUseCase {
       dateTo: request.dateTo,
       categoryIds: request.categoryIds,
       organizerIds: request.organizerIds,
-      isActive: true
+      isActive: true,
     };
   }
 
@@ -277,10 +307,13 @@ export class GenerateActivityReportUseCase {
     participations: ParticipationRegistration[],
     request: GenerateActivityReportRequest
   ): Promise<ActivityReportData> {
-    
     // Generar elementos del reporte para actividades
-    const eventItems = events.map(event => this.createEventReportItem(event, participations));
-    const courseItems = courses.map(course => this.createCourseReportItem(course, participations));
+    const eventItems = events.map((event) =>
+      this.createEventReportItem(event, participations)
+    );
+    const courseItems = courses.map((course) =>
+      this.createCourseReportItem(course, participations)
+    );
     const allActivityItems = [...eventItems, ...courseItems];
 
     // Calcular resumen general
@@ -289,19 +322,25 @@ export class GenerateActivityReportUseCase {
     // Generar datos de participantes si se requiere
     let participantData: ParticipantReportItem[] | undefined;
     if (request.includeParticipants) {
-      participantData = this.generateParticipantData(participations, allActivityItems);
+      participantData = this.generateParticipantData(
+        participations,
+        allActivityItems
+      );
     }
 
     // Generar resumen financiero si se requiere
     let financialSummary: FinancialReportSummary | undefined;
-    if (request.includeFinancials || request.reportType === 'FINANCIAL') {
+    if (request.includeFinancials || request.reportType === "FINANCIAL") {
       financialSummary = this.generateFinancialSummary(events, courses);
     }
 
     // Generar comparación de períodos si hay fechas
     let periodComparison: PeriodComparisonData | undefined;
     if (request.dateFrom && request.dateTo) {
-      periodComparison = await this.generatePeriodComparison(request.dateFrom, request.dateTo);
+      periodComparison = await this.generatePeriodComparison(
+        request.dateFrom,
+        request.dateTo
+      );
     }
 
     return {
@@ -309,21 +348,23 @@ export class GenerateActivityReportUseCase {
       activities: allActivityItems,
       participants: participantData,
       financialSummary,
-      periodComparison
+      periodComparison,
     };
   }
 
   private createEventReportItem(
-    event: EventAdministration, 
+    event: EventAdministration,
     participations: ParticipationRegistration[]
   ): ActivityReportItem {
-    const eventParticipations = participations.filter(p => p.getActivityId() === event.getId());
+    const eventParticipations = participations.filter(
+      (p) => p.getActivityId() === event.getId()
+    );
     const statistics = event.getStatistics();
 
     return {
       id: event.getId(),
       name: event.getEventName(),
-      type: 'EVENTO',
+      type: "EVENTO",
       category: event.getCategoryName(),
       organizer: event.getOrganizerName(),
       startDate: event.getStartDate(),
@@ -333,42 +374,58 @@ export class GenerateActivityReportUseCase {
         total: statistics.totalInscriptions,
         approved: statistics.approvedInscriptions,
         pending: statistics.pendingInscriptions,
-        rejected: statistics.rejectedInscriptions
+        rejected: statistics.rejectedInscriptions,
       },
       participation: {
-        registered: eventParticipations.filter(p => p.getStatus() === 'REGISTERED').length,
-        attended: eventParticipations.filter(p => p.getStatus() === 'ATTENDED').length,
-        completed: eventParticipations.filter(p => p.getStatus() === 'COMPLETED').length,
-        certificates: eventParticipations.filter(p => p.isCertificateGenerated()).length
+        registered: eventParticipations.filter(
+          (p) => p.getStatus() === "REGISTERED"
+        ).length,
+        attended: eventParticipations.filter(
+          (p) => p.getStatus() === "ATTENDED"
+        ).length,
+        completed: eventParticipations.filter(
+          (p) => p.getStatus() === "COMPLETED"
+        ).length,
+        certificates: eventParticipations.filter((p) =>
+          p.isCertificateGenerated()
+        ).length,
       },
       financial: {
         revenue: event.getTotalRevenue(),
         pending: event.getPendingRevenue(),
         cost: event.getEventCost(),
-        profit: event.getTotalRevenue() - event.getEventCost()
+        profit: event.getTotalRevenue() - event.getEventCost(),
       },
       statistics: {
-        attendanceRate: eventParticipations.length > 0 
-          ? (eventParticipations.filter(p => p.hasAttended()).length / eventParticipations.length) * 100 
-          : 0,
-        completionRate: eventParticipations.length > 0
-          ? (eventParticipations.filter(p => p.isCompleted()).length / eventParticipations.length) * 100
-          : 0
-      }
+        attendanceRate:
+          eventParticipations.length > 0
+            ? (eventParticipations.filter((p) => p.hasAttended()).length /
+                eventParticipations.length) *
+              100
+            : 0,
+        completionRate:
+          eventParticipations.length > 0
+            ? (eventParticipations.filter((p) => p.isCompleted()).length /
+                eventParticipations.length) *
+              100
+            : 0,
+      },
     };
   }
 
   private createCourseReportItem(
-    course: CourseAdministration, 
+    course: CourseAdministration,
     participations: ParticipationRegistration[]
   ): ActivityReportItem {
-    const courseParticipations = participations.filter(p => p.getActivityId() === course.getId());
+    const courseParticipations = participations.filter(
+      (p) => p.getActivityId() === course.getId()
+    );
     const statistics = course.getStatistics();
 
     return {
       id: course.getId(),
       name: course.getCourseName(),
-      type: 'CURSO',
+      type: "CURSO",
       category: course.getCategoryName(),
       organizer: course.getOrganizerName(),
       startDate: course.getStartDate(),
@@ -378,28 +435,42 @@ export class GenerateActivityReportUseCase {
         total: statistics.totalInscriptions,
         approved: statistics.approvedInscriptions,
         pending: statistics.pendingInscriptions,
-        rejected: statistics.rejectedInscriptions
+        rejected: statistics.rejectedInscriptions,
       },
       participation: {
-        registered: courseParticipations.filter(p => p.getStatus() === 'REGISTERED').length,
-        attended: courseParticipations.filter(p => p.getStatus() === 'ATTENDED').length,
-        completed: courseParticipations.filter(p => p.getStatus() === 'COMPLETED').length,
-        certificates: courseParticipations.filter(p => p.isCertificateGenerated()).length
+        registered: courseParticipations.filter(
+          (p) => p.getStatus() === "REGISTERED"
+        ).length,
+        attended: courseParticipations.filter(
+          (p) => p.getStatus() === "ATTENDED"
+        ).length,
+        completed: courseParticipations.filter(
+          (p) => p.getStatus() === "COMPLETED"
+        ).length,
+        certificates: courseParticipations.filter((p) =>
+          p.isCertificateGenerated()
+        ).length,
       },
       financial: {
         revenue: course.getTotalRevenue(),
         pending: course.getPendingRevenue(),
         cost: course.getCourseCost(),
-        profit: course.getTotalRevenue() - course.getCourseCost()
+        profit: course.getTotalRevenue() - course.getCourseCost(),
       },
       statistics: {
-        attendanceRate: courseParticipations.length > 0 
-          ? (courseParticipations.filter(p => p.hasAttended()).length / courseParticipations.length) * 100 
-          : 0,
-        completionRate: courseParticipations.length > 0
-          ? (courseParticipations.filter(p => p.isCompleted()).length / courseParticipations.length) * 100
-          : 0
-      }
+        attendanceRate:
+          courseParticipations.length > 0
+            ? (courseParticipations.filter((p) => p.hasAttended()).length /
+                courseParticipations.length) *
+              100
+            : 0,
+        completionRate:
+          courseParticipations.length > 0
+            ? (courseParticipations.filter((p) => p.isCompleted()).length /
+                courseParticipations.length) *
+              100
+            : 0,
+      },
     };
   }
 
@@ -412,14 +483,20 @@ export class GenerateActivityReportUseCase {
     const totalCourses = courses.length;
     const totalActivities = totalEvents + totalCourses;
 
-    const totalInscriptions = events.reduce((sum, e) => sum + e.getStatistics().totalInscriptions, 0) +
-                            courses.reduce((sum, c) => sum + c.getStatistics().totalInscriptions, 0);
+    const totalInscriptions =
+      events.reduce((sum, e) => sum + e.getStatistics().totalInscriptions, 0) +
+      courses.reduce((sum, c) => sum + c.getStatistics().totalInscriptions, 0);
 
-    const totalRevenue = events.reduce((sum, e) => sum + e.getTotalRevenue(), 0) +
-                        courses.reduce((sum, c) => sum + c.getTotalRevenue(), 0);
+    const totalRevenue =
+      events.reduce((sum, e) => sum + e.getTotalRevenue(), 0) +
+      courses.reduce((sum, c) => sum + c.getTotalRevenue(), 0);
 
-    const attendedParticipations = participations.filter(p => p.hasAttended()).length;
-    const completedParticipations = participations.filter(p => p.isCompleted()).length;
+    const attendedParticipations = participations.filter((p) =>
+      p.hasAttended()
+    ).length;
+    const completedParticipations = participations.filter((p) =>
+      p.isCompleted()
+    ).length;
 
     return {
       totalActivities,
@@ -428,8 +505,14 @@ export class GenerateActivityReportUseCase {
       totalInscriptions,
       totalParticipations: participations.length,
       totalRevenue,
-      averageAttendance: participations.length > 0 ? (attendedParticipations / participations.length) * 100 : 0,
-      averageCompletion: participations.length > 0 ? (completedParticipations / participations.length) * 100 : 0
+      averageAttendance:
+        participations.length > 0
+          ? (attendedParticipations / participations.length) * 100
+          : 0,
+      averageCompletion:
+        participations.length > 0
+          ? (completedParticipations / participations.length) * 100
+          : 0,
     };
   }
 
@@ -439,19 +522,21 @@ export class GenerateActivityReportUseCase {
   ): ParticipantReportItem[] {
     const participantMap = new Map<string, ParticipantReportItem>();
 
-    participations.forEach(participation => {
+    participations.forEach((participation) => {
       const key = participation.getParticipantId();
       const existing = participantMap.get(key);
-      
-      const activity = activities.find(a => a.id === participation.getActivityId());
+
+      const activity = activities.find(
+        (a) => a.id === participation.getActivityId()
+      );
       const investment = activity?.financial.cost || 0;
 
       if (existing) {
         existing.activitiesCount++;
-        if (activity?.type === 'EVENTO' && participation.hasAttended()) {
+        if (activity?.type === "EVENTO" && participation.hasAttended()) {
           existing.eventsAttended++;
         }
-        if (activity?.type === 'CURSO' && participation.isCompleted()) {
+        if (activity?.type === "CURSO" && participation.isCompleted()) {
           existing.coursesCompleted++;
         }
         if (participation.isCertificateGenerated()) {
@@ -465,10 +550,12 @@ export class GenerateActivityReportUseCase {
           email: participation.getParticipantEmail(),
           cedula: participation.getParticipantCedula(),
           activitiesCount: 1,
-          eventsAttended: (activity?.type === 'EVENTO' && participation.hasAttended()) ? 1 : 0,
-          coursesCompleted: (activity?.type === 'CURSO' && participation.isCompleted()) ? 1 : 0,
+          eventsAttended:
+            activity?.type === "EVENTO" && participation.hasAttended() ? 1 : 0,
+          coursesCompleted:
+            activity?.type === "CURSO" && participation.isCompleted() ? 1 : 0,
           certificatesEarned: participation.isCertificateGenerated() ? 1 : 0,
-          totalInvestment: investment
+          totalInvestment: investment,
         });
       }
     });
@@ -480,35 +567,41 @@ export class GenerateActivityReportUseCase {
     events: EventAdministration[],
     courses: CourseAdministration[]
   ): FinancialReportSummary {
-    const totalRevenue = events.reduce((sum, e) => sum + e.getTotalRevenue(), 0) +
-                        courses.reduce((sum, c) => sum + c.getTotalRevenue(), 0);
+    const totalRevenue =
+      events.reduce((sum, e) => sum + e.getTotalRevenue(), 0) +
+      courses.reduce((sum, c) => sum + c.getTotalRevenue(), 0);
 
-    const totalPending = events.reduce((sum, e) => sum + e.getPendingRevenue(), 0) +
-                        courses.reduce((sum, c) => sum + c.getPendingRevenue(), 0);
+    const totalPending =
+      events.reduce((sum, e) => sum + e.getPendingRevenue(), 0) +
+      courses.reduce((sum, c) => sum + c.getPendingRevenue(), 0);
 
-    const totalCosts = events.reduce((sum, e) => sum + e.getEventCost(), 0) +
-                      courses.reduce((sum, c) => sum + c.getCourseCost(), 0);
+    const totalCosts =
+      events.reduce((sum, e) => sum + e.getEventCost(), 0) +
+      courses.reduce((sum, c) => sum + c.getCourseCost(), 0);
 
     return {
       totalRevenue,
       totalPending,
       totalRefunds: 0, // Would need additional data
       revenueByMethod: {
-        'EFECTIVO': totalRevenue * 0.3, // Example distribution
-        'TARJETA': totalRevenue * 0.5,
-        'TRANSFERENCIA': totalRevenue * 0.2
+        EFECTIVO: totalRevenue * 0.3, // Example distribution
+        TARJETA: totalRevenue * 0.5,
+        TRANSFERENCIA: totalRevenue * 0.2,
       },
       revenueByPeriod: [], // Would need time-series data
       profitability: {
         grossProfit: totalRevenue - totalCosts,
         netProfit: (totalRevenue - totalCosts) * 0.8, // Assuming 20% additional costs
-        marginPercentage: totalRevenue > 0 ? ((totalRevenue - totalCosts) / totalRevenue) * 100 : 0
-      }
+        marginPercentage:
+          totalRevenue > 0
+            ? ((totalRevenue - totalCosts) / totalRevenue) * 100
+            : 0,
+      },
     };
   }
 
   private async generatePeriodComparison(
-    dateFrom: Date, 
+    dateFrom: Date,
     dateTo: Date
   ): Promise<PeriodComparisonData> {
     // Calculate previous period (same duration before dateFrom)
@@ -518,12 +611,12 @@ export class GenerateActivityReportUseCase {
 
     // Get previous period participations for comparison
     const previousParticipations = await this.participationRepo.findByDateRange(
-      previousPeriodStart, 
+      previousPeriodStart,
       previousPeriodEnd
     );
 
     const currentParticipations = await this.participationRepo.findByDateRange(
-      dateFrom, 
+      dateFrom,
       dateTo
     );
 
@@ -532,14 +625,14 @@ export class GenerateActivityReportUseCase {
       activities: 0, // Would need activity-specific queries
       inscriptions: previousParticipations.length,
       revenue: 0, // Would need financial data
-      attendance: previousParticipations.filter(p => p.hasAttended()).length
+      attendance: previousParticipations.filter((p) => p.hasAttended()).length,
     };
 
     const currentMetrics = {
       activities: 0, // Would need activity-specific queries
       inscriptions: currentParticipations.length,
       revenue: 0, // Would need financial data
-      attendance: currentParticipations.filter(p => p.hasAttended()).length
+      attendance: currentParticipations.filter((p) => p.hasAttended()).length,
     };
 
     // Calculate growth percentages
@@ -552,11 +645,23 @@ export class GenerateActivityReportUseCase {
       previousPeriod: previousMetrics,
       currentPeriod: currentMetrics,
       growth: {
-        activities: calculateGrowth(currentMetrics.activities, previousMetrics.activities),
-        inscriptions: calculateGrowth(currentMetrics.inscriptions, previousMetrics.inscriptions),
-        revenue: calculateGrowth(currentMetrics.revenue, previousMetrics.revenue),
-        attendance: calculateGrowth(currentMetrics.attendance, previousMetrics.attendance)
-      }
+        activities: calculateGrowth(
+          currentMetrics.activities,
+          previousMetrics.activities
+        ),
+        inscriptions: calculateGrowth(
+          currentMetrics.inscriptions,
+          previousMetrics.inscriptions
+        ),
+        revenue: calculateGrowth(
+          currentMetrics.revenue,
+          previousMetrics.revenue
+        ),
+        attendance: calculateGrowth(
+          currentMetrics.attendance,
+          previousMetrics.attendance
+        ),
+      },
     };
   }
 }

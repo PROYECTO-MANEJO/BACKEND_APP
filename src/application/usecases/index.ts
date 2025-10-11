@@ -5,10 +5,10 @@
  */
 
 // GitHub Use Cases
-export * from './github';
+export * from "./github";
 
-// Administration Use Cases  
-export * from './administration';
+// Administration Use Cases
+export * from "./administration";
 
 // Common Use Case Interfaces
 export interface BaseUseCase<TRequest, TResponse> {

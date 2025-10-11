@@ -4,15 +4,15 @@
  * Handles attendance tracking, grade management, and participation evaluation
  */
 
-import { 
-  Participation, 
-  ParticipationType, 
+import {
+  Participation,
+  ParticipationType,
   ParticipationStatus,
   AttendanceRecord,
   ParticipationFilters,
   CertificateEligibilityCheck,
-  ParticipationAnalytics
-} from '../../../domain/entities/participation';
+  ParticipationAnalytics,
+} from "../../../domain/entities/participation";
 
 export interface ParticipationRepository {
   // Basic CRUD operations
@@ -21,7 +21,7 @@ export interface ParticipationRepository {
   findAll(filters?: ParticipationFilters): Promise<Participation[]>;
   update(participation: Participation): Promise<void>;
   delete(id: string): Promise<void>;
-  
+
   // Participation-specific queries
   findByParticipantId(participantId: string): Promise<Participation[]>;
   findByActivityId(activityId: string): Promise<Participation[]>;
@@ -29,16 +29,22 @@ export interface ParticipationRepository {
   findByStatus(status: ParticipationStatus): Promise<Participation[]>;
   findPendingEvaluations(): Promise<Participation[]>;
   findEligibleForCertificates(): Promise<Participation[]>;
-  
+
   // Analytics queries
-  getParticipationAnalytics(participantId: string): Promise<ParticipationAnalytics>;
+  getParticipationAnalytics(
+    participantId: string
+  ): Promise<ParticipationAnalytics>;
   getActivityStatistics(activityId: string): Promise<{
     totalParticipants: number;
     averageAttendance: number;
     averageGrade?: number;
     completionRate: number;
   }>;
-  getAttendanceByDateRange(activityId: string, startDate: Date, endDate: Date): Promise<AttendanceRecord[]>;
+  getAttendanceByDateRange(
+    activityId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<AttendanceRecord[]>;
 }
 
 export interface EnrollmentRepository {
@@ -47,7 +53,12 @@ export interface EnrollmentRepository {
 }
 
 export interface CertificateService {
-  generateCertificate(participationId: string, participantName: string, activityName: string, completionDate: Date): Promise<{
+  generateCertificate(
+    participationId: string,
+    participantName: string,
+    activityName: string,
+    completionDate: Date
+  ): Promise<{
     success: boolean;
     certificateId?: string;
     certificateUrl?: string;
@@ -58,7 +69,10 @@ export interface CertificateService {
 export interface NotificationService {
   sendGradeNotification(participation: Participation): Promise<void>;
   sendAttendanceAlert(participation: Participation): Promise<void>;
-  sendCertificateNotification(participation: Participation, certificateUrl: string): Promise<void>;
+  sendCertificateNotification(
+    participation: Participation,
+    certificateUrl: string
+  ): Promise<void>;
   sendCompletionNotification(participation: Participation): Promise<void>;
 }
 
@@ -125,18 +139,20 @@ export class ParticipationTracking {
     updatedParticipation?: any;
   }> {
     try {
-      const participation = await this.participationRepository.findById(input.participationId);
+      const participation = await this.participationRepository.findById(
+        input.participationId
+      );
       if (!participation) {
         return {
           success: false,
-          message: "Participation not found"
+          message: "Participation not found",
         };
       }
 
       if (!participation.canBeEvaluated()) {
         return {
           success: false,
-          message: "Participation cannot be evaluated in current status"
+          message: "Participation cannot be evaluated in current status",
         };
       }
 
@@ -152,23 +168,28 @@ export class ParticipationTracking {
       await this.participationRepository.update(updatedParticipation);
 
       // Check if attendance is low and send alert
-      const attendancePercentage = updatedParticipation.getAttendancePercentage();
-      const minimumRequired = updatedParticipation.getMinimumAttendancePercentage();
-      
+      const attendancePercentage =
+        updatedParticipation.getAttendancePercentage();
+      const minimumRequired =
+        updatedParticipation.getMinimumAttendancePercentage();
+
       if (attendancePercentage < minimumRequired && attendancePercentage > 0) {
-        await this.notificationService.sendAttendanceAlert(updatedParticipation);
+        await this.notificationService.sendAttendanceAlert(
+          updatedParticipation
+        );
       }
 
       return {
         success: true,
         message: "Attendance recorded successfully",
-        updatedParticipation: updatedParticipation.getParticipationSummary()
+        updatedParticipation: updatedParticipation.getParticipationSummary(),
       };
-
     } catch (error) {
       return {
         success: false,
-        message: `Failed to record attendance: ${error instanceof Error ? error.message : 'Unknown error'}`
+        message: `Failed to record attendance: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
       };
     }
   }
@@ -202,32 +223,35 @@ export class ParticipationTracking {
           checkInTime: attendanceRecord.checkInTime,
           checkOutTime: attendanceRecord.checkOutTime,
           notes: attendanceRecord.notes,
-          recordedBy: input.recordedBy
+          recordedBy: input.recordedBy,
         });
 
         results.push({
           participationId: attendanceRecord.participationId,
           success: result.success,
-          message: result.message
+          message: result.message,
         });
 
         if (result.success) {
           successCount++;
         }
-
       } catch (error) {
         results.push({
           participationId: attendanceRecord.participationId,
           success: false,
-          message: error instanceof Error ? error.message : 'Unknown error'
+          message: error instanceof Error ? error.message : "Unknown error",
         });
       }
     }
 
     return {
       success: successCount > 0,
-      message: `Processed ${input.attendance.length} attendance records. ${successCount} successful, ${input.attendance.length - successCount} failed.`,
-      results
+      message: `Processed ${
+        input.attendance.length
+      } attendance records. ${successCount} successful, ${
+        input.attendance.length - successCount
+      } failed.`,
+      results,
     };
   }
 
@@ -240,25 +264,27 @@ export class ParticipationTracking {
     updatedParticipation?: any;
   }> {
     try {
-      const participation = await this.participationRepository.findById(input.participationId);
+      const participation = await this.participationRepository.findById(
+        input.participationId
+      );
       if (!participation) {
         return {
           success: false,
-          message: "Participation not found"
+          message: "Participation not found",
         };
       }
 
-      if (participation.getActivityType() !== 'COURSE') {
+      if (participation.getActivityType() !== "COURSE") {
         return {
           success: false,
-          message: "Grades can only be assigned to course participations"
+          message: "Grades can only be assigned to course participations",
         };
       }
 
       if (!participation.canBeEvaluated()) {
         return {
           success: false,
-          message: "Participation cannot be evaluated in current status"
+          message: "Participation cannot be evaluated in current status",
         };
       }
 
@@ -271,23 +297,29 @@ export class ParticipationTracking {
       await this.participationRepository.update(updatedParticipation);
 
       // Send grade notification
-      await this.notificationService.sendGradeNotification(updatedParticipation);
+      await this.notificationService.sendGradeNotification(
+        updatedParticipation
+      );
 
       // Check if participation is now completed and eligible for certificate
-      if (updatedParticipation.isCompleted() && updatedParticipation.canGenerateCertificate()) {
+      if (
+        updatedParticipation.isCompleted() &&
+        updatedParticipation.canGenerateCertificate()
+      ) {
         await this.generateCertificate(updatedParticipation.getId());
       }
 
       return {
         success: true,
         message: "Grade updated successfully",
-        updatedParticipation: updatedParticipation.getParticipationSummary()
+        updatedParticipation: updatedParticipation.getParticipationSummary(),
       };
-
     } catch (error) {
       return {
         success: false,
-        message: `Failed to update grade: ${error instanceof Error ? error.message : 'Unknown error'}`
+        message: `Failed to update grade: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
       };
     }
   }
@@ -318,32 +350,35 @@ export class ParticipationTracking {
           participationId: gradeRecord.participationId,
           finalGrade: gradeRecord.finalGrade,
           evaluatedBy: input.evaluatedBy,
-          comments: gradeRecord.comments
+          comments: gradeRecord.comments,
         });
 
         results.push({
           participationId: gradeRecord.participationId,
           success: result.success,
-          message: result.message
+          message: result.message,
         });
 
         if (result.success) {
           successCount++;
         }
-
       } catch (error) {
         results.push({
           participationId: gradeRecord.participationId,
           success: false,
-          message: error instanceof Error ? error.message : 'Unknown error'
+          message: error instanceof Error ? error.message : "Unknown error",
         });
       }
     }
 
     return {
       success: successCount > 0,
-      message: `Processed ${input.grades.length} grade records. ${successCount} successful, ${input.grades.length - successCount} failed.`,
-      results
+      message: `Processed ${
+        input.grades.length
+      } grade records. ${successCount} successful, ${
+        input.grades.length - successCount
+      } failed.`,
+      results,
     };
   }
 
@@ -356,18 +391,20 @@ export class ParticipationTracking {
     updatedParticipation?: any;
   }> {
     try {
-      const participation = await this.participationRepository.findById(input.participationId);
+      const participation = await this.participationRepository.findById(
+        input.participationId
+      );
       if (!participation) {
         return {
           success: false,
-          message: "Participation not found"
+          message: "Participation not found",
         };
       }
 
       if (!participation.canBeEvaluated()) {
         return {
           success: false,
-          message: "Participation cannot be evaluated in current status"
+          message: "Participation cannot be evaluated in current status",
         };
       }
 
@@ -379,20 +416,24 @@ export class ParticipationTracking {
       await this.participationRepository.update(updatedParticipation);
 
       // Check if participation is now completed and eligible for certificate
-      if (updatedParticipation.isCompleted() && updatedParticipation.canGenerateCertificate()) {
+      if (
+        updatedParticipation.isCompleted() &&
+        updatedParticipation.canGenerateCertificate()
+      ) {
         await this.generateCertificate(updatedParticipation.getId());
       }
 
       return {
         success: true,
         message: "Attendance percentage updated successfully",
-        updatedParticipation: updatedParticipation.getParticipationSummary()
+        updatedParticipation: updatedParticipation.getParticipationSummary(),
       };
-
     } catch (error) {
       return {
         success: false,
-        message: `Failed to update attendance percentage: ${error instanceof Error ? error.message : 'Unknown error'}`
+        message: `Failed to update attendance percentage: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
       };
     }
   }
@@ -407,36 +448,42 @@ export class ParticipationTracking {
     certificateUrl?: string;
   }> {
     try {
-      const participation = await this.participationRepository.findById(participationId);
+      const participation = await this.participationRepository.findById(
+        participationId
+      );
       if (!participation) {
         return {
           success: false,
-          message: "Participation not found"
+          message: "Participation not found",
         };
       }
 
       if (!participation.canGenerateCertificate()) {
         return {
           success: false,
-          message: "Participation is not eligible for certificate generation"
+          message: "Participation is not eligible for certificate generation",
         };
       }
 
-      const certificateResult = await this.certificateService.generateCertificate(
-        participation.getId(),
-        participation.getParticipantName(),
-        participation.getActivityName(),
-        new Date()
-      );
+      const certificateResult =
+        await this.certificateService.generateCertificate(
+          participation.getId(),
+          participation.getParticipantName(),
+          participation.getActivityName(),
+          new Date()
+        );
 
       if (!certificateResult.success) {
         return {
           success: false,
-          message: certificateResult.errorMessage || "Failed to generate certificate"
+          message:
+            certificateResult.errorMessage || "Failed to generate certificate",
         };
       }
 
-      const updatedParticipation = participation.generateCertificate(certificateResult.certificateId!);
+      const updatedParticipation = participation.generateCertificate(
+        certificateResult.certificateId!
+      );
       await this.participationRepository.update(updatedParticipation);
 
       // Send certificate notification
@@ -451,13 +498,14 @@ export class ParticipationTracking {
         success: true,
         message: "Certificate generated successfully",
         certificateId: certificateResult.certificateId,
-        certificateUrl: certificateResult.certificateUrl
+        certificateUrl: certificateResult.certificateUrl,
       };
-
     } catch (error) {
       return {
         success: false,
-        message: `Failed to generate certificate: ${error instanceof Error ? error.message : 'Unknown error'}`
+        message: `Failed to generate certificate: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
       };
     }
   }
@@ -471,11 +519,13 @@ export class ParticipationTracking {
     message: string;
   }> {
     try {
-      const participation = await this.participationRepository.findById(participationId);
+      const participation = await this.participationRepository.findById(
+        participationId
+      );
       if (!participation) {
         return {
           success: false,
-          message: "Participation not found"
+          message: "Participation not found",
         };
       }
 
@@ -491,30 +541,34 @@ export class ParticipationTracking {
           minimumAttendance: {
             required: minimumAttendance,
             actual: grading.attendancePercentage,
-            met: grading.attendancePercentage >= minimumAttendance
+            met: grading.attendancePercentage >= minimumAttendance,
           },
-          minimumGrade: minimumGrade !== undefined ? {
-            required: minimumGrade,
-            actual: grading.finalGrade || 0,
-            met: (grading.finalGrade || 0) >= minimumGrade
-          } : undefined,
+          minimumGrade:
+            minimumGrade !== undefined
+              ? {
+                  required: minimumGrade,
+                  actual: grading.finalGrade || 0,
+                  met: (grading.finalGrade || 0) >= minimumGrade,
+                }
+              : undefined,
           paymentApproved: true, // Would check enrollment payment status
-          activityCompleted: participation.isCompleted()
+          activityCompleted: participation.isCompleted(),
         },
         eligibilityDate: isEligible ? new Date() : undefined,
-        certificateGenerated: grading.certificateGenerated
+        certificateGenerated: grading.certificateGenerated,
       };
 
       return {
         success: true,
         eligibility,
-        message: "Certificate eligibility checked successfully"
+        message: "Certificate eligibility checked successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: `Failed to check certificate eligibility: ${error instanceof Error ? error.message : 'Unknown error'}`
+        message: `Failed to check certificate eligibility: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
       };
     }
   }
@@ -531,26 +585,32 @@ export class ParticipationTracking {
     message: string;
   }> {
     try {
-      const participation = await this.participationRepository.findById(participationId);
+      const participation = await this.participationRepository.findById(
+        participationId
+      );
       if (!participation) {
         return {
           success: false,
-          message: "Participation not found"
+          message: "Participation not found",
         };
       }
 
-      const withdrawnParticipation = participation.withdraw(reason, withdrawnBy);
+      const withdrawnParticipation = participation.withdraw(
+        reason,
+        withdrawnBy
+      );
       await this.participationRepository.update(withdrawnParticipation);
 
       return {
         success: true,
-        message: "Participant withdrawn successfully"
+        message: "Participant withdrawn successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: `Failed to withdraw participant: ${error instanceof Error ? error.message : 'Unknown error'}`
+        message: `Failed to withdraw participant: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
       };
     }
   }
@@ -564,24 +624,27 @@ export class ParticipationTracking {
     message: string;
   }> {
     try {
-      const participation = await this.participationRepository.findById(participationId);
+      const participation = await this.participationRepository.findById(
+        participationId
+      );
       if (!participation) {
         return {
           success: false,
-          message: "Participation not found"
+          message: "Participation not found",
         };
       }
 
       return {
         success: true,
         participation: participation.getDetailedReport(),
-        message: "Participation retrieved successfully"
+        message: "Participation retrieved successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: `Failed to retrieve participation: ${error instanceof Error ? error.message : 'Unknown error'}`
+        message: `Failed to retrieve participation: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
       };
     }
   }
@@ -595,21 +658,24 @@ export class ParticipationTracking {
     message: string;
   }> {
     try {
-      const participations = await this.participationRepository.findAll(filters);
-      const participationSummaries = participations.map(participation => 
+      const participations = await this.participationRepository.findAll(
+        filters
+      );
+      const participationSummaries = participations.map((participation) =>
         participation.getParticipationSummary()
       );
 
       return {
         success: true,
         participations: participationSummaries,
-        message: `Retrieved ${participations.length} participations`
+        message: `Retrieved ${participations.length} participations`,
       };
-
     } catch (error) {
       return {
         success: false,
-        message: `Failed to retrieve participations: ${error instanceof Error ? error.message : 'Unknown error'}`
+        message: `Failed to retrieve participations: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
       };
     }
   }
@@ -623,18 +689,22 @@ export class ParticipationTracking {
     message: string;
   }> {
     try {
-      const analytics = await this.participationRepository.getParticipationAnalytics(participantId);
+      const analytics =
+        await this.participationRepository.getParticipationAnalytics(
+          participantId
+        );
 
       return {
         success: true,
         analytics,
-        message: "Participant analytics retrieved successfully"
+        message: "Participant analytics retrieved successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: `Failed to retrieve participant analytics: ${error instanceof Error ? error.message : 'Unknown error'}`
+        message: `Failed to retrieve participant analytics: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
       };
     }
   }
@@ -648,18 +718,20 @@ export class ParticipationTracking {
     message: string;
   }> {
     try {
-      const statistics = await this.participationRepository.getActivityStatistics(activityId);
+      const statistics =
+        await this.participationRepository.getActivityStatistics(activityId);
 
       return {
         success: true,
         statistics,
-        message: "Activity statistics retrieved successfully"
+        message: "Activity statistics retrieved successfully",
       };
-
     } catch (error) {
       return {
         success: false,
-        message: `Failed to retrieve activity statistics: ${error instanceof Error ? error.message : 'Unknown error'}`
+        message: `Failed to retrieve activity statistics: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
       };
     }
   }
@@ -673,30 +745,37 @@ export class ParticipationTracking {
     message: string;
   }> {
     try {
-      const pendingParticipations = await this.participationRepository.findPendingEvaluations();
+      const pendingParticipations =
+        await this.participationRepository.findPendingEvaluations();
       let processedCount = 0;
 
       for (const participation of pendingParticipations) {
         try {
           // Auto-evaluate based on attendance if minimum requirements are met
-          if (participation.getAttendancePercentage() >= participation.getMinimumAttendancePercentage()) {
+          if (
+            participation.getAttendancePercentage() >=
+            participation.getMinimumAttendancePercentage()
+          ) {
             let updatedParticipation: Participation;
-            
-            if (participation.getActivityType() === 'EVENT') {
+
+            if (participation.getActivityType() === "EVENT") {
               // For events, just update attendance percentage to complete
               updatedParticipation = participation.updateAttendancePercentage(
                 participation.getAttendancePercentage(),
-                'system'
+                "system"
               );
             } else {
               // For courses, only auto-complete if there's a grade
               const grading = participation.getGrading();
-              if (grading.finalGrade !== undefined && 
-                  grading.finalGrade >= (participation.getMinimumGradeRequired() || 0)) {
+              if (
+                grading.finalGrade !== undefined &&
+                grading.finalGrade >=
+                  (participation.getMinimumGradeRequired() || 0)
+              ) {
                 updatedParticipation = participation.updateGrade(
                   grading.finalGrade,
-                  'system',
-                  'Auto-evaluated based on requirements'
+                  "system",
+                  "Auto-evaluated based on requirements"
                 );
               } else {
                 continue; // Skip if no grade or grade insufficient
@@ -704,31 +783,35 @@ export class ParticipationTracking {
             }
 
             await this.participationRepository.update(updatedParticipation);
-            
+
             // Generate certificate if eligible
             if (updatedParticipation.canGenerateCertificate()) {
               await this.generateCertificate(updatedParticipation.getId());
             }
-            
+
             processedCount++;
           }
         } catch (error) {
           // Log error but continue processing others
-          console.error(`Failed to process participation ${participation.getId()}:`, error);
+          console.error(
+            `Failed to process participation ${participation.getId()}:`,
+            error
+          );
         }
       }
 
       return {
         success: true,
         processed: processedCount,
-        message: `Processed ${processedCount} pending evaluations out of ${pendingParticipations.length}`
+        message: `Processed ${processedCount} pending evaluations out of ${pendingParticipations.length}`,
       };
-
     } catch (error) {
       return {
         success: false,
         processed: 0,
-        message: `Failed to process pending evaluations: ${error instanceof Error ? error.message : 'Unknown error'}`
+        message: `Failed to process pending evaluations: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
       };
     }
   }
@@ -742,7 +825,8 @@ export class ParticipationTracking {
     message: string;
   }> {
     try {
-      const eligibleParticipations = await this.participationRepository.findEligibleForCertificates();
+      const eligibleParticipations =
+        await this.participationRepository.findEligibleForCertificates();
       let generatedCount = 0;
 
       for (const participation of eligibleParticipations) {
@@ -753,21 +837,25 @@ export class ParticipationTracking {
           }
         } catch (error) {
           // Log error but continue processing others
-          console.error(`Failed to generate certificate for participation ${participation.getId()}:`, error);
+          console.error(
+            `Failed to generate certificate for participation ${participation.getId()}:`,
+            error
+          );
         }
       }
 
       return {
         success: true,
         generated: generatedCount,
-        message: `Generated ${generatedCount} certificates out of ${eligibleParticipations.length} eligible participations`
+        message: `Generated ${generatedCount} certificates out of ${eligibleParticipations.length} eligible participations`,
       };
-
     } catch (error) {
       return {
         success: false,
         generated: 0,
-        message: `Failed to generate eligible certificates: ${error instanceof Error ? error.message : 'Unknown error'}`
+        message: `Failed to generate eligible certificates: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
       };
     }
   }

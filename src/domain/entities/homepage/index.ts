@@ -5,24 +5,24 @@
  */
 
 // Homepage Content Entity
-export { HomepageContent } from './HomepageContent';
-export type { 
+export { HomepageContent } from "./HomepageContent";
+export type {
   HomepageContentData,
   ImageSection,
-  ContentSection
-} from './HomepageContent';
+  ContentSection,
+} from "./HomepageContent";
 
 // Homepage Dashboard Entity
-export { HomepageDashboard } from './HomepageDashboard';
-export type { 
+export { HomepageDashboard } from "./HomepageDashboard";
+export type {
   HomepageDashboardData,
   ActivitySummary,
   UserStatistics,
   ActivityStatistics,
   FinancialStatistics,
   SystemAlerts,
-  RecentActivity
-} from './HomepageDashboard';
+  RecentActivity,
+} from "./HomepageDashboard";
 
 // Common Homepage Types
 export interface HomepageSettings {

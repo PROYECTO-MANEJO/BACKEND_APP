@@ -26,20 +26,20 @@ export interface EventCategorySettings {
 
 export interface EventCategoryData {
   id: string;
-  
+
   // Basic Information
   name: string;
   description: string;
   code?: string;
-  
+
   // Visual and Branding
   color?: string;
   icon?: string;
   imageUrl?: string;
-  
+
   // Configuration
   settings: EventCategorySettings;
-  
+
   // Content and Templates
   certificateTemplate?: string;
   emailTemplates: {
@@ -48,7 +48,7 @@ export interface EventCategoryData {
     completion?: string;
     cancellation?: string;
   };
-  
+
   // Restrictions and Rules
   restrictions: {
     maxEventsPerMonth?: number;
@@ -57,10 +57,10 @@ export interface EventCategoryData {
     requiresSpecialApproval: boolean;
     minimumAdvanceNotice: number; // days
   };
-  
+
   // Statistics and Analytics
   statistics: EventCategoryStatistics;
-  
+
   // Metadata
   isActive: boolean;
   displayOrder: number;
@@ -68,12 +68,12 @@ export interface EventCategoryData {
   updatedAt: Date;
   createdBy?: string;
   lastModifiedBy?: string;
-  
+
   // SEO and Discovery
   keywords: string[];
   isPopular: boolean;
   isFeatured: boolean;
-  
+
   // Associated Data
   parentCategoryId?: string;
   subcategoryIds: string[];
@@ -92,14 +92,14 @@ export class EventCategory {
     createdBy?: string
   ): EventCategory {
     const now = new Date();
-    
+
     const categoryData: EventCategoryData = {
       id: `event-category-${Date.now()}`,
       name: name.trim(),
       description: description.trim(),
       code: code?.trim().toUpperCase(),
-      color: color || '#007bff',
-      
+      color: color || "#007bff",
+
       settings: {
         defaultDuration: 2, // 2 hours
         defaultCapacity: 50,
@@ -107,36 +107,36 @@ export class EventCategory {
         defaultMinimumAttendance: 80,
         allowVirtualEvents: true,
         requiresInstructorApproval: false,
-        autoPublishEvents: true
+        autoPublishEvents: true,
       },
-      
+
       emailTemplates: {},
-      
+
       restrictions: {
         requiresSpecialApproval: false,
-        minimumAdvanceNotice: 7 // 7 days
+        minimumAdvanceNotice: 7, // 7 days
       },
-      
+
       statistics: {
         totalEvents: 0,
         activeEvents: 0,
         completedEvents: 0,
         totalEnrollments: 0,
         averageAttendance: 0,
-        revenueGenerated: 0
+        revenueGenerated: 0,
       },
-      
+
       isActive: true,
       displayOrder: 0,
       createdAt: now,
       updatedAt: now,
       createdBy,
-      
+
       keywords: [],
       isPopular: false,
       isFeatured: false,
-      
-      subcategoryIds: []
+
+      subcategoryIds: [],
     };
 
     return new EventCategory(categoryData);
@@ -144,39 +144,44 @@ export class EventCategory {
 
   public static fromPrismaData(categoryData: any): EventCategory {
     const category: EventCategoryData = {
-      id: categoryData.id_cat?.toString() || '',
-      name: categoryData.nom_cat || '',
-      description: categoryData.des_cat || '',
+      id: categoryData.id_cat?.toString() || "",
+      name: categoryData.nom_cat || "",
+      description: categoryData.des_cat || "",
       code: categoryData.codigo_cat,
-      color: categoryData.color_cat || '#007bff',
+      color: categoryData.color_cat || "#007bff",
       icon: categoryData.icono_cat,
       imageUrl: categoryData.imagen_cat,
-      
+
       settings: {
         defaultDuration: categoryData.duracion_default || 2,
         defaultCapacity: categoryData.capacidad_default || 50,
-        defaultRequiresApproval: categoryData.requiere_aprobacion_default === true,
+        defaultRequiresApproval:
+          categoryData.requiere_aprobacion_default === true,
         defaultMinimumAttendance: categoryData.asistencia_minima_default || 80,
         allowVirtualEvents: categoryData.permite_eventos_virtuales !== false,
-        requiresInstructorApproval: categoryData.requiere_aprobacion_instructor === true,
-        autoPublishEvents: categoryData.auto_publicar_eventos !== false
+        requiresInstructorApproval:
+          categoryData.requiere_aprobacion_instructor === true,
+        autoPublishEvents: categoryData.auto_publicar_eventos !== false,
       },
-      
+
       emailTemplates: {
         enrollment: categoryData.plantilla_email_inscripcion,
         reminder: categoryData.plantilla_email_recordatorio,
         completion: categoryData.plantilla_email_completado,
-        cancellation: categoryData.plantilla_email_cancelacion
+        cancellation: categoryData.plantilla_email_cancelacion,
       },
-      
+
       restrictions: {
         maxEventsPerMonth: categoryData.max_eventos_mes,
         maxCapacityPerEvent: categoryData.max_capacidad_evento,
-        restrictedToRoles: categoryData.roles_restringidos ? JSON.parse(categoryData.roles_restringidos) : undefined,
-        requiresSpecialApproval: categoryData.requiere_aprobacion_especial === true,
-        minimumAdvanceNotice: categoryData.aviso_minimo_dias || 7
+        restrictedToRoles: categoryData.roles_restringidos
+          ? JSON.parse(categoryData.roles_restringidos)
+          : undefined,
+        requiresSpecialApproval:
+          categoryData.requiere_aprobacion_especial === true,
+        minimumAdvanceNotice: categoryData.aviso_minimo_dias || 7,
       },
-      
+
       statistics: {
         totalEvents: categoryData._count?.eventos || 0,
         activeEvents: categoryData.eventos_activos_count || 0,
@@ -184,22 +189,30 @@ export class EventCategory {
         totalEnrollments: categoryData.total_inscripciones || 0,
         averageAttendance: categoryData.promedio_asistencia || 0,
         averageRating: categoryData.promedio_calificacion,
-        revenueGenerated: categoryData.ingresos_generados || 0
+        revenueGenerated: categoryData.ingresos_generados || 0,
       },
-      
+
       isActive: categoryData.activa !== false,
       displayOrder: categoryData.orden_visualizacion || 0,
-      createdAt: categoryData.fecha_creacion ? new Date(categoryData.fecha_creacion) : new Date(),
-      updatedAt: categoryData.fecha_actualizacion ? new Date(categoryData.fecha_actualizacion) : new Date(),
+      createdAt: categoryData.fecha_creacion
+        ? new Date(categoryData.fecha_creacion)
+        : new Date(),
+      updatedAt: categoryData.fecha_actualizacion
+        ? new Date(categoryData.fecha_actualizacion)
+        : new Date(),
       createdBy: categoryData.creado_por,
       lastModifiedBy: categoryData.modificado_por,
-      
-      keywords: categoryData.palabras_clave ? JSON.parse(categoryData.palabras_clave) : [],
+
+      keywords: categoryData.palabras_clave
+        ? JSON.parse(categoryData.palabras_clave)
+        : [],
       isPopular: categoryData.es_popular === true,
       isFeatured: categoryData.es_destacada === true,
-      
+
       parentCategoryId: categoryData.id_categoria_padre?.toString(),
-      subcategoryIds: (categoryData.subcategorias || []).map((sub: any) => sub.id_cat.toString())
+      subcategoryIds: (categoryData.subcategorias || []).map((sub: any) =>
+        sub.id_cat.toString()
+      ),
     };
 
     return new EventCategory(category);
@@ -226,8 +239,10 @@ export class EventCategory {
       throw new Error("Default capacity must be greater than 0");
     }
 
-    if (this.data.settings.defaultMinimumAttendance < 0 || 
-        this.data.settings.defaultMinimumAttendance > 100) {
+    if (
+      this.data.settings.defaultMinimumAttendance < 0 ||
+      this.data.settings.defaultMinimumAttendance > 100
+    ) {
       throw new Error("Default minimum attendance must be between 0 and 100");
     }
 
@@ -359,7 +374,10 @@ export class EventCategory {
   }
 
   public isRestrictedToRoles(): boolean {
-    return !!this.data.restrictions.restrictedToRoles && this.data.restrictions.restrictedToRoles.length > 0;
+    return (
+      !!this.data.restrictions.restrictedToRoles &&
+      this.data.restrictions.restrictedToRoles.length > 0
+    );
   }
 
   // Validation methods
@@ -377,40 +395,42 @@ export class EventCategory {
     }
 
     if (this.isRestrictedToRoles()) {
-      const hasRequiredRole = organizerRoles.some(role => 
+      const hasRequiredRole = organizerRoles.some((role) =>
         this.data.restrictions.restrictedToRoles!.includes(role)
       );
-      
+
       if (!hasRequiredRole) {
-        return { 
-          canCreate: false, 
-          reason: `Category is restricted to roles: ${this.data.restrictions.restrictedToRoles!.join(', ')}` 
+        return {
+          canCreate: false,
+          reason: `Category is restricted to roles: ${this.data.restrictions.restrictedToRoles!.join(
+            ", "
+          )}`,
         };
       }
     }
 
     if (this.hasEventLimit()) {
       if (eventsThisMonth >= this.data.restrictions.maxEventsPerMonth!) {
-        return { 
-          canCreate: false, 
-          reason: `Monthly event limit reached (${this.data.restrictions.maxEventsPerMonth})` 
+        return {
+          canCreate: false,
+          reason: `Monthly event limit reached (${this.data.restrictions.maxEventsPerMonth})`,
         };
       }
     }
 
     if (this.hasCapacityLimit()) {
       if (eventCapacity > this.data.restrictions.maxCapacityPerEvent!) {
-        return { 
-          canCreate: false, 
-          reason: `Event capacity exceeds category limit (${this.data.restrictions.maxCapacityPerEvent})` 
+        return {
+          canCreate: false,
+          reason: `Event capacity exceeds category limit (${this.data.restrictions.maxCapacityPerEvent})`,
         };
       }
     }
 
     if (advanceNotice < this.data.restrictions.minimumAdvanceNotice) {
-      return { 
-        canCreate: false, 
-        reason: `Minimum advance notice is ${this.data.restrictions.minimumAdvanceNotice} days` 
+      return {
+        canCreate: false,
+        reason: `Minimum advance notice is ${this.data.restrictions.minimumAdvanceNotice} days`,
       };
     }
 
@@ -427,7 +447,7 @@ export class EventCategory {
   ): EventCategory {
     const updates: Partial<EventCategoryData> = {
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     if (name && name.trim()) {
@@ -460,7 +480,7 @@ export class EventCategory {
       icon: icon?.trim() || this.data.icon,
       imageUrl: imageUrl?.trim() || this.data.imageUrl,
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new EventCategory(updatedData);
@@ -481,8 +501,10 @@ export class EventCategory {
       throw new Error("Default capacity must be greater than 0");
     }
 
-    if (updatedSettings.defaultMinimumAttendance < 0 || 
-        updatedSettings.defaultMinimumAttendance > 100) {
+    if (
+      updatedSettings.defaultMinimumAttendance < 0 ||
+      updatedSettings.defaultMinimumAttendance > 100
+    ) {
       throw new Error("Default minimum attendance must be between 0 and 100");
     }
 
@@ -490,7 +512,7 @@ export class EventCategory {
       ...this.data,
       settings: updatedSettings,
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new EventCategory(updatedData);
@@ -506,7 +528,7 @@ export class EventCategory {
       ...this.data,
       emailTemplates: updatedTemplates,
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new EventCategory(updatedData);
@@ -523,11 +545,17 @@ export class EventCategory {
       throw new Error("Minimum advance notice cannot be negative");
     }
 
-    if (updatedRestrictions.maxEventsPerMonth !== undefined && updatedRestrictions.maxEventsPerMonth <= 0) {
+    if (
+      updatedRestrictions.maxEventsPerMonth !== undefined &&
+      updatedRestrictions.maxEventsPerMonth <= 0
+    ) {
       throw new Error("Maximum events per month must be greater than 0");
     }
 
-    if (updatedRestrictions.maxCapacityPerEvent !== undefined && updatedRestrictions.maxCapacityPerEvent <= 0) {
+    if (
+      updatedRestrictions.maxCapacityPerEvent !== undefined &&
+      updatedRestrictions.maxCapacityPerEvent <= 0
+    ) {
       throw new Error("Maximum capacity per event must be greater than 0");
     }
 
@@ -535,7 +563,7 @@ export class EventCategory {
       ...this.data,
       restrictions: updatedRestrictions,
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new EventCategory(updatedData);
@@ -555,26 +583,31 @@ export class EventCategory {
       ...this.data,
       keywords: [...this.data.keywords, trimmedKeyword],
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new EventCategory(updatedData);
   }
 
   public removeKeyword(keyword: string, updatedBy?: string): EventCategory {
-    const updatedKeywords = this.data.keywords.filter(k => k !== keyword.toLowerCase());
+    const updatedKeywords = this.data.keywords.filter(
+      (k) => k !== keyword.toLowerCase()
+    );
 
     const updatedData = {
       ...this.data,
       keywords: updatedKeywords,
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new EventCategory(updatedData);
   }
 
-  public addSubcategory(subcategoryId: string, updatedBy?: string): EventCategory {
+  public addSubcategory(
+    subcategoryId: string,
+    updatedBy?: string
+  ): EventCategory {
     if (this.data.subcategoryIds.includes(subcategoryId)) {
       throw new Error("Subcategory already exists");
     }
@@ -583,31 +616,39 @@ export class EventCategory {
       ...this.data,
       subcategoryIds: [...this.data.subcategoryIds, subcategoryId],
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new EventCategory(updatedData);
   }
 
-  public removeSubcategory(subcategoryId: string, updatedBy?: string): EventCategory {
-    const updatedSubcategoryIds = this.data.subcategoryIds.filter(id => id !== subcategoryId);
+  public removeSubcategory(
+    subcategoryId: string,
+    updatedBy?: string
+  ): EventCategory {
+    const updatedSubcategoryIds = this.data.subcategoryIds.filter(
+      (id) => id !== subcategoryId
+    );
 
     const updatedData = {
       ...this.data,
       subcategoryIds: updatedSubcategoryIds,
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new EventCategory(updatedData);
   }
 
-  public setParentCategory(parentCategoryId: string | undefined, updatedBy?: string): EventCategory {
+  public setParentCategory(
+    parentCategoryId: string | undefined,
+    updatedBy?: string
+  ): EventCategory {
     const updatedData = {
       ...this.data,
       parentCategoryId,
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new EventCategory(updatedData);
@@ -618,7 +659,7 @@ export class EventCategory {
       ...this.data,
       isActive: true,
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new EventCategory(updatedData);
@@ -629,7 +670,7 @@ export class EventCategory {
       ...this.data,
       isActive: false,
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new EventCategory(updatedData);
@@ -644,7 +685,7 @@ export class EventCategory {
       ...this.data,
       displayOrder: order,
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new EventCategory(updatedData);
@@ -655,7 +696,7 @@ export class EventCategory {
       ...this.data,
       isPopular: true,
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new EventCategory(updatedData);
@@ -666,7 +707,7 @@ export class EventCategory {
       ...this.data,
       isPopular: false,
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new EventCategory(updatedData);
@@ -677,7 +718,7 @@ export class EventCategory {
       ...this.data,
       isFeatured: true,
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new EventCategory(updatedData);
@@ -688,19 +729,21 @@ export class EventCategory {
       ...this.data,
       isFeatured: false,
       updatedAt: new Date(),
-      lastModifiedBy: updatedBy
+      lastModifiedBy: updatedBy,
     };
 
     return new EventCategory(updatedData);
   }
 
-  public updateStatistics(statistics: Partial<EventCategoryStatistics>): EventCategory {
+  public updateStatistics(
+    statistics: Partial<EventCategoryStatistics>
+  ): EventCategory {
     const updatedStatistics = { ...this.data.statistics, ...statistics };
 
     const updatedData = {
       ...this.data,
       statistics: updatedStatistics,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     return new EventCategory(updatedData);
@@ -709,22 +752,32 @@ export class EventCategory {
   // Analytics and reporting
   public getAverageEventsPerMonth(): number {
     if (this.data.statistics.totalEvents === 0) return 0;
-    
-    const monthsActive = Math.max(1, Math.floor(
-      (new Date().getTime() - this.data.createdAt.getTime()) / (1000 * 60 * 60 * 24 * 30)
-    ));
-    
+
+    const monthsActive = Math.max(
+      1,
+      Math.floor(
+        (new Date().getTime() - this.data.createdAt.getTime()) /
+          (1000 * 60 * 60 * 24 * 30)
+      )
+    );
+
     return this.data.statistics.totalEvents / monthsActive;
   }
 
   public getCompletionRate(): number {
     if (this.data.statistics.totalEvents === 0) return 0;
-    return (this.data.statistics.completedEvents / this.data.statistics.totalEvents) * 100;
+    return (
+      (this.data.statistics.completedEvents /
+        this.data.statistics.totalEvents) *
+      100
+    );
   }
 
   public getAverageEnrollmentsPerEvent(): number {
     if (this.data.statistics.totalEvents === 0) return 0;
-    return this.data.statistics.totalEnrollments / this.data.statistics.totalEvents;
+    return (
+      this.data.statistics.totalEnrollments / this.data.statistics.totalEvents
+    );
   }
 
   public getCategorySummary() {
@@ -745,7 +798,7 @@ export class EventCategory {
       averageAttendance: this.data.statistics.averageAttendance,
       revenueGenerated: this.data.statistics.revenueGenerated,
       hasSubcategories: this.hasSubcategories(),
-      subcategoryCount: this.data.subcategoryIds.length
+      subcategoryCount: this.data.subcategoryIds.length,
     };
   }
 
@@ -765,7 +818,7 @@ export class EventCategory {
       updatedAt: this.data.updatedAt,
       createdBy: this.data.createdBy,
       lastModifiedBy: this.data.lastModifiedBy,
-      averageEventsPerMonth: this.getAverageEventsPerMonth()
+      averageEventsPerMonth: this.getAverageEventsPerMonth(),
     };
   }
 }

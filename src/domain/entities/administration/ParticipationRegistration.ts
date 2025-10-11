@@ -5,41 +5,46 @@
  */
 
 export type ParticipationType = "EVENT" | "COURSE";
-export type ParticipationStatus = "REGISTERED" | "ATTENDED" | "COMPLETED" | "NO_SHOW" | "CANCELLED";
+export type ParticipationStatus =
+  | "REGISTERED"
+  | "ATTENDED"
+  | "COMPLETED"
+  | "NO_SHOW"
+  | "CANCELLED";
 
 export interface ParticipationData {
   id: string;
-  
+
   // Participant information
   participantId: string;
   participantName: string;
   participantEmail: string;
   participantCedula: string;
-  
+
   // Activity information
   activityId: string;
   activityName: string;
   activityType: ParticipationType;
-  
+
   // Participation details
   registrationDate: Date;
   attendanceDate?: Date;
   completionDate?: Date;
-  
+
   // Status and progress
   status: ParticipationStatus;
   attendancePercentage: number; // for courses
   completionPercentage: number; // for courses
-  
+
   // Certificate information
   certificateGenerated: boolean;
   certificateId?: string;
   certificateDate?: Date;
-  
+
   // Administrative info
   registeredBy: string; // admin who registered the participation
   notes?: string;
-  
+
   // Timestamps
   createdAt: Date;
   updatedAt: Date;
@@ -62,7 +67,7 @@ export class ParticipationRegistration {
     notes?: string
   ): ParticipationRegistration {
     const now = new Date();
-    
+
     const participationData: ParticipationData = {
       id: `participation-${activityType.toLowerCase()}-${activityId}-${participantId}`,
       participantId,
@@ -80,27 +85,30 @@ export class ParticipationRegistration {
       registeredBy,
       notes: notes?.trim(),
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
     };
 
     return new ParticipationRegistration(participationData);
   }
 
-  public static fromPrismaData(participationData: any, activityType: ParticipationType): ParticipationRegistration {
+  public static fromPrismaData(
+    participationData: any,
+    activityType: ParticipationType
+  ): ParticipationRegistration {
     // Map based on activity type (event participation vs course participation)
     const isEvent = activityType === "EVENT";
-    
+
     const data: ParticipationData = {
-      id: isEvent 
-        ? `participation-event-${participationData.id_eve_par}-${participationData.id_usu_par}` 
+      id: isEvent
+        ? `participation-event-${participationData.id_eve_par}-${participationData.id_usu_par}`
         : `participation-course-${participationData.id_cur_par}-${participationData.id_usu_par}`,
       participantId: participationData.id_usu_par.toString(),
-      participantName: participationData.usuario 
+      participantName: participationData.usuario
         ? `${participationData.usuario.nombres} ${participationData.usuario.apellidos}`
         : "Unknown Participant",
       participantEmail: participationData.usuario?.correo || "",
       participantCedula: participationData.usuario?.cedula || "",
-      activityId: isEvent 
+      activityId: isEvent
         ? participationData.id_eve_par.toString()
         : participationData.id_cur_par.toString(),
       activityName: isEvent
@@ -108,18 +116,26 @@ export class ParticipationRegistration {
         : participationData.curso?.nom_cur || "Unknown Course",
       activityType,
       registrationDate: new Date(participationData.fec_reg_par),
-      attendanceDate: participationData.fec_asi_par ? new Date(participationData.fec_asi_par) : undefined,
-      completionDate: participationData.fec_com_par ? new Date(participationData.fec_com_par) : undefined,
+      attendanceDate: participationData.fec_asi_par
+        ? new Date(participationData.fec_asi_par)
+        : undefined,
+      completionDate: participationData.fec_com_par
+        ? new Date(participationData.fec_com_par)
+        : undefined,
       status: this.mapStatus(participationData.est_par),
       attendancePercentage: participationData.por_asi_par || 0,
       completionPercentage: participationData.por_com_par || 0,
       certificateGenerated: !!participationData.cer_gen_par,
       certificateId: participationData.id_cer_par?.toString(),
-      certificateDate: participationData.fec_cer_par ? new Date(participationData.fec_cer_par) : undefined,
+      certificateDate: participationData.fec_cer_par
+        ? new Date(participationData.fec_cer_par)
+        : undefined,
       registeredBy: participationData.reg_por_par || "system",
       notes: participationData.not_par,
       createdAt: new Date(participationData.fec_cre_par),
-      updatedAt: new Date(participationData.fec_act_par || participationData.fec_cre_par)
+      updatedAt: new Date(
+        participationData.fec_act_par || participationData.fec_cre_par
+      ),
     };
 
     return new ParticipationRegistration(data);
@@ -145,11 +161,17 @@ export class ParticipationRegistration {
   }
 
   private validateData(): void {
-    if (!this.data.participantId || this.data.participantId.trim().length === 0) {
+    if (
+      !this.data.participantId ||
+      this.data.participantId.trim().length === 0
+    ) {
       throw new Error("Participant ID is required");
     }
 
-    if (!this.data.participantName || this.data.participantName.trim().length === 0) {
+    if (
+      !this.data.participantName ||
+      this.data.participantName.trim().length === 0
+    ) {
       throw new Error("Participant name is required");
     }
 
@@ -157,15 +179,24 @@ export class ParticipationRegistration {
       throw new Error("Activity ID is required");
     }
 
-    if (!this.data.participantEmail || !this.isValidEmail(this.data.participantEmail)) {
+    if (
+      !this.data.participantEmail ||
+      !this.isValidEmail(this.data.participantEmail)
+    ) {
       throw new Error("Valid participant email is required");
     }
 
-    if (this.data.attendancePercentage < 0 || this.data.attendancePercentage > 100) {
+    if (
+      this.data.attendancePercentage < 0 ||
+      this.data.attendancePercentage > 100
+    ) {
       throw new Error("Attendance percentage must be between 0 and 100");
     }
 
-    if (this.data.completionPercentage < 0 || this.data.completionPercentage > 100) {
+    if (
+      this.data.completionPercentage < 0 ||
+      this.data.completionPercentage > 100
+    ) {
       throw new Error("Completion percentage must be between 0 and 100");
     }
   }
@@ -294,25 +325,33 @@ export class ParticipationRegistration {
   }
 
   public canMarkCompletion(): boolean {
-    return this.data.status === "ATTENDED" || 
-           (this.data.status === "COMPLETED" && this.isCourse());
+    return (
+      this.data.status === "ATTENDED" ||
+      (this.data.status === "COMPLETED" && this.isCourse())
+    );
   }
 
   public canGenerateCertificate(): boolean {
     if (this.data.certificateGenerated) return false;
-    
+
     if (this.isEvent()) {
       return this.data.status === "ATTENDED";
     }
-    
+
     if (this.isCourse()) {
-      return this.data.status === "COMPLETED" && this.data.completionPercentage >= 80;
+      return (
+        this.data.status === "COMPLETED" && this.data.completionPercentage >= 80
+      );
     }
-    
+
     return false;
   }
 
-  public getProgressStatus(): "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" {
+  public getProgressStatus():
+    | "NOT_STARTED"
+    | "IN_PROGRESS"
+    | "COMPLETED"
+    | "CANCELLED" {
     switch (this.data.status) {
       case "COMPLETED":
         return "COMPLETED";
@@ -327,7 +366,9 @@ export class ParticipationRegistration {
   }
 
   // Actions
-  public markAttendance(attendancePercentage: number = 100): ParticipationRegistration {
+  public markAttendance(
+    attendancePercentage: number = 100
+  ): ParticipationRegistration {
     if (!this.canMarkAttendance()) {
       throw new Error("Cannot mark attendance for current status");
     }
@@ -341,13 +382,15 @@ export class ParticipationRegistration {
       status: "ATTENDED" as ParticipationStatus,
       attendanceDate: new Date(),
       attendancePercentage,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     return new ParticipationRegistration(updatedData);
   }
 
-  public markCompletion(completionPercentage: number = 100): ParticipationRegistration {
+  public markCompletion(
+    completionPercentage: number = 100
+  ): ParticipationRegistration {
     if (!this.canMarkCompletion()) {
       throw new Error("Cannot mark completion for current status");
     }
@@ -361,7 +404,7 @@ export class ParticipationRegistration {
       status: "COMPLETED" as ParticipationStatus,
       completionDate: new Date(),
       completionPercentage,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     return new ParticipationRegistration(updatedData);
@@ -375,7 +418,7 @@ export class ParticipationRegistration {
     const updatedData = {
       ...this.data,
       status: "NO_SHOW" as ParticipationStatus,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     return new ParticipationRegistration(updatedData);
@@ -386,7 +429,7 @@ export class ParticipationRegistration {
       throw new Error("Cannot cancel completed participation");
     }
 
-    const notes = reason 
+    const notes = reason
       ? `${this.data.notes || ""}\nCancelled: ${reason}`.trim()
       : this.data.notes;
 
@@ -394,7 +437,7 @@ export class ParticipationRegistration {
       ...this.data,
       status: "CANCELLED" as ParticipationStatus,
       notes,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     return new ParticipationRegistration(updatedData);
@@ -402,7 +445,9 @@ export class ParticipationRegistration {
 
   public generateCertificate(certificateId: string): ParticipationRegistration {
     if (!this.canGenerateCertificate()) {
-      throw new Error("Cannot generate certificate for current participation status");
+      throw new Error(
+        "Cannot generate certificate for current participation status"
+      );
     }
 
     const updatedData = {
@@ -410,15 +455,18 @@ export class ParticipationRegistration {
       certificateGenerated: true,
       certificateId,
       certificateDate: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     return new ParticipationRegistration(updatedData);
   }
 
-  public updateProgress(attendancePercentage?: number, completionPercentage?: number): ParticipationRegistration {
+  public updateProgress(
+    attendancePercentage?: number,
+    completionPercentage?: number
+  ): ParticipationRegistration {
     const updates: Partial<ParticipationData> = {
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     if (attendancePercentage !== undefined) {
@@ -433,7 +481,7 @@ export class ParticipationRegistration {
         throw new Error("Completion percentage must be between 0 and 100");
       }
       updates.completionPercentage = completionPercentage;
-      
+
       // Auto-update status based on completion
       if (completionPercentage >= 100 && this.isCourse()) {
         updates.status = "COMPLETED";
@@ -448,14 +496,14 @@ export class ParticipationRegistration {
   public addNote(note: string): ParticipationRegistration {
     const timestamp = new Date().toISOString();
     const newNote = `[${timestamp}] ${note}`;
-    const updatedNotes = this.data.notes 
+    const updatedNotes = this.data.notes
       ? `${this.data.notes}\n${newNote}`
       : newNote;
 
     const updatedData = {
       ...this.data,
       notes: updatedNotes,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     return new ParticipationRegistration(updatedData);
@@ -464,28 +512,33 @@ export class ParticipationRegistration {
   // Analytics Methods
   public getDurationInActivity(): number {
     if (!this.data.attendanceDate) return 0;
-    
+
     const endDate = this.data.completionDate || new Date();
     const startDate = this.data.attendanceDate;
-    
-    return Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)); // days
+
+    return Math.floor(
+      (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+    ); // days
   }
 
   public getOverallProgress(): number {
     if (this.isEvent()) {
       return this.hasAttended() ? 100 : 0;
     }
-    
+
     if (this.isCourse()) {
-      return Math.max(this.data.attendancePercentage, this.data.completionPercentage);
+      return Math.max(
+        this.data.attendancePercentage,
+        this.data.completionPercentage
+      );
     }
-    
+
     return 0;
   }
 
   public isEligibleForCertificate(): boolean {
     if (this.data.certificateGenerated) return true;
-    
+
     return this.canGenerateCertificate();
   }
 
@@ -513,7 +566,7 @@ export class ParticipationRegistration {
       type: this.data.activityType,
       status: this.data.status,
       progress: this.getOverallProgress(),
-      certificateReady: this.isEligibleForCertificate()
+      certificateReady: this.isEligibleForCertificate(),
     };
   }
 }

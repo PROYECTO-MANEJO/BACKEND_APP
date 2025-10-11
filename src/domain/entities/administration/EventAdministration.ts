@@ -27,44 +27,44 @@ export interface InscriptionSummary {
 
 export interface EventAdministrationData {
   id: string;
-  
+
   // Event basic info
   eventId: string;
   eventName: string;
   eventDescription: string;
-  
+
   // Event dates
   startDate: Date;
   endDate: Date;
   inscriptionStartDate: Date;
   inscriptionEndDate: Date;
-  
+
   // Capacity management
   maxCapacity: number;
   minCapacity: number;
-  
+
   // Category and organization
   categoryId: string;
   categoryName: string;
   organizerId: string;
   organizerName: string;
-  
+
   // Administrative status
   isActive: boolean;
   isAdministrable: boolean;
   canRegisterParticipation: boolean;
-  
+
   // Statistics
   statistics: EventStatistics;
-  
+
   // Inscriptions management
   inscriptions: InscriptionSummary[];
-  
+
   // Financial info
   eventCost: number;
   totalRevenue: number;
   pendingRevenue: number;
-  
+
   // Timestamps
   createdAt: Date;
   updatedAt: Date;
@@ -89,7 +89,7 @@ export class EventAdministration {
     eventDescription?: string
   ): EventAdministration {
     const now = new Date();
-    
+
     const adminData: EventAdministrationData = {
       id: `event-admin-${eventId}`,
       eventId,
@@ -114,33 +114,37 @@ export class EventAdministration {
         pendingInscriptions: 0,
         rejectedInscriptions: 0,
         availableSlots: maxCapacity,
-        capacityUtilization: 0
+        capacityUtilization: 0,
       },
       inscriptions: [],
       eventCost,
       totalRevenue: 0,
       pendingRevenue: 0,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
     };
 
     return new EventAdministration(adminData);
   }
 
   public static fromPrismaData(eventData: any): EventAdministration {
-    const inscriptions: InscriptionSummary[] = eventData.inscripciones?.map((ins: any) => ({
-      id: ins.id_ins.toString(),
-      participantName: `${ins.usuario.nombres} ${ins.usuario.apellidos}`,
-      participantEmail: ins.usuario.correo,
-      participantCedula: ins.usuario.cedula,
-      inscriptionDate: new Date(ins.fec_ins),
-      paymentStatus: this.mapPaymentStatus(ins.estado_pago),
-      paymentAmount: parseFloat(ins.monto_pago) || 0,
-      paymentProof: ins.comprobante_pago,
-      participationRegistered: ins.participacion?.length > 0
-    })) || [];
+    const inscriptions: InscriptionSummary[] =
+      eventData.inscripciones?.map((ins: any) => ({
+        id: ins.id_ins.toString(),
+        participantName: `${ins.usuario.nombres} ${ins.usuario.apellidos}`,
+        participantEmail: ins.usuario.correo,
+        participantCedula: ins.usuario.cedula,
+        inscriptionDate: new Date(ins.fec_ins),
+        paymentStatus: this.mapPaymentStatus(ins.estado_pago),
+        paymentAmount: parseFloat(ins.monto_pago) || 0,
+        paymentProof: ins.comprobante_pago,
+        participationRegistered: ins.participacion?.length > 0,
+      })) || [];
 
-    const statistics = this.calculateStatistics(inscriptions, eventData.capacidad_max_eve);
+    const statistics = this.calculateStatistics(
+      inscriptions,
+      eventData.capacidad_max_eve
+    );
 
     const adminData: EventAdministrationData = {
       id: `event-admin-${eventData.id_eve}`,
@@ -163,16 +167,20 @@ export class EventAdministration {
       statistics,
       inscriptions,
       eventCost: parseFloat(eventData.cos_eve) || 0,
-      totalRevenue: statistics.approvedInscriptions * (parseFloat(eventData.cos_eve) || 0),
-      pendingRevenue: statistics.pendingInscriptions * (parseFloat(eventData.cos_eve) || 0),
+      totalRevenue:
+        statistics.approvedInscriptions * (parseFloat(eventData.cos_eve) || 0),
+      pendingRevenue:
+        statistics.pendingInscriptions * (parseFloat(eventData.cos_eve) || 0),
       createdAt: new Date(eventData.fec_cre_eve),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     return new EventAdministration(adminData);
   }
 
-  private static mapPaymentStatus(status: string): "APPROVED" | "PENDING" | "REJECTED" {
+  private static mapPaymentStatus(
+    status: string
+  ): "APPROVED" | "PENDING" | "REJECTED" {
     switch (status?.toLowerCase()) {
       case "aprobada":
       case "approved":
@@ -187,24 +195,34 @@ export class EventAdministration {
 
   private static formatOrganizerName(organizer: any): string {
     if (!organizer) return "Unknown Organizer";
-    
+
     const parts = [
       organizer.nom_org1,
       organizer.nom_org2,
       organizer.ape_org1,
-      organizer.ape_org2
+      organizer.ape_org2,
     ].filter(Boolean);
-    
+
     return parts.join(" ").trim() || "Unknown Organizer";
   }
 
-  private static calculateStatistics(inscriptions: InscriptionSummary[], maxCapacity: number): EventStatistics {
+  private static calculateStatistics(
+    inscriptions: InscriptionSummary[],
+    maxCapacity: number
+  ): EventStatistics {
     const totalInscriptions = inscriptions.length;
-    const approvedInscriptions = inscriptions.filter(ins => ins.paymentStatus === "APPROVED").length;
-    const pendingInscriptions = inscriptions.filter(ins => ins.paymentStatus === "PENDING").length;
-    const rejectedInscriptions = inscriptions.filter(ins => ins.paymentStatus === "REJECTED").length;
+    const approvedInscriptions = inscriptions.filter(
+      (ins) => ins.paymentStatus === "APPROVED"
+    ).length;
+    const pendingInscriptions = inscriptions.filter(
+      (ins) => ins.paymentStatus === "PENDING"
+    ).length;
+    const rejectedInscriptions = inscriptions.filter(
+      (ins) => ins.paymentStatus === "REJECTED"
+    ).length;
     const availableSlots = Math.max(0, maxCapacity - totalInscriptions);
-    const capacityUtilization = maxCapacity > 0 ? (totalInscriptions / maxCapacity) * 100 : 0;
+    const capacityUtilization =
+      maxCapacity > 0 ? (totalInscriptions / maxCapacity) * 100 : 0;
 
     return {
       totalInscriptions,
@@ -212,7 +230,7 @@ export class EventAdministration {
       pendingInscriptions,
       rejectedInscriptions,
       availableSlots,
-      capacityUtilization
+      capacityUtilization,
     };
   }
 
@@ -305,7 +323,9 @@ export class EventAdministration {
   }
 
   public canRegisterParticipation(): boolean {
-    return this.data.canRegisterParticipation && new Date() >= this.data.startDate;
+    return (
+      this.data.canRegisterParticipation && new Date() >= this.data.startDate
+    );
   }
 
   public hasAvailableSlots(): boolean {
@@ -328,12 +348,16 @@ export class EventAdministration {
     return this.data.statistics.pendingInscriptions > 0;
   }
 
-  public getInscriptionById(inscriptionId: string): InscriptionSummary | undefined {
-    return this.data.inscriptions.find(ins => ins.id === inscriptionId);
+  public getInscriptionById(
+    inscriptionId: string
+  ): InscriptionSummary | undefined {
+    return this.data.inscriptions.find((ins) => ins.id === inscriptionId);
   }
 
-  public getInscriptionsByStatus(status: "APPROVED" | "PENDING" | "REJECTED"): InscriptionSummary[] {
-    return this.data.inscriptions.filter(ins => ins.paymentStatus === status);
+  public getInscriptionsByStatus(
+    status: "APPROVED" | "PENDING" | "REJECTED"
+  ): InscriptionSummary[] {
+    return this.data.inscriptions.filter((ins) => ins.paymentStatus === status);
   }
 
   // Actions
@@ -347,7 +371,7 @@ export class EventAdministration {
       throw new Error("Inscription is already approved");
     }
 
-    const updatedInscriptions = this.data.inscriptions.map(ins =>
+    const updatedInscriptions = this.data.inscriptions.map((ins) =>
       ins.id === inscriptionId
         ? { ...ins, paymentStatus: "APPROVED" as const }
         : ins
@@ -362,9 +386,11 @@ export class EventAdministration {
       ...this.data,
       inscriptions: updatedInscriptions,
       statistics: updatedStatistics,
-      totalRevenue: updatedStatistics.approvedInscriptions * this.data.eventCost,
-      pendingRevenue: updatedStatistics.pendingInscriptions * this.data.eventCost,
-      updatedAt: new Date()
+      totalRevenue:
+        updatedStatistics.approvedInscriptions * this.data.eventCost,
+      pendingRevenue:
+        updatedStatistics.pendingInscriptions * this.data.eventCost,
+      updatedAt: new Date(),
     };
 
     return new EventAdministration(updatedData);
@@ -380,7 +406,7 @@ export class EventAdministration {
       throw new Error("Inscription is already rejected");
     }
 
-    const updatedInscriptions = this.data.inscriptions.map(ins =>
+    const updatedInscriptions = this.data.inscriptions.map((ins) =>
       ins.id === inscriptionId
         ? { ...ins, paymentStatus: "REJECTED" as const }
         : ins
@@ -395,34 +421,38 @@ export class EventAdministration {
       ...this.data,
       inscriptions: updatedInscriptions,
       statistics: updatedStatistics,
-      totalRevenue: updatedStatistics.approvedInscriptions * this.data.eventCost,
-      pendingRevenue: updatedStatistics.pendingInscriptions * this.data.eventCost,
-      updatedAt: new Date()
+      totalRevenue:
+        updatedStatistics.approvedInscriptions * this.data.eventCost,
+      pendingRevenue:
+        updatedStatistics.pendingInscriptions * this.data.eventCost,
+      updatedAt: new Date(),
     };
 
     return new EventAdministration(updatedData);
   }
 
-  public markParticipationRegistered(inscriptionId: string): EventAdministration {
+  public markParticipationRegistered(
+    inscriptionId: string
+  ): EventAdministration {
     const inscription = this.getInscriptionById(inscriptionId);
     if (!inscription) {
       throw new Error(`Inscription ${inscriptionId} not found`);
     }
 
     if (inscription.paymentStatus !== "APPROVED") {
-      throw new Error("Cannot register participation for non-approved inscription");
+      throw new Error(
+        "Cannot register participation for non-approved inscription"
+      );
     }
 
-    const updatedInscriptions = this.data.inscriptions.map(ins =>
-      ins.id === inscriptionId
-        ? { ...ins, participationRegistered: true }
-        : ins
+    const updatedInscriptions = this.data.inscriptions.map((ins) =>
+      ins.id === inscriptionId ? { ...ins, participationRegistered: true } : ins
     );
 
     const updatedData = {
       ...this.data,
       inscriptions: updatedInscriptions,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     return new EventAdministration(updatedData);
@@ -446,7 +476,7 @@ export class EventAdministration {
       ...this.data,
       maxCapacity: newMaxCapacity,
       statistics: updatedStatistics,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     return new EventAdministration(updatedData);
@@ -457,7 +487,7 @@ export class EventAdministration {
       ...this.data,
       isActive: false,
       isAdministrable: false,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     return new EventAdministration(updatedData);
@@ -471,15 +501,16 @@ export class EventAdministration {
     revenuePercentage: number;
   } {
     const potentialRevenue = this.data.maxCapacity * this.data.eventCost;
-    const revenuePercentage = potentialRevenue > 0 
-      ? (this.data.totalRevenue / potentialRevenue) * 100 
-      : 0;
+    const revenuePercentage =
+      potentialRevenue > 0
+        ? (this.data.totalRevenue / potentialRevenue) * 100
+        : 0;
 
     return {
       totalRevenue: this.data.totalRevenue,
       pendingRevenue: this.data.pendingRevenue,
       potentialRevenue,
-      revenuePercentage
+      revenuePercentage,
     };
   }
 
@@ -490,17 +521,22 @@ export class EventAdministration {
     participationRate: number;
   } {
     const approvedInscriptions = this.getInscriptionsByStatus("APPROVED");
-    const registeredParticipants = approvedInscriptions.filter(ins => ins.participationRegistered).length;
-    const pendingParticipants = approvedInscriptions.filter(ins => !ins.participationRegistered).length;
-    const participationRate = approvedInscriptions.length > 0 
-      ? (registeredParticipants / approvedInscriptions.length) * 100 
-      : 0;
+    const registeredParticipants = approvedInscriptions.filter(
+      (ins) => ins.participationRegistered
+    ).length;
+    const pendingParticipants = approvedInscriptions.filter(
+      (ins) => !ins.participationRegistered
+    ).length;
+    const participationRate =
+      approvedInscriptions.length > 0
+        ? (registeredParticipants / approvedInscriptions.length) * 100
+        : 0;
 
     return {
       totalParticipants: approvedInscriptions.length,
       registeredParticipants,
       pendingParticipants,
-      participationRate
+      participationRate,
     };
   }
 

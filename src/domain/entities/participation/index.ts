@@ -11,8 +11,8 @@ export {
   type ParticipationStatus,
   type ParticipationGrading,
   type AttendanceRecord,
-  type ParticipationData
-} from './Participation';
+  type ParticipationData,
+} from "./Participation";
 
 // Enrollment Entity
 export {
@@ -21,15 +21,21 @@ export {
   type PaymentStatus,
   type EnrollmentStatus,
   type PaymentDetails,
-  type EnrollmentData
-} from './Enrollment';
+  type EnrollmentData,
+} from "./Enrollment";
 
 // Common types for participation domain
 export interface ParticipationFilters {
-  activityType?: 'EVENT' | 'COURSE';
-  participationStatus?: 'ENROLLED' | 'ATTENDING' | 'COMPLETED' | 'FAILED' | 'WITHDRAWN' | 'PENDING_EVALUATION';
-  paymentStatus?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'REFUNDED';
-  enrollmentStatus?: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
+  activityType?: "EVENT" | "COURSE";
+  participationStatus?:
+    | "ENROLLED"
+    | "ATTENDING"
+    | "COMPLETED"
+    | "FAILED"
+    | "WITHDRAWN"
+    | "PENDING_EVALUATION";
+  paymentStatus?: "PENDING" | "APPROVED" | "REJECTED" | "REFUNDED";
+  enrollmentStatus?: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED";
   participantId?: string;
   activityId?: string;
   enrollmentDateFrom?: Date;
@@ -52,9 +58,23 @@ export interface ParticipationStatistics {
   averageAttendance: number;
   averageGrade?: number;
   certificatesGenerated: number;
-  enrollmentsByStatus: Record<'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED', number>;
-  participationsByStatus: Record<'ENROLLED' | 'ATTENDING' | 'COMPLETED' | 'FAILED' | 'WITHDRAWN' | 'PENDING_EVALUATION', number>;
-  paymentStatusBreakdown: Record<'PENDING' | 'APPROVED' | 'REJECTED' | 'REFUNDED', number>;
+  enrollmentsByStatus: Record<
+    "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED",
+    number
+  >;
+  participationsByStatus: Record<
+    | "ENROLLED"
+    | "ATTENDING"
+    | "COMPLETED"
+    | "FAILED"
+    | "WITHDRAWN"
+    | "PENDING_EVALUATION",
+    number
+  >;
+  paymentStatusBreakdown: Record<
+    "PENDING" | "APPROVED" | "REJECTED" | "REFUNDED",
+    number
+  >;
   monthlyEnrollments: Array<{
     month: string;
     count: number;
@@ -85,29 +105,35 @@ export interface ParticipationAnalytics {
     email: string;
     cedula: string;
   };
-  
+
   totalActivities: number;
   completedActivities: number;
   inProgressActivities: number;
   failedActivities: number;
-  
+
   averageAttendance: number;
   averageGrade?: number;
-  
+
   certificatesEarned: number;
   totalInvestment: number;
-  
+
   enrollmentHistory: Array<{
     activityName: string;
-    activityType: 'EVENT' | 'COURSE';
+    activityType: "EVENT" | "COURSE";
     enrollmentDate: Date;
     completionDate?: Date;
-    status: 'ENROLLED' | 'ATTENDING' | 'COMPLETED' | 'FAILED' | 'WITHDRAWN' | 'PENDING_EVALUATION';
+    status:
+      | "ENROLLED"
+      | "ATTENDING"
+      | "COMPLETED"
+      | "FAILED"
+      | "WITHDRAWN"
+      | "PENDING_EVALUATION";
     grade?: number;
     attendance: number;
     certified: boolean;
   }>;
-  
+
   performanceTrends: {
     attendanceByMonth: Array<{
       month: string;
@@ -125,13 +151,13 @@ export interface BulkEnrollmentResult {
     enrollmentId: string;
     participantEmail: string;
   }>;
-  
+
   failed: Array<{
     participantEmail: string;
     reason: string;
     details?: any;
   }>;
-  
+
   summary: {
     total: number;
     successful: number;
@@ -172,10 +198,10 @@ export interface WaitingListManagement {
     enrollmentDate: Date;
     daysWaiting: number;
   }>;
-  
+
   availableSpots: number;
   estimatedWaitTime?: number;
-  
+
   operations: {
     promote: (enrollmentId: string) => void;
     reorder: (enrollmentId: string, newPosition: number) => void;

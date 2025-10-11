@@ -42,15 +42,23 @@ export interface GetAdministrableActivitiesResponse {
 }
 
 export interface IEventAdministrationRepository {
-  findAdministrable(filters: GetAdministrableActivitiesRequest): Promise<EventAdministration[]>;
-  countAdministrable(filters: GetAdministrableActivitiesRequest): Promise<number>;
+  findAdministrable(
+    filters: GetAdministrableActivitiesRequest
+  ): Promise<EventAdministration[]>;
+  countAdministrable(
+    filters: GetAdministrableActivitiesRequest
+  ): Promise<number>;
   findById(id: string): Promise<EventAdministration | null>;
   update(eventAdmin: EventAdministration): Promise<EventAdministration>;
 }
 
 export interface ICourseAdministrationRepository {
-  findAdministrable(filters: GetAdministrableActivitiesRequest): Promise<CourseAdministration[]>;
-  countAdministrable(filters: GetAdministrableActivitiesRequest): Promise<number>;
+  findAdministrable(
+    filters: GetAdministrableActivitiesRequest
+  ): Promise<CourseAdministration[]>;
+  countAdministrable(
+    filters: GetAdministrableActivitiesRequest
+  ): Promise<number>;
   findById(id: string): Promise<CourseAdministration | null>;
   update(courseAdmin: CourseAdministration): Promise<CourseAdministration>;
 }
@@ -61,7 +69,9 @@ export class GetAdministrableActivitiesUseCase {
     private courseRepo: ICourseAdministrationRepository
   ) {}
 
-  public async execute(request: GetAdministrableActivitiesRequest): Promise<GetAdministrableActivitiesResponse> {
+  public async execute(
+    request: GetAdministrableActivitiesRequest
+  ): Promise<GetAdministrableActivitiesResponse> {
     try {
       // Validar entrada
       this.validateRequest(request);
@@ -77,15 +87,23 @@ export class GetAdministrableActivitiesUseCase {
         dateFrom: request.dateFrom,
         dateTo: request.dateTo,
         page: request.page || 1,
-        pageSize: Math.min(request.pageSize || 20, 100) // Límite máximo de 100
+        pageSize: Math.min(request.pageSize || 20, 100), // Límite máximo de 100
       };
 
       // Obtener datos en paralelo
       const [events, courses, eventCount, courseCount] = await Promise.all([
-        filters.includeEvents ? this.eventRepo.findAdministrable(filters) : Promise.resolve([]),
-        filters.includeCourses ? this.courseRepo.findAdministrable(filters) : Promise.resolve([]),
-        filters.includeEvents ? this.eventRepo.countAdministrable(filters) : Promise.resolve(0),
-        filters.includeCourses ? this.courseRepo.countAdministrable(filters) : Promise.resolve(0)
+        filters.includeEvents
+          ? this.eventRepo.findAdministrable(filters)
+          : Promise.resolve([]),
+        filters.includeCourses
+          ? this.courseRepo.findAdministrable(filters)
+          : Promise.resolve([]),
+        filters.includeEvents
+          ? this.eventRepo.countAdministrable(filters)
+          : Promise.resolve(0),
+        filters.includeCourses
+          ? this.courseRepo.countAdministrable(filters)
+          : Promise.resolve(0),
       ]);
 
       // Calcular estadísticas
@@ -99,7 +117,7 @@ export class GetAdministrableActivitiesUseCase {
         totalPages,
         totalItems,
         hasNext: filters.page < totalPages,
-        hasPrevious: filters.page > 1
+        hasPrevious: filters.page > 1,
       };
 
       return {
@@ -108,12 +126,12 @@ export class GetAdministrableActivitiesUseCase {
         summary,
         pagination,
         success: true,
-        message: `Found ${events.length} events and ${courses.length} courses`
+        message: `Found ${events.length} events and ${courses.length} courses`,
       };
-
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+
       return {
         events: [],
         courses: [],
@@ -122,17 +140,17 @@ export class GetAdministrableActivitiesUseCase {
           totalCourses: 0,
           totalInscriptions: 0,
           totalRevenue: 0,
-          pendingInscriptions: 0
+          pendingInscriptions: 0,
         },
         pagination: {
           currentPage: 1,
           totalPages: 0,
           totalItems: 0,
           hasNext: false,
-          hasPrevious: false
+          hasPrevious: false,
         },
         success: false,
-        message: `Error retrieving administrable activities: ${errorMessage}`
+        message: `Error retrieving administrable activities: ${errorMessage}`,
       };
     }
   }
@@ -146,7 +164,11 @@ export class GetAdministrableActivitiesUseCase {
       throw new Error("Page size must be between 1 and 100");
     }
 
-    if (request.dateFrom && request.dateTo && request.dateFrom > request.dateTo) {
+    if (
+      request.dateFrom &&
+      request.dateTo &&
+      request.dateFrom > request.dateTo
+    ) {
       throw new Error("Date from cannot be after date to");
     }
 
@@ -156,7 +178,7 @@ export class GetAdministrableActivitiesUseCase {
   }
 
   private calculateSummary(
-    events: EventAdministration[], 
+    events: EventAdministration[],
     courses: CourseAdministration[]
   ): {
     totalEvents: number;
@@ -167,31 +189,37 @@ export class GetAdministrableActivitiesUseCase {
   } {
     const totalEvents = events.length;
     const totalCourses = courses.length;
-    
-    const eventStats = events.reduce((acc, event) => {
-      const stats = event.getStatistics();
-      return {
-        inscriptions: acc.inscriptions + stats.totalInscriptions,
-        revenue: acc.revenue + event.getTotalRevenue(),
-        pending: acc.pending + stats.pendingInscriptions
-      };
-    }, { inscriptions: 0, revenue: 0, pending: 0 });
 
-    const courseStats = courses.reduce((acc, course) => {
-      const stats = course.getStatistics();
-      return {
-        inscriptions: acc.inscriptions + stats.totalInscriptions,
-        revenue: acc.revenue + course.getTotalRevenue(),
-        pending: acc.pending + stats.pendingInscriptions
-      };
-    }, { inscriptions: 0, revenue: 0, pending: 0 });
+    const eventStats = events.reduce(
+      (acc, event) => {
+        const stats = event.getStatistics();
+        return {
+          inscriptions: acc.inscriptions + stats.totalInscriptions,
+          revenue: acc.revenue + event.getTotalRevenue(),
+          pending: acc.pending + stats.pendingInscriptions,
+        };
+      },
+      { inscriptions: 0, revenue: 0, pending: 0 }
+    );
+
+    const courseStats = courses.reduce(
+      (acc, course) => {
+        const stats = course.getStatistics();
+        return {
+          inscriptions: acc.inscriptions + stats.totalInscriptions,
+          revenue: acc.revenue + course.getTotalRevenue(),
+          pending: acc.pending + stats.pendingInscriptions,
+        };
+      },
+      { inscriptions: 0, revenue: 0, pending: 0 }
+    );
 
     return {
       totalEvents,
       totalCourses,
       totalInscriptions: eventStats.inscriptions + courseStats.inscriptions,
       totalRevenue: eventStats.revenue + courseStats.revenue,
-      pendingInscriptions: eventStats.pending + courseStats.pending
+      pendingInscriptions: eventStats.pending + courseStats.pending,
     };
   }
 }

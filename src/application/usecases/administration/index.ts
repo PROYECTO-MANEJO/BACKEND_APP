@@ -5,53 +5,53 @@
  */
 
 // Get Administrable Activities Use Case
-export { GetAdministrableActivitiesUseCase } from './GetAdministrableActivitiesUseCase';
-export type { 
-  GetAdministrableActivitiesRequest, 
+export { GetAdministrableActivitiesUseCase } from "./GetAdministrableActivitiesUseCase";
+export type {
+  GetAdministrableActivitiesRequest,
   GetAdministrableActivitiesResponse,
   IEventAdministrationRepository as IEventAdminRepository,
-  ICourseAdministrationRepository as ICourseAdminRepository
-} from './GetAdministrableActivitiesUseCase';
+  ICourseAdministrationRepository as ICourseAdminRepository,
+} from "./GetAdministrableActivitiesUseCase";
 
-// Approve Inscription Use Case  
-export { ApproveInscriptionUseCase } from './ApproveInscriptionUseCase';
-export type { 
-  ApproveInscriptionRequest, 
+// Approve Inscription Use Case
+export { ApproveInscriptionUseCase } from "./ApproveInscriptionUseCase";
+export type {
+  ApproveInscriptionRequest,
   ApproveInscriptionResponse,
-  INotificationService as IApprovalNotificationService
-} from './ApproveInscriptionUseCase';
+  INotificationService as IApprovalNotificationService,
+} from "./ApproveInscriptionUseCase";
 
 // Register Participation Use Case
-export { RegisterParticipationUseCase } from './RegisterParticipationUseCase';
-export type { 
-  RegisterParticipationRequest, 
+export { RegisterParticipationUseCase } from "./RegisterParticipationUseCase";
+export type {
+  RegisterParticipationRequest,
   RegisterParticipationResponse,
   IParticipationRegistrationRepository,
   IActivityRepository,
   ICertificateService,
-  INotificationService as IParticipationNotificationService
-} from './RegisterParticipationUseCase';
+  INotificationService as IParticipationNotificationService,
+} from "./RegisterParticipationUseCase";
 
 // Reject Inscription Use Case
-export { RejectInscriptionUseCase } from './RejectInscriptionUseCase';
-export type { 
-  RejectInscriptionRequest, 
+export { RejectInscriptionUseCase } from "./RejectInscriptionUseCase";
+export type {
+  RejectInscriptionRequest,
   RejectInscriptionResponse,
-  IRefundService
-} from './RejectInscriptionUseCase';
+  IRefundService,
+} from "./RejectInscriptionUseCase";
 
 // Generate Activity Report Use Case
-export { GenerateActivityReportUseCase } from './GenerateActivityReportUseCase';
-export type { 
-  GenerateActivityReportRequest, 
+export { GenerateActivityReportUseCase } from "./GenerateActivityReportUseCase";
+export type {
+  GenerateActivityReportRequest,
   GenerateActivityReportResponse,
   ActivityReportData,
   ActivityReportItem,
   ParticipantReportItem,
   FinancialReportSummary,
   PeriodComparisonData,
-  IReportGenerationService
-} from './GenerateActivityReportUseCase';
+  IReportGenerationService,
+} from "./GenerateActivityReportUseCase";
 
 // Common Interfaces
 export interface AdministrationUseCaseResponse {
@@ -59,7 +59,8 @@ export interface AdministrationUseCaseResponse {
   message: string;
 }
 
-export interface AdministrationPaginatedResponse<T> extends AdministrationUseCaseResponse {
+export interface AdministrationPaginatedResponse<T>
+  extends AdministrationUseCaseResponse {
   data: T[];
   pagination: {
     currentPage: number;

@@ -6,7 +6,7 @@
 
 export interface ActivitySummary {
   id: string;
-  type: 'EVENT' | 'COURSE';
+  type: "EVENT" | "COURSE";
   title: string;
   category: string;
   startDate: Date;
@@ -65,10 +65,10 @@ export interface FinancialStatistics {
 }
 
 export interface SystemAlerts {
-  type: 'INFO' | 'WARNING' | 'ERROR' | 'SUCCESS';
+  type: "INFO" | "WARNING" | "ERROR" | "SUCCESS";
   title: string;
   message: string;
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
   createdAt: Date;
   actionRequired: boolean;
   actionUrl?: string;
@@ -76,7 +76,13 @@ export interface SystemAlerts {
 
 export interface RecentActivity {
   id: string;
-  type: 'INSCRIPTION' | 'PAYMENT' | 'COMPLETION' | 'CERTIFICATE' | 'USER_REGISTRATION' | 'ACTIVITY_CREATED';
+  type:
+    | "INSCRIPTION"
+    | "PAYMENT"
+    | "COMPLETION"
+    | "CERTIFICATE"
+    | "USER_REGISTRATION"
+    | "ACTIVITY_CREATED";
   title: string;
   description: string;
   userId?: string;
@@ -84,33 +90,33 @@ export interface RecentActivity {
   activityId?: string;
   activityName?: string;
   timestamp: Date;
-  status: 'SUCCESS' | 'PENDING' | 'FAILED';
+  status: "SUCCESS" | "PENDING" | "FAILED";
 }
 
 export interface HomepageDashboardData {
   id: string;
-  
+
   // Summary Statistics
   userStats: UserStatistics;
   activityStats: ActivityStatistics;
   financialStats: FinancialStatistics;
-  
+
   // Recent Information
   recentActivities: RecentActivity[];
   upcomingActivities: ActivitySummary[];
   popularActivities: ActivitySummary[];
-  
+
   // System Information
   systemAlerts: SystemAlerts[];
-  
+
   // Performance Metrics
   performanceMetrics: {
     avgResponseTime: number;
     systemUptime: number;
-    databaseHealth: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR';
+    databaseHealth: "EXCELLENT" | "GOOD" | "FAIR" | "POOR";
     activeConnections: number;
   };
-  
+
   // Metadata
   generatedAt: Date;
   generatedBy?: string;
@@ -132,7 +138,7 @@ export class HomepageDashboard {
   ): HomepageDashboard {
     const now = new Date();
     const refreshInterval = 15; // 15 minutes
-    
+
     const dashboardData: HomepageDashboardData = {
       id: `dashboard-${Date.now()}`,
       userStats,
@@ -145,14 +151,14 @@ export class HomepageDashboard {
       performanceMetrics: {
         avgResponseTime: 0,
         systemUptime: 99.9,
-        databaseHealth: 'GOOD',
-        activeConnections: 0
+        databaseHealth: "GOOD",
+        activeConnections: 0,
       },
       generatedAt: now,
       generatedBy,
       refreshInterval,
       nextRefreshAt: new Date(now.getTime() + refreshInterval * 60000),
-      cacheExpiry: new Date(now.getTime() + refreshInterval * 60000)
+      cacheExpiry: new Date(now.getTime() + refreshInterval * 60000),
     };
 
     return new HomepageDashboard(dashboardData);
@@ -166,48 +172,47 @@ export class HomepageDashboard {
     paymentData: any[],
     generatedBy?: string
   ): HomepageDashboard {
-    
     // Calculate user statistics
     const userStats = HomepageDashboard.calculateUserStatistics(userData);
-    
+
     // Calculate activity statistics
     const activityStats = HomepageDashboard.calculateActivityStatistics(
-      eventData, 
-      courseData, 
+      eventData,
+      courseData,
       inscriptionData
     );
-    
+
     // Calculate financial statistics
     const financialStats = HomepageDashboard.calculateFinancialStatistics(
-      paymentData, 
-      eventData, 
+      paymentData,
+      eventData,
       courseData
     );
 
     const dashboard = HomepageDashboard.create(
-      userStats, 
-      activityStats, 
-      financialStats, 
+      userStats,
+      activityStats,
+      financialStats,
       generatedBy
     );
 
     // Add recent activities
     const recentActivities = HomepageDashboard.generateRecentActivities(
-      inscriptionData, 
-      paymentData, 
+      inscriptionData,
+      paymentData,
       userData
     );
-    
+
     // Add upcoming activities
     const upcomingActivities = HomepageDashboard.generateUpcomingActivities(
-      eventData, 
+      eventData,
       courseData
     );
 
     // Add popular activities
     const popularActivities = HomepageDashboard.generatePopularActivities(
-      eventData, 
-      courseData, 
+      eventData,
+      courseData,
       inscriptionData
     );
 
@@ -221,39 +226,55 @@ export class HomepageDashboard {
   private static calculateUserStatistics(userData: any[]): UserStatistics {
     const now = new Date();
     const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    
+
     const totalUsers = userData.length;
-    const activeUsers = userData.filter(u => u.estado_usu === 'ACTIVO').length;
-    const newUsersThisMonth = userData.filter(u => 
-      new Date(u.fec_cre_usu) >= thisMonth
+    const activeUsers = userData.filter(
+      (u) => u.estado_usu === "ACTIVO"
+    ).length;
+    const newUsersThisMonth = userData.filter(
+      (u) => new Date(u.fec_cre_usu) >= thisMonth
     ).length;
 
     // Count by roles
-    const usersByRole = userData.reduce((acc, user) => {
-      const role = user.id_tip_usu;
-      switch (role) {
-        case 1: acc.students++; break;
-        case 2: acc.teachers++; break;
-        case 3: acc.administrators++; break;
-        default: acc.externals++; break;
-      }
-      return acc;
-    }, { students: 0, teachers: 0, administrators: 0, externals: 0 });
+    const usersByRole = userData.reduce(
+      (acc, user) => {
+        const role = user.id_tip_usu;
+        switch (role) {
+          case 1:
+            acc.students++;
+            break;
+          case 2:
+            acc.teachers++;
+            break;
+          case 3:
+            acc.administrators++;
+            break;
+          default:
+            acc.externals++;
+            break;
+        }
+        return acc;
+      },
+      { students: 0, teachers: 0, administrators: 0, externals: 0 }
+    );
 
     // Generate registration trend (last 6 months)
     const registrationTrend = [];
     for (let i = 5; i >= 0; i--) {
       const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
-      
-      const monthCount = userData.filter(u => {
+
+      const monthCount = userData.filter((u) => {
         const createdDate = new Date(u.fec_cre_usu);
         return createdDate >= monthStart && createdDate <= monthEnd;
       }).length;
 
       registrationTrend.push({
-        month: monthStart.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' }),
-        count: monthCount
+        month: monthStart.toLocaleDateString("es-ES", {
+          month: "short",
+          year: "numeric",
+        }),
+        count: monthCount,
       });
     }
 
@@ -262,7 +283,7 @@ export class HomepageDashboard {
       activeUsers,
       newUsersThisMonth,
       usersByRole,
-      registrationTrend
+      registrationTrend,
     };
   }
 
@@ -276,50 +297,56 @@ export class HomepageDashboard {
 
     const totalEvents = eventData.length;
     const totalCourses = courseData.length;
-    const activeEvents = eventData.filter(e => e.estado === 'ACTIVO').length;
-    const activeCourses = courseData.filter(c => c.estado === 'ACTIVO').length;
-    
+    const activeEvents = eventData.filter((e) => e.estado === "ACTIVO").length;
+    const activeCourses = courseData.filter(
+      (c) => c.estado === "ACTIVO"
+    ).length;
+
     const upcomingActivities = [
-      ...eventData.filter(e => new Date(e.fec_ini_eve) > now),
-      ...courseData.filter(c => new Date(c.fec_ini_cur) > now)
+      ...eventData.filter((e) => new Date(e.fec_ini_eve) > now),
+      ...courseData.filter((c) => new Date(c.fec_ini_cur) > now),
     ].length;
 
     const completedActivitiesThisMonth = [
-      ...eventData.filter(e => 
-        e.estado === 'COMPLETADO' && 
-        new Date(e.fec_fin_eve) >= thisMonth
+      ...eventData.filter(
+        (e) => e.estado === "COMPLETADO" && new Date(e.fec_fin_eve) >= thisMonth
       ),
-      ...courseData.filter(c => 
-        c.estado === 'COMPLETADO' && 
-        new Date(c.fec_fin_cur) >= thisMonth
-      )
+      ...courseData.filter(
+        (c) => c.estado === "COMPLETADO" && new Date(c.fec_fin_cur) >= thisMonth
+      ),
     ].length;
 
     const totalInscriptions = inscriptionData.length;
-    const pendingInscriptions = inscriptionData.filter(i => 
-      i.estado_pago === 'PENDIENTE' || i.estado_pago_cur === 'PENDIENTE'
+    const pendingInscriptions = inscriptionData.filter(
+      (i) => i.estado_pago === "PENDIENTE" || i.estado_pago_cur === "PENDIENTE"
     ).length;
 
     // Calculate capacity utilization
-    const activitiesWithCapacity = [...eventData, ...courseData].filter(a => 
-      (a.capacidad_max_eve || a.capacidad_max_cur) > 0
+    const activitiesWithCapacity = [...eventData, ...courseData].filter(
+      (a) => (a.capacidad_max_eve || a.capacidad_max_cur) > 0
     );
-    
-    const averageCapacityUtilization = activitiesWithCapacity.length > 0 
-      ? activitiesWithCapacity.reduce((acc, activity) => {
-          const capacity = activity.capacidad_max_eve || activity.capacidad_max_cur;
-          const inscriptions = inscriptionData.filter(i => 
-            i.id_eve === activity.id_eve || i.id_cur === activity.id_cur
-          ).length;
-          return acc + (inscriptions / capacity) * 100;
-        }, 0) / activitiesWithCapacity.length
-      : 0;
+
+    const averageCapacityUtilization =
+      activitiesWithCapacity.length > 0
+        ? activitiesWithCapacity.reduce((acc, activity) => {
+            const capacity =
+              activity.capacidad_max_eve || activity.capacidad_max_cur;
+            const inscriptions = inscriptionData.filter(
+              (i) =>
+                i.id_eve === activity.id_eve || i.id_cur === activity.id_cur
+            ).length;
+            return acc + (inscriptions / capacity) * 100;
+          }, 0) / activitiesWithCapacity.length
+        : 0;
 
     // Generate popular categories
     const categoryCounts = new Map();
-    [...eventData, ...courseData].forEach(activity => {
-      const categoryName = activity.categoria?.nom_cat || 'Sin categoría';
-      categoryCounts.set(categoryName, (categoryCounts.get(categoryName) || 0) + 1);
+    [...eventData, ...courseData].forEach((activity) => {
+      const categoryName = activity.categoria?.nom_cat || "Sin categoría";
+      categoryCounts.set(
+        categoryName,
+        (categoryCounts.get(categoryName) || 0) + 1
+      );
     });
 
     const popularCategories = Array.from(categoryCounts.entries())
@@ -337,7 +364,7 @@ export class HomepageDashboard {
       totalInscriptions,
       pendingInscriptions,
       averageCapacityUtilization,
-      popularCategories
+      popularCategories,
     };
   }
 
@@ -350,40 +377,48 @@ export class HomepageDashboard {
     const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     // Calculate total revenue from approved payments
-    const approvedPayments = paymentData.filter(p => 
-      p.estado_pago === 'APROBADO' || p.estado_pago_cur === 'APROBADO'
+    const approvedPayments = paymentData.filter(
+      (p) => p.estado_pago === "APROBADO" || p.estado_pago_cur === "APROBADO"
     );
-    
-    const totalRevenue = approvedPayments.reduce((sum, payment) => 
-      sum + (payment.precio || 0), 0
+
+    const totalRevenue = approvedPayments.reduce(
+      (sum, payment) => sum + (payment.precio || 0),
+      0
     );
 
     const revenueThisMonth = approvedPayments
-      .filter(p => new Date(p.fec_ins || p.fec_ins_cur) >= thisMonth)
+      .filter((p) => new Date(p.fec_ins || p.fec_ins_cur) >= thisMonth)
       .reduce((sum, payment) => sum + (payment.precio || 0), 0);
 
     const pendingPayments = paymentData
-      .filter(p => p.estado_pago === 'PENDIENTE' || p.estado_pago_cur === 'PENDIENTE')
+      .filter(
+        (p) =>
+          p.estado_pago === "PENDIENTE" || p.estado_pago_cur === "PENDIENTE"
+      )
       .reduce((sum, payment) => sum + (payment.precio || 0), 0);
 
     // Calculate average activity price
-    const activitiesWithPrice = [...eventData, ...courseData].filter(a => 
-      !a.es_gratuito && (a.precio || 0) > 0
+    const activitiesWithPrice = [...eventData, ...courseData].filter(
+      (a) => !a.es_gratuito && (a.precio || 0) > 0
     );
-    
-    const averageActivityPrice = activitiesWithPrice.length > 0
-      ? activitiesWithPrice.reduce((sum, a) => sum + (a.precio || 0), 0) / activitiesWithPrice.length
-      : 0;
+
+    const averageActivityPrice =
+      activitiesWithPrice.length > 0
+        ? activitiesWithPrice.reduce((sum, a) => sum + (a.precio || 0), 0) /
+          activitiesWithPrice.length
+        : 0;
 
     // Revenue by category
     const categoryRevenue = new Map();
-    approvedPayments.forEach(payment => {
-      const activity = eventData.find(e => e.id_eve === payment.id_eve) || 
-                      courseData.find(c => c.id_cur === payment.id_cur);
-      
+    approvedPayments.forEach((payment) => {
+      const activity =
+        eventData.find((e) => e.id_eve === payment.id_eve) ||
+        courseData.find((c) => c.id_cur === payment.id_cur);
+
       if (activity) {
-        const categoryName = activity.categoria?.nom_cat || 'Sin categoría';
-        categoryRevenue.set(categoryName, 
+        const categoryName = activity.categoria?.nom_cat || "Sin categoría";
+        categoryRevenue.set(
+          categoryName,
           (categoryRevenue.get(categoryName) || 0) + (payment.precio || 0)
         );
       }
@@ -399,17 +434,20 @@ export class HomepageDashboard {
     for (let i = 5; i >= 0; i--) {
       const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
-      
+
       const monthRevenue = approvedPayments
-        .filter(p => {
+        .filter((p) => {
           const paymentDate = new Date(p.fec_ins || p.fec_ins_cur);
           return paymentDate >= monthStart && paymentDate <= monthEnd;
         })
         .reduce((sum, p) => sum + (p.precio || 0), 0);
 
       monthlyRevenueTrend.push({
-        month: monthStart.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' }),
-        amount: monthRevenue
+        month: monthStart.toLocaleDateString("es-ES", {
+          month: "short",
+          year: "numeric",
+        }),
+        amount: monthRevenue,
       });
     }
 
@@ -419,7 +457,7 @@ export class HomepageDashboard {
       pendingPayments,
       averageActivityPrice,
       revenueByCategory,
-      monthlyRevenueTrend
+      monthlyRevenueTrend,
     };
   }
 
@@ -431,24 +469,28 @@ export class HomepageDashboard {
     const recentActivities: RecentActivity[] = [];
 
     // Recent inscriptions
-    inscriptionData
-      .slice(-10)
-      .forEach(inscription => {
-        const user = userData.find(u => u.id_usu === inscription.id_usu);
-        
-        recentActivities.push({
-          id: `inscription-${inscription.id_ins || inscription.id_ins_cur}`,
-          type: 'INSCRIPTION',
-          title: 'Nueva inscripción',
-          description: `${user?.nombre_completo_usu || 'Usuario'} se inscribió en una actividad`,
-          userId: inscription.id_usu?.toString(),
-          userName: user?.nombre_completo_usu,
-          activityId: inscription.id_eve?.toString() || inscription.id_cur?.toString(),
-          timestamp: new Date(inscription.fec_ins || inscription.fec_ins_cur),
-          status: inscription.estado_pago === 'APROBADO' || inscription.estado_pago_cur === 'APROBADO' 
-            ? 'SUCCESS' : 'PENDING'
-        });
+    inscriptionData.slice(-10).forEach((inscription) => {
+      const user = userData.find((u) => u.id_usu === inscription.id_usu);
+
+      recentActivities.push({
+        id: `inscription-${inscription.id_ins || inscription.id_ins_cur}`,
+        type: "INSCRIPTION",
+        title: "Nueva inscripción",
+        description: `${
+          user?.nombre_completo_usu || "Usuario"
+        } se inscribió en una actividad`,
+        userId: inscription.id_usu?.toString(),
+        userName: user?.nombre_completo_usu,
+        activityId:
+          inscription.id_eve?.toString() || inscription.id_cur?.toString(),
+        timestamp: new Date(inscription.fec_ins || inscription.fec_ins_cur),
+        status:
+          inscription.estado_pago === "APROBADO" ||
+          inscription.estado_pago_cur === "APROBADO"
+            ? "SUCCESS"
+            : "PENDING",
       });
+    });
 
     return recentActivities
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
@@ -464,37 +506,37 @@ export class HomepageDashboard {
 
     // Upcoming events
     eventData
-      .filter(e => new Date(e.fec_ini_eve) > now && e.estado === 'ACTIVO')
-      .forEach(event => {
+      .filter((e) => new Date(e.fec_ini_eve) > now && e.estado === "ACTIVO")
+      .forEach((event) => {
         upcoming.push({
           id: event.id_eve.toString(),
-          type: 'EVENT' as const,
+          type: "EVENT" as const,
           title: event.nom_eve,
-          category: event.categoria?.nom_cat || 'Sin categoría',
+          category: event.categoria?.nom_cat || "Sin categoría",
           startDate: new Date(event.fec_ini_eve),
           endDate: new Date(event.fec_fin_eve),
-          isActive: event.estado === 'ACTIVO',
+          isActive: event.estado === "ACTIVO",
           inscriptionsCount: 0, // Would need inscription count
           capacity: event.capacidad_max_eve || 0,
-          utilizationPercentage: 0
+          utilizationPercentage: 0,
         });
       });
 
     // Upcoming courses
     courseData
-      .filter(c => new Date(c.fec_ini_cur) > now && c.estado === 'ACTIVO')
-      .forEach(course => {
+      .filter((c) => new Date(c.fec_ini_cur) > now && c.estado === "ACTIVO")
+      .forEach((course) => {
         upcoming.push({
           id: course.id_cur.toString(),
-          type: 'COURSE' as const,
+          type: "COURSE" as const,
           title: course.nom_cur,
-          category: course.categoria?.nom_cat || 'Sin categoría',
+          category: course.categoria?.nom_cat || "Sin categoría",
           startDate: new Date(course.fec_ini_cur),
           endDate: new Date(course.fec_fin_cur),
-          isActive: course.estado === 'ACTIVO',
+          isActive: course.estado === "ACTIVO",
           inscriptionsCount: 0, // Would need inscription count
           capacity: course.capacidad_max_cur || 0,
-          utilizationPercentage: 0
+          utilizationPercentage: 0,
         });
       });
 
@@ -511,40 +553,44 @@ export class HomepageDashboard {
     const activities: ActivitySummary[] = [];
 
     // Process events
-    eventData.forEach(event => {
-      const inscriptionsCount = inscriptionData.filter(i => i.id_eve === event.id_eve).length;
+    eventData.forEach((event) => {
+      const inscriptionsCount = inscriptionData.filter(
+        (i) => i.id_eve === event.id_eve
+      ).length;
       const capacity = event.capacidad_max_eve || 1;
-      
+
       activities.push({
         id: event.id_eve.toString(),
-        type: 'EVENT' as const,
+        type: "EVENT" as const,
         title: event.nom_eve,
-        category: event.categoria?.nom_cat || 'Sin categoría',
+        category: event.categoria?.nom_cat || "Sin categoría",
         startDate: new Date(event.fec_ini_eve),
         endDate: new Date(event.fec_fin_eve),
-        isActive: event.estado === 'ACTIVO',
+        isActive: event.estado === "ACTIVO",
         inscriptionsCount,
         capacity,
-        utilizationPercentage: (inscriptionsCount / capacity) * 100
+        utilizationPercentage: (inscriptionsCount / capacity) * 100,
       });
     });
 
     // Process courses
-    courseData.forEach(course => {
-      const inscriptionsCount = inscriptionData.filter(i => i.id_cur === course.id_cur).length;
+    courseData.forEach((course) => {
+      const inscriptionsCount = inscriptionData.filter(
+        (i) => i.id_cur === course.id_cur
+      ).length;
       const capacity = course.capacidad_max_cur || 1;
-      
+
       activities.push({
         id: course.id_cur.toString(),
-        type: 'COURSE' as const,
+        type: "COURSE" as const,
         title: course.nom_cur,
-        category: course.categoria?.nom_cat || 'Sin categoría',
+        category: course.categoria?.nom_cat || "Sin categoría",
         startDate: new Date(course.fec_ini_cur),
         endDate: new Date(course.fec_fin_cur),
-        isActive: course.estado === 'ACTIVO',
+        isActive: course.estado === "ACTIVO",
         inscriptionsCount,
         capacity,
-        utilizationPercentage: (inscriptionsCount / capacity) * 100
+        utilizationPercentage: (inscriptionsCount / capacity) * 100,
       });
     });
 
@@ -646,11 +692,17 @@ export class HomepageDashboard {
   }
 
   public hasCriticalAlerts(): boolean {
-    return this.data.systemAlerts.some(alert => alert.priority === 'CRITICAL');
+    return this.data.systemAlerts.some(
+      (alert) => alert.priority === "CRITICAL"
+    );
   }
 
-  public getAlertsByPriority(priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'): SystemAlerts[] {
-    return this.data.systemAlerts.filter(alert => alert.priority === priority);
+  public getAlertsByPriority(
+    priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+  ): SystemAlerts[] {
+    return this.data.systemAlerts.filter(
+      (alert) => alert.priority === priority
+    );
   }
 
   // Actions
@@ -664,23 +716,25 @@ export class HomepageDashboard {
       recentActivities: recentActivities.slice(0, 20),
       upcomingActivities: upcomingActivities.slice(0, 10),
       popularActivities: popularActivities.slice(0, 10),
-      generatedAt: new Date()
+      generatedAt: new Date(),
     };
 
     return new HomepageDashboard(updatedData);
   }
 
-  public addSystemAlert(alert: Omit<SystemAlerts, 'createdAt'>): HomepageDashboard {
+  public addSystemAlert(
+    alert: Omit<SystemAlerts, "createdAt">
+  ): HomepageDashboard {
     const newAlert: SystemAlerts = {
       ...alert,
-      createdAt: new Date()
+      createdAt: new Date(),
     };
 
     const updatedAlerts = [newAlert, ...this.data.systemAlerts].slice(0, 50);
 
     const updatedData = {
       ...this.data,
-      systemAlerts: updatedAlerts
+      systemAlerts: updatedAlerts,
     };
 
     return new HomepageDashboard(updatedData);
@@ -688,24 +742,26 @@ export class HomepageDashboard {
 
   public clearAlert(alertTitle: string): HomepageDashboard {
     const updatedAlerts = this.data.systemAlerts.filter(
-      alert => alert.title !== alertTitle
+      (alert) => alert.title !== alertTitle
     );
 
     const updatedData = {
       ...this.data,
-      systemAlerts: updatedAlerts
+      systemAlerts: updatedAlerts,
     };
 
     return new HomepageDashboard(updatedData);
   }
 
-  public updatePerformanceMetrics(metrics: Partial<typeof this.data.performanceMetrics>): HomepageDashboard {
+  public updatePerformanceMetrics(
+    metrics: Partial<typeof this.data.performanceMetrics>
+  ): HomepageDashboard {
     const updatedData = {
       ...this.data,
       performanceMetrics: {
         ...this.data.performanceMetrics,
-        ...metrics
-      }
+        ...metrics,
+      },
     };
 
     return new HomepageDashboard(updatedData);
@@ -714,13 +770,13 @@ export class HomepageDashboard {
   public refresh(refreshInterval?: number): HomepageDashboard {
     const now = new Date();
     const interval = refreshInterval || this.data.refreshInterval;
-    
+
     const updatedData = {
       ...this.data,
       refreshInterval: interval,
       nextRefreshAt: new Date(now.getTime() + interval * 60000),
       cacheExpiry: new Date(now.getTime() + interval * 60000),
-      generatedAt: now
+      generatedAt: now,
     };
 
     return new HomepageDashboard(updatedData);
@@ -729,24 +785,24 @@ export class HomepageDashboard {
   // Analysis methods
   public getOverallHealthScore(): number {
     let score = 100;
-    
+
     // Performance metrics impact
     const perfMetrics = this.data.performanceMetrics;
-    if (perfMetrics.databaseHealth === 'POOR') score -= 20;
-    else if (perfMetrics.databaseHealth === 'FAIR') score -= 10;
-    else if (perfMetrics.databaseHealth === 'GOOD') score -= 5;
-    
+    if (perfMetrics.databaseHealth === "POOR") score -= 20;
+    else if (perfMetrics.databaseHealth === "FAIR") score -= 10;
+    else if (perfMetrics.databaseHealth === "GOOD") score -= 5;
+
     if (perfMetrics.systemUptime < 99) score -= 15;
     else if (perfMetrics.systemUptime < 99.5) score -= 10;
-    
+
     if (perfMetrics.avgResponseTime > 2000) score -= 15;
     else if (perfMetrics.avgResponseTime > 1000) score -= 10;
     else if (perfMetrics.avgResponseTime > 500) score -= 5;
 
     // System alerts impact
-    const criticalAlerts = this.getAlertsByPriority('CRITICAL').length;
-    const highAlerts = this.getAlertsByPriority('HIGH').length;
-    
+    const criticalAlerts = this.getAlertsByPriority("CRITICAL").length;
+    const highAlerts = this.getAlertsByPriority("HIGH").length;
+
     score -= criticalAlerts * 10;
     score -= highAlerts * 5;
 
@@ -757,14 +813,16 @@ export class HomepageDashboard {
     return {
       totalUsers: this.data.userStats.totalUsers,
       activeUsers: this.data.userStats.activeUsers,
-      totalActivities: this.data.activityStats.totalEvents + this.data.activityStats.totalCourses,
+      totalActivities:
+        this.data.activityStats.totalEvents +
+        this.data.activityStats.totalCourses,
       totalRevenue: this.data.financialStats.totalRevenue,
       pendingInscriptions: this.data.activityStats.pendingInscriptions,
       systemHealth: this.getOverallHealthScore(),
       alertsCount: this.data.systemAlerts.length,
-      criticalAlertsCount: this.getAlertsByPriority('CRITICAL').length,
+      criticalAlertsCount: this.getAlertsByPriority("CRITICAL").length,
       lastUpdate: this.data.generatedAt,
-      needsRefresh: this.needsRefresh()
+      needsRefresh: this.needsRefresh(),
     };
   }
 }

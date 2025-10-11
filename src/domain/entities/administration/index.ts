@@ -5,28 +5,28 @@
  */
 
 // Event Administration Entity
-export { EventAdministration } from './EventAdministration';
-export type { 
+export { EventAdministration } from "./EventAdministration";
+export type {
   EventAdministrationData,
   EventStatistics,
-  InscriptionSummary
-} from './EventAdministration';
+  InscriptionSummary,
+} from "./EventAdministration";
 
 // Course Administration Entity
-export { CourseAdministration } from './CourseAdministration';
-export type { 
+export { CourseAdministration } from "./CourseAdministration";
+export type {
   CourseAdministrationData,
   CourseStatistics,
-  CourseInscriptionSummary
-} from './CourseAdministration';
+  CourseInscriptionSummary,
+} from "./CourseAdministration";
 
 // Participation Registration Entity
-export { ParticipationRegistration } from './ParticipationRegistration';
-export type { 
+export { ParticipationRegistration } from "./ParticipationRegistration";
+export type {
   ParticipationData,
   ParticipationType,
-  ParticipationStatus
-} from './ParticipationRegistration';
+  ParticipationStatus,
+} from "./ParticipationRegistration";
 
 // Common Administration Types
 export interface AdministrationSummary {
@@ -137,7 +137,13 @@ export interface CapacityAlert {
 }
 
 // Activity Status Types
-export type ActivityStatus = "PLANNING" | "OPEN" | "CLOSED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+export type ActivityStatus =
+  | "PLANNING"
+  | "OPEN"
+  | "CLOSED"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "CANCELLED";
 
 export interface ActivityStatusChange {
   activityId: string;
@@ -183,7 +189,12 @@ export interface ReportTemplate {
 export interface AdministrationAuditLog {
   id: string;
   action: "CREATE" | "UPDATE" | "DELETE" | "APPROVE" | "REJECT" | "CANCEL";
-  entityType: "EVENT" | "COURSE" | "INSCRIPTION" | "PARTICIPATION" | "CERTIFICATE";
+  entityType:
+    | "EVENT"
+    | "COURSE"
+    | "INSCRIPTION"
+    | "PARTICIPATION"
+    | "CERTIFICATE";
   entityId: string;
   userId: string;
   userName: string;
@@ -196,7 +207,11 @@ export interface AdministrationAuditLog {
 // Notification Types
 export interface AdministrationNotification {
   id: string;
-  type: "INSCRIPTION_PENDING" | "PAYMENT_RECEIVED" | "CAPACITY_ALERT" | "DEADLINE_APPROACHING";
+  type:
+    | "INSCRIPTION_PENDING"
+    | "PAYMENT_RECEIVED"
+    | "CAPACITY_ALERT"
+    | "DEADLINE_APPROACHING";
   title: string;
   message: string;
   priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
@@ -211,10 +226,10 @@ export interface AdministrationNotification {
 // Inscription Approval Types
 export interface InscriptionApprovalRequest {
   userId: string;
-  paymentMethod?: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'BECA';
+  paymentMethod?: "EFECTIVO" | "TARJETA" | "TRANSFERENCIA" | "BECA";
   paymentAmount?: number;
   paymentReference?: string;
-  scholarshipType?: 'COMPLETA' | 'PARCIAL';
+  scholarshipType?: "COMPLETA" | "PARCIAL";
   scholarshipPercentage?: number;
   scholarshipReason?: string;
   additionalNotes?: string;

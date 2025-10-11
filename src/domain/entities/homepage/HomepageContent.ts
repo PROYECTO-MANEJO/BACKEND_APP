@@ -6,7 +6,7 @@
 
 export interface ImageSection {
   id: string;
-  type: 'hero' | 'section1' | 'section2' | 'section3' | 'section4';
+  type: "hero" | "section1" | "section2" | "section3" | "section4";
   buffer?: Buffer;
   mimeType?: string;
   uploadedAt?: Date;
@@ -24,27 +24,27 @@ export interface ContentSection {
 
 export interface HomepageContentData {
   id: string;
-  
+
   // Hero Section
   heroTitle: string;
   heroSubtitle: string;
   heroDescription: string;
-  
+
   // What We Offer Section
   offerTitle: string;
   offerSubtitle: string;
-  
+
   // Content Sections
   sections: ContentSection[];
-  
+
   // Footer Content
   footerText1: string;
   footerText2: string;
   footerText3: string;
-  
+
   // Images
   images: Record<string, ImageSection>;
-  
+
   // Metadata
   lastEditorId?: string;
   lastEditorName?: string;
@@ -67,54 +67,59 @@ export class HomepageContent {
     editorName?: string
   ): HomepageContent {
     const now = new Date();
-    
+
     const contentData: HomepageContentData = {
       id: `homepage-${Date.now()}`,
       heroTitle: heroTitle.trim(),
       heroSubtitle: heroSubtitle.trim(),
       heroDescription: heroDescription.trim(),
-      offerTitle: '¿Qué Ofrecemos?',
-      offerSubtitle: 'Descubre todas las oportunidades de crecimiento académico y profesional',
+      offerTitle: "¿Qué Ofrecemos?",
+      offerSubtitle:
+        "Descubre todas las oportunidades de crecimiento académico y profesional",
       sections: [
         {
-          id: 'section-1',
-          title: 'Cursos Especializados',
-          description: 'Amplia variedad de cursos técnicos y académicos para tu desarrollo profesional',
+          id: "section-1",
+          title: "Cursos Especializados",
+          description:
+            "Amplia variedad de cursos técnicos y académicos para tu desarrollo profesional",
           order: 1,
-          isVisible: true
+          isVisible: true,
         },
         {
-          id: 'section-2', 
-          title: 'Eventos Académicos',
-          description: 'Conferencias, seminarios y talleres con expertos de la industria',
+          id: "section-2",
+          title: "Eventos Académicos",
+          description:
+            "Conferencias, seminarios y talleres con expertos de la industria",
           order: 2,
-          isVisible: true
+          isVisible: true,
         },
         {
-          id: 'section-3',
-          title: 'Certificaciones Oficiales', 
-          description: 'Certificados oficiales reconocidos por la industria',
+          id: "section-3",
+          title: "Certificaciones Oficiales",
+          description: "Certificados oficiales reconocidos por la industria",
           order: 3,
-          isVisible: true
+          isVisible: true,
         },
         {
-          id: 'section-4',
-          title: 'Comunidad Académica',
-          description: 'Ambiente colaborativo de excelencia educativa e innovación',
+          id: "section-4",
+          title: "Comunidad Académica",
+          description:
+            "Ambiente colaborativo de excelencia educativa e innovación",
           order: 4,
-          isVisible: true
-        }
+          isVisible: true,
+        },
       ],
-      footerText1: 'Facultad de Ingeniería en Sistemas, Electrónica e Industrial',
-      footerText2: 'Universidad Técnica de Ambato - Campus Huachi',
-      footerText3: '© 2024 FISEI-UTA. Todos los derechos reservados.',
+      footerText1:
+        "Facultad de Ingeniería en Sistemas, Electrónica e Industrial",
+      footerText2: "Universidad Técnica de Ambato - Campus Huachi",
+      footerText3: "© 2024 FISEI-UTA. Todos los derechos reservados.",
       images: {},
       lastEditorId: editorId,
       lastEditorName: editorName,
       lastUpdateDate: now,
       createdAt: now,
       version: 1,
-      isPublished: true
+      isPublished: true,
     };
 
     return new HomepageContent(contentData);
@@ -122,75 +127,83 @@ export class HomepageContent {
 
   public static fromPrismaData(homepageData: any): HomepageContent {
     const contentData: HomepageContentData = {
-      id: homepageData.id_pag?.toString() || 'homepage-1',
-      heroTitle: homepageData.titulo_hero || '',
-      heroSubtitle: homepageData.subtitulo_hero || '',
-      heroDescription: homepageData.descripcion_hero || '',
-      offerTitle: homepageData.titulo_ofrecemos || '¿Qué Ofrecemos?',
-      offerSubtitle: homepageData.subtitulo_ofrecemos || '',
+      id: homepageData.id_pag?.toString() || "homepage-1",
+      heroTitle: homepageData.titulo_hero || "",
+      heroSubtitle: homepageData.subtitulo_hero || "",
+      heroDescription: homepageData.descripcion_hero || "",
+      offerTitle: homepageData.titulo_ofrecemos || "¿Qué Ofrecemos?",
+      offerSubtitle: homepageData.subtitulo_ofrecemos || "",
       sections: [
         {
-          id: 'section-1',
-          title: homepageData.titulo_seccion1 || '',
-          description: homepageData.descripcion_seccion1 || '',
+          id: "section-1",
+          title: homepageData.titulo_seccion1 || "",
+          description: homepageData.descripcion_seccion1 || "",
           order: 1,
-          isVisible: true
+          isVisible: true,
         },
         {
-          id: 'section-2',
-          title: homepageData.titulo_seccion2 || '',
-          description: homepageData.descripcion_seccion2 || '',
+          id: "section-2",
+          title: homepageData.titulo_seccion2 || "",
+          description: homepageData.descripcion_seccion2 || "",
           order: 2,
-          isVisible: true
+          isVisible: true,
         },
         {
-          id: 'section-3',
-          title: homepageData.titulo_seccion3 || '',
-          description: homepageData.descripcion_seccion3 || '',
+          id: "section-3",
+          title: homepageData.titulo_seccion3 || "",
+          description: homepageData.descripcion_seccion3 || "",
           order: 3,
-          isVisible: true
+          isVisible: true,
         },
         {
-          id: 'section-4',
-          title: homepageData.titulo_seccion4 || '',
-          description: homepageData.descripcion_seccion4 || '',
+          id: "section-4",
+          title: homepageData.titulo_seccion4 || "",
+          description: homepageData.descripcion_seccion4 || "",
           order: 4,
-          isVisible: true
-        }
+          isVisible: true,
+        },
       ],
-      footerText1: homepageData.texto_footer1 || '',
-      footerText2: homepageData.texto_footer2 || '',
-      footerText3: homepageData.texto_footer3 || '',
+      footerText1: homepageData.texto_footer1 || "",
+      footerText2: homepageData.texto_footer2 || "",
+      footerText3: homepageData.texto_footer3 || "",
       images: HomepageContent.mapImagesFromPrisma(homepageData),
       lastEditorId: homepageData.id_usuario_ultima_edicion?.toString(),
       lastEditorName: homepageData.ultimoEditor?.nombre_completo_usu,
       lastUpdateDate: homepageData.fecha_ultima_actualizacion || new Date(),
       createdAt: homepageData.fecha_creacion || new Date(),
       version: homepageData.version || 1,
-      isPublished: homepageData.publicado !== false
+      isPublished: homepageData.publicado !== false,
     };
 
     return new HomepageContent(contentData);
   }
 
-  private static mapImagesFromPrisma(homepageData: any): Record<string, ImageSection> {
+  private static mapImagesFromPrisma(
+    homepageData: any
+  ): Record<string, ImageSection> {
     const images: Record<string, ImageSection> = {};
-    
-    const imageTypes = ['hero', 'seccion1', 'seccion2', 'seccion3', 'seccion4'];
-    
-    imageTypes.forEach(type => {
+
+    const imageTypes = ["hero", "seccion1", "seccion2", "seccion3", "seccion4"];
+
+    imageTypes.forEach((type) => {
       const buffer = homepageData[`imagen_${type}`];
       if (buffer) {
         images[type] = {
           id: `image-${type}`,
-          type: type === 'seccion1' ? 'section1' : 
-                type === 'seccion2' ? 'section2' :
-                type === 'seccion3' ? 'section3' :
-                type === 'seccion4' ? 'section4' : 'hero',
+          type:
+            type === "seccion1"
+              ? "section1"
+              : type === "seccion2"
+              ? "section2"
+              : type === "seccion3"
+              ? "section3"
+              : type === "seccion4"
+              ? "section4"
+              : "hero",
           buffer,
           mimeType: HomepageContent.detectMimeType(buffer),
           uploadedAt: homepageData.fecha_ultima_actualizacion,
-          uploadedBy: homepageData.ultimoEditor?.nombre_completo_usu
+          uploadedBy: homepageData.ultimoEditor?.nombre_completo_usu,
         };
       }
     });
@@ -199,20 +212,30 @@ export class HomepageContent {
   }
 
   private static detectMimeType(buffer: Buffer): string {
-    if (!buffer || buffer.length < 4) return 'image/jpeg';
-    
+    if (!buffer || buffer.length < 4) return "image/jpeg";
+
     // Detect format by magic numbers
-    if (buffer[0] === 0xFF && buffer[1] === 0xD8) {
-      return 'image/jpeg';
-    } else if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
-      return 'image/png';
+    if (buffer[0] === 0xff && buffer[1] === 0xd8) {
+      return "image/jpeg";
+    } else if (
+      buffer[0] === 0x89 &&
+      buffer[1] === 0x50 &&
+      buffer[2] === 0x4e &&
+      buffer[3] === 0x47
+    ) {
+      return "image/png";
     } else if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46) {
-      return 'image/gif';
-    } else if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46) {
-      return 'image/webp';
+      return "image/gif";
+    } else if (
+      buffer[0] === 0x52 &&
+      buffer[1] === 0x49 &&
+      buffer[2] === 0x46 &&
+      buffer[3] === 0x46
+    ) {
+      return "image/webp";
     }
-    
-    return 'image/jpeg';
+
+    return "image/jpeg";
   }
 
   private validateData(): void {
@@ -240,17 +263,21 @@ export class HomepageContent {
       if (!section.title?.trim()) {
         throw new Error(`Section ${index + 1} title is required`);
       }
-      
+
       if (section.title.length > 100) {
-        throw new Error(`Section ${index + 1} title cannot exceed 100 characters`);
+        throw new Error(
+          `Section ${index + 1} title cannot exceed 100 characters`
+        );
       }
-      
+
       if (!section.description?.trim()) {
         throw new Error(`Section ${index + 1} description is required`);
       }
-      
+
       if (section.description.length > 2000) {
-        throw new Error(`Section ${index + 1} description cannot exceed 2000 characters`);
+        throw new Error(
+          `Section ${index + 1} description cannot exceed 2000 characters`
+        );
       }
     });
 
@@ -289,18 +316,18 @@ export class HomepageContent {
   }
 
   public getVisibleSections(): ContentSection[] {
-    return this.data.sections.filter(section => section.isVisible);
+    return this.data.sections.filter((section) => section.isVisible);
   }
 
   public getSectionById(sectionId: string): ContentSection | undefined {
-    return this.data.sections.find(section => section.id === sectionId);
+    return this.data.sections.find((section) => section.id === sectionId);
   }
 
   public getFooterTexts(): { text1: string; text2: string; text3: string } {
     return {
       text1: this.data.footerText1,
       text2: this.data.footerText2,
-      text3: this.data.footerText3
+      text3: this.data.footerText3,
     };
   }
 
@@ -315,7 +342,7 @@ export class HomepageContent {
   public getLastEditor(): { id?: string; name?: string } {
     return {
       id: this.data.lastEditorId,
-      name: this.data.lastEditorName
+      name: this.data.lastEditorName,
     };
   }
 
@@ -345,7 +372,7 @@ export class HomepageContent {
       this.data.heroTitle &&
       this.data.heroDescription &&
       this.data.sections.length > 0 &&
-      this.data.sections.every(s => s.title && s.description)
+      this.data.sections.every((s) => s.title && s.description)
     );
   }
 
@@ -355,9 +382,9 @@ export class HomepageContent {
 
   // Actions
   public updateHeroSection(
-    title: string, 
-    subtitle: string, 
-    description: string, 
+    title: string,
+    subtitle: string,
+    description: string,
     editorId?: string,
     editorName?: string
   ): HomepageContent {
@@ -369,15 +396,15 @@ export class HomepageContent {
       lastEditorId: editorId,
       lastEditorName: editorName,
       lastUpdateDate: new Date(),
-      version: this.data.version + 1
+      version: this.data.version + 1,
     };
 
     return new HomepageContent(updatedData);
   }
 
   public updateOfferSection(
-    title: string, 
-    subtitle: string, 
+    title: string,
+    subtitle: string,
     editorId?: string,
     editorName?: string
   ): HomepageContent {
@@ -388,7 +415,7 @@ export class HomepageContent {
       lastEditorId: editorId,
       lastEditorName: editorName,
       lastUpdateDate: new Date(),
-      version: this.data.version + 1
+      version: this.data.version + 1,
     };
 
     return new HomepageContent(updatedData);
@@ -401,7 +428,9 @@ export class HomepageContent {
     editorId?: string,
     editorName?: string
   ): HomepageContent {
-    const sectionIndex = this.data.sections.findIndex(s => s.id === sectionId);
+    const sectionIndex = this.data.sections.findIndex(
+      (s) => s.id === sectionId
+    );
     if (sectionIndex === -1) {
       throw new Error(`Section ${sectionId} not found`);
     }
@@ -417,7 +446,7 @@ export class HomepageContent {
       title: title.trim(),
       description: description.trim(),
       order: currentSection.order,
-      isVisible: currentSection.isVisible
+      isVisible: currentSection.isVisible,
     };
 
     const updatedData = {
@@ -426,7 +455,7 @@ export class HomepageContent {
       lastEditorId: editorId,
       lastEditorName: editorName,
       lastUpdateDate: new Date(),
-      version: this.data.version + 1
+      version: this.data.version + 1,
     };
 
     return new HomepageContent(updatedData);
@@ -447,7 +476,7 @@ export class HomepageContent {
       lastEditorId: editorId,
       lastEditorName: editorName,
       lastUpdateDate: new Date(),
-      version: this.data.version + 1
+      version: this.data.version + 1,
     };
 
     return new HomepageContent(updatedData);
@@ -464,11 +493,12 @@ export class HomepageContent {
       throw new Error("Image buffer is required");
     }
 
-    if (buffer.length > 5 * 1024 * 1024) { // 5MB limit
+    if (buffer.length > 5 * 1024 * 1024) {
+      // 5MB limit
       throw new Error("Image size cannot exceed 5MB");
     }
 
-    const validTypes = ['hero', 'section1', 'section2', 'section3', 'section4'];
+    const validTypes = ["hero", "section1", "section2", "section3", "section4"];
     if (!validTypes.includes(type)) {
       throw new Error(`Invalid image type: ${type}`);
     }
@@ -479,12 +509,12 @@ export class HomepageContent {
       buffer,
       mimeType,
       uploadedAt: new Date(),
-      uploadedBy: editorName
+      uploadedBy: editorName,
     };
 
     const updatedImages = {
       ...this.data.images,
-      [type]: imageSection
+      [type]: imageSection,
     };
 
     const updatedData = {
@@ -493,7 +523,7 @@ export class HomepageContent {
       lastEditorId: editorId,
       lastEditorName: editorName,
       lastUpdateDate: new Date(),
-      version: this.data.version + 1
+      version: this.data.version + 1,
     };
 
     return new HomepageContent(updatedData);
@@ -517,7 +547,7 @@ export class HomepageContent {
       lastEditorId: editorId,
       lastEditorName: editorName,
       lastUpdateDate: new Date(),
-      version: this.data.version + 1
+      version: this.data.version + 1,
     };
 
     return new HomepageContent(updatedData);
@@ -528,7 +558,9 @@ export class HomepageContent {
     editorId?: string,
     editorName?: string
   ): HomepageContent {
-    const sectionIndex = this.data.sections.findIndex(s => s.id === sectionId);
+    const sectionIndex = this.data.sections.findIndex(
+      (s) => s.id === sectionId
+    );
     if (sectionIndex === -1) {
       throw new Error(`Section ${sectionId} not found`);
     }
@@ -544,7 +576,7 @@ export class HomepageContent {
       title: currentSection.title,
       description: currentSection.description,
       order: currentSection.order,
-      isVisible: !currentSection.isVisible
+      isVisible: !currentSection.isVisible,
     };
 
     const updatedData = {
@@ -553,7 +585,7 @@ export class HomepageContent {
       lastEditorId: editorId,
       lastEditorName: editorName,
       lastUpdateDate: new Date(),
-      version: this.data.version + 1
+      version: this.data.version + 1,
     };
 
     return new HomepageContent(updatedData);
@@ -570,7 +602,7 @@ export class HomepageContent {
       lastEditorId: editorId,
       lastEditorName: editorName,
       lastUpdateDate: new Date(),
-      version: this.data.version + 1
+      version: this.data.version + 1,
     };
 
     return new HomepageContent(updatedData);
@@ -583,7 +615,7 @@ export class HomepageContent {
       lastEditorId: editorId,
       lastEditorName: editorName,
       lastUpdateDate: new Date(),
-      version: this.data.version + 1
+      version: this.data.version + 1,
     };
 
     return new HomepageContent(updatedData);
@@ -593,12 +625,16 @@ export class HomepageContent {
   public getContentStatistics() {
     return {
       totalSections: this.data.sections.length,
-      visibleSections: this.data.sections.filter(s => s.isVisible).length,
+      visibleSections: this.data.sections.filter((s) => s.isVisible).length,
       totalImages: Object.keys(this.data.images).length,
-      totalCharacters: this.data.heroDescription.length + 
-                      this.data.sections.reduce((sum, s) => sum + s.description.length, 0),
+      totalCharacters:
+        this.data.heroDescription.length +
+        this.data.sections.reduce((sum, s) => sum + s.description.length, 0),
       completionPercentage: this.calculateCompletionPercentage(),
-      lastUpdateDaysAgo: Math.floor((new Date().getTime() - this.data.lastUpdateDate.getTime()) / (1000 * 60 * 60 * 24))
+      lastUpdateDaysAgo: Math.floor(
+        (new Date().getTime() - this.data.lastUpdateDate.getTime()) /
+          (1000 * 60 * 60 * 24)
+      ),
     };
   }
 
@@ -613,7 +649,7 @@ export class HomepageContent {
     if (this.data.heroDescription) completedItems++;
 
     // Sections (title and description for each)
-    this.data.sections.forEach(section => {
+    this.data.sections.forEach((section) => {
       totalItems += 2;
       if (section.title) completedItems++;
       if (section.description) completedItems++;
@@ -627,7 +663,7 @@ export class HomepageContent {
 
     // Images (optional, 5 items)
     totalItems += 5;
-    Object.keys(this.data.images).forEach(key => {
+    Object.keys(this.data.images).forEach((key) => {
       if (this.data.images[key]?.buffer) completedItems++;
     });
 

@@ -9,13 +9,13 @@ import { CourseAdministration } from "../../../domain/entities/administration/Co
 
 export interface RejectInscriptionRequest {
   activityId: string;
-  activityType: 'EVENTO' | 'CURSO';
+  activityType: "EVENTO" | "CURSO";
   userId: string;
   rejectionReason: string;
   rejectedBy: string;
   refundRequired?: boolean;
   refundAmount?: number;
-  refundMethod?: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA';
+  refundMethod?: "EFECTIVO" | "TARJETA" | "TRANSFERENCIA";
 }
 
 export interface RejectInscriptionResponse {
@@ -44,18 +44,18 @@ export interface ICourseAdministrationRepository {
 
 export interface IRefundService {
   processRefund(
-    userId: string, 
-    amount: number, 
-    method: string, 
+    userId: string,
+    amount: number,
+    method: string,
     reference: string
   ): Promise<{ refundId: string; processed: boolean }>;
 }
 
 export interface INotificationService {
   sendInscriptionRejectionNotification(
-    userId: string, 
-    activityTitle: string, 
-    activityType: string, 
+    userId: string,
+    activityTitle: string,
+    activityType: string,
     reason: string,
     refundAmount?: number
   ): Promise<void>;
@@ -69,35 +69,44 @@ export class RejectInscriptionUseCase {
     private notificationService: INotificationService
   ) {}
 
-  public async execute(request: RejectInscriptionRequest): Promise<RejectInscriptionResponse> {
+  public async execute(
+    request: RejectInscriptionRequest
+  ): Promise<RejectInscriptionResponse> {
     try {
       // Validar entrada
       this.validateRequest(request);
 
       // Obtener la actividad según el tipo
-      const activity = await this.getActivity(request.activityId, request.activityType);
-      
+      const activity = await this.getActivity(
+        request.activityId,
+        request.activityType
+      );
+
       if (!activity) {
         return {
           success: false,
           message: `Activity not found with ID: ${request.activityId}`,
-          refundProcessed: false
+          refundProcessed: false,
         };
       }
 
       // Buscar inscripción del usuario
       let inscription;
       if (activity instanceof EventAdministration) {
-        inscription = activity.getInscriptions().find(ins => ins.participantEmail === request.userId);
+        inscription = activity
+          .getInscriptions()
+          .find((ins) => ins.participantEmail === request.userId);
       } else {
-        inscription = activity.getInscriptions().find(ins => ins.participantEmail === request.userId);
+        inscription = activity
+          .getInscriptions()
+          .find((ins) => ins.participantEmail === request.userId);
       }
 
       if (!inscription) {
         return {
           success: false,
           message: `No inscription found for user ${request.userId}`,
-          refundProcessed: false
+          refundProcessed: false,
         };
       }
 
@@ -105,7 +114,7 @@ export class RejectInscriptionUseCase {
         return {
           success: false,
           message: "Inscription is already rejected",
-          refundProcessed: false
+          refundProcessed: false,
         };
       }
 
@@ -115,25 +124,26 @@ export class RejectInscriptionUseCase {
       // Procesar reembolso si es necesario
       let refundProcessed = false;
       let refundAmount = 0;
-      
+
       if (request.refundRequired && inscription.paymentStatus === "APPROVED") {
         try {
-          const activityCost = updatedActivity instanceof EventAdministration 
-            ? updatedActivity.getEventCost() 
-            : updatedActivity.getCourseCost();
-          
+          const activityCost =
+            updatedActivity instanceof EventAdministration
+              ? updatedActivity.getEventCost()
+              : updatedActivity.getCourseCost();
+
           refundAmount = request.refundAmount || activityCost;
-          
+
           const refundResult = await this.refundService.processRefund(
             request.userId,
             refundAmount,
-            request.refundMethod || 'TRANSFERENCIA',
+            request.refundMethod || "TRANSFERENCIA",
             inscription.id
           );
-          
+
           refundProcessed = refundResult.processed;
         } catch (refundError) {
-          console.error('Failed to process refund:', refundError);
+          console.error("Failed to process refund:", refundError);
           // Continue with rejection even if refund fails
         }
       }
@@ -155,7 +165,7 @@ export class RejectInscriptionUseCase {
         );
       } catch (notificationError) {
         // Log error pero no fallar la operación principal
-        console.error('Failed to send notification:', notificationError);
+        console.error("Failed to send notification:", notificationError);
       }
 
       return {
@@ -164,16 +174,16 @@ export class RejectInscriptionUseCase {
         inscriptionId: inscription.id,
         refundProcessed,
         refundAmount: refundProcessed ? refundAmount : undefined,
-        activityInfo
+        activityInfo,
       };
-
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+
       return {
         success: false,
         message: `Error rejecting inscription: ${errorMessage}`,
-        refundProcessed: false
+        refundProcessed: false,
       };
     }
   }
@@ -199,7 +209,7 @@ export class RejectInscriptionUseCase {
       throw new Error("Rejection reason cannot exceed 500 characters");
     }
 
-    if (!['EVENTO', 'CURSO'].includes(request.activityType)) {
+    if (!["EVENTO", "CURSO"].includes(request.activityType)) {
       throw new Error("Activity type must be 'EVENTO' or 'CURSO'");
     }
 
@@ -207,17 +217,19 @@ export class RejectInscriptionUseCase {
       throw new Error("Refund amount cannot be negative");
     }
 
-    if (request.refundMethod && 
-        !['EFECTIVO', 'TARJETA', 'TRANSFERENCIA'].includes(request.refundMethod)) {
+    if (
+      request.refundMethod &&
+      !["EFECTIVO", "TARJETA", "TRANSFERENCIA"].includes(request.refundMethod)
+    ) {
       throw new Error("Invalid refund method");
     }
   }
 
   private async getActivity(
-    activityId: string, 
-    activityType: 'EVENTO' | 'CURSO'
+    activityId: string,
+    activityType: "EVENTO" | "CURSO"
   ): Promise<EventAdministration | CourseAdministration | null> {
-    if (activityType === 'EVENTO') {
+    if (activityType === "EVENTO") {
       return await this.eventRepo.findById(activityId);
     } else {
       return await this.courseRepo.findById(activityId);
@@ -225,26 +237,31 @@ export class RejectInscriptionUseCase {
   }
 
   private async saveActivity(
-    activity: EventAdministration | CourseAdministration, 
-    activityType: 'EVENTO' | 'CURSO'
+    activity: EventAdministration | CourseAdministration,
+    activityType: "EVENTO" | "CURSO"
   ): Promise<void> {
-    if (activityType === 'EVENTO') {
+    if (activityType === "EVENTO") {
       await this.eventRepo.update(activity as EventAdministration);
     } else {
       await this.courseRepo.update(activity as CourseAdministration);
     }
   }
 
-  private getActivityInfo(activity: EventAdministration | CourseAdministration) {
+  private getActivityInfo(
+    activity: EventAdministration | CourseAdministration
+  ) {
     const baseInfo = {
-      title: activity instanceof EventAdministration ? activity.getEventName() : activity.getCourseName(),
-      type: activity instanceof EventAdministration ? 'EVENTO' : 'CURSO',
-      currentCapacity: activity.getStatistics().totalInscriptions
+      title:
+        activity instanceof EventAdministration
+          ? activity.getEventName()
+          : activity.getCourseName(),
+      type: activity instanceof EventAdministration ? "EVENTO" : "CURSO",
+      currentCapacity: activity.getStatistics().totalInscriptions,
     };
 
     return {
       ...baseInfo,
-      waitingList: 0 // Could be implemented based on business needs
+      waitingList: 0, // Could be implemented based on business needs
     };
   }
 }
