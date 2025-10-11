@@ -12,6 +12,7 @@ import {
   ICategoryRepository,
   IEventUserRepository,
 } from "@domain/services/EventManagementService";
+import { ICourseRepository } from "@domain/repositories/ICourseRepository";
 
 // Repositories Implementations
 import { UserRepository } from "../database/repositories/UserRepository";
@@ -19,6 +20,7 @@ import { VerificationTokenRepository } from "../database/repositories/Verificati
 import { CareerRepository } from "../database/repositories/CareerRepository";
 import { EventRepository } from "../database/repositories/EventRepository";
 import { CategoryRepository } from "../database/repositories/CategoryRepository";
+import { CourseRepository } from "../repositories/CourseRepository";
 
 // External Services
 import { EmailService } from "../external/email/EmailService";
@@ -30,6 +32,7 @@ import { PasswordRecoveryService } from "@domain/services/PasswordRecoveryServic
 import { UserManagementService } from "@domain/services/UserManagementService";
 import { CareerManagementService } from "@domain/services/CareerManagementService";
 import { EventManagementService } from "@domain/services/EventManagementService";
+import { CourseManagementService } from "@domain/services/CourseManagementService";
 /**
  * Container de Inyección de Dependencias
  * Implementa DIP (Dependency Inversion Principle)
@@ -44,6 +47,7 @@ export class DIContainer {
   private _careerRepository: ICareerRepository;
   private _eventRepository: IEventRepository;
   private _categoryRepository: ICategoryRepository;
+  private _courseRepository: ICourseRepository;
   private _verificationTokenRepository: IVerificationTokenRepository;
   private _emailService: IEmailService;
 
@@ -54,6 +58,7 @@ export class DIContainer {
   private _userManagementService: UserManagementService;
   private _careerManagementService: CareerManagementService;
   private _eventManagementService: EventManagementService;
+  private _courseManagementService: CourseManagementService;
   private constructor() {
     // Initialize infrastructure
     this._prisma = new PrismaClient();
@@ -61,6 +66,7 @@ export class DIContainer {
     this._careerRepository = new CareerRepository(this._prisma);
     this._eventRepository = new EventRepository(this._prisma);
     this._categoryRepository = new CategoryRepository(this._prisma);
+    this._courseRepository = new CourseRepository(this._prisma);
     this._verificationTokenRepository = new VerificationTokenRepository(
       this._prisma
     );
@@ -110,6 +116,47 @@ export class DIContainer {
       this._eventRepository,
       this._categoryRepository, // Para validar categorías
       eventUserRepository // Adaptador para validar organizadores
+    );
+
+    // Adaptadores para CourseManagementService
+    const courseUserRepository = {
+      findById: (cedula: string) => this._userRepository.findByCedula(cedula),
+      exists: async (cedula: string) => {
+        const user = await this._userRepository.findByCedula(cedula);
+        return user !== null;
+      },
+      findByCareer: async (careerId: number) => {
+        // Implementación simplificada - en el futuro se puede extender
+        return [];
+      }
+    };
+
+    const courseCategoryRepository = {
+      findById: (id: number) => this._categoryRepository.findById(id),
+      existsById: (id: number) => this._categoryRepository.existsById(id)
+    };
+
+    const courseCareerRepository = {
+      exists: async (id: number) => {
+        return await this._careerRepository.existsAndActive(id);
+      },
+      findByIds: async (ids: number[]) => {
+        // Implementación simplificada - retornar array de carreras por IDs
+        const careers = [];
+        for (const id of ids) {
+          const career = await this._careerRepository.findById(id);
+          if (career) careers.push(career);
+        }
+        return careers;
+      }
+    };
+
+    // Inicializar servicio de gestión de cursos
+    this._courseManagementService = new CourseManagementService(
+      this._courseRepository,
+      courseCategoryRepository,
+      courseUserRepository,
+      courseCareerRepository
     );
   }
 
@@ -171,6 +218,14 @@ export class DIContainer {
 
   public get eventManagementService(): EventManagementService {
     return this._eventManagementService;
+  }
+
+  public get courseRepository(): ICourseRepository {
+    return this._courseRepository;
+  }
+
+  public get courseManagementService(): CourseManagementService {
+    return this._courseManagementService;
   }
 
   public async dispose(): Promise<void> {
