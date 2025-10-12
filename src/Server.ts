@@ -50,7 +50,7 @@ export class Server {
     this.userController = new UserController(this.container);
     this.courseController = new CourseController(this.container);
     this.eventController = new EventController(this.container);
-    this.certificateController = new CertificateController(); // TODO: Add DI later
+    this.certificateController = new CertificateController(this.container);
 
     this.setupMiddlewares();
     this.setupRoutes();
@@ -255,59 +255,18 @@ export class Server {
    * Configurar rutas de certificados
    */
   private setupCertificateRoutes(): void {
-    this.app.get(
-      "/api/certificates",
-      this.certificateController.getCertificates.bind(
-        this.certificateController
-      )
-    );
-    this.app.get(
-      "/api/certificates/:id",
-      this.certificateController.getCertificateById.bind(
-        this.certificateController
-      )
-    );
-    this.app.post(
-      "/api/certificates/generate",
-      this.certificateController.generateCertificate.bind(
-        this.certificateController
-      )
-    );
-    this.app.put(
-      "/api/certificates/:id/approve",
-      this.certificateController.approveCertificate.bind(
-        this.certificateController
-      )
-    );
-    this.app.get(
-      "/api/certificates/:id/download",
-      this.certificateController.downloadCertificate.bind(
-        this.certificateController
-      )
-    );
+    // GET /api/certificates/my-certificates - Obtener certificados del usuario
     this.app.get(
       "/api/certificates/my-certificates",
-      this.certificateController.getUserCertificates.bind(
-        this.certificateController
-      )
+      validateJWT, // Requiere autenticación
+      this.certificateController.getUserCertificates.bind(this.certificateController)
     );
+
+    // GET /api/certificates/download/:tipo/:idParticipacion - Descargar certificado
     this.app.get(
-      "/api/certificates/statistics",
-      this.certificateController.getCertificateStatistics.bind(
-        this.certificateController
-      )
-    );
-    this.app.get(
-      "/api/certificates/pending",
-      this.certificateController.getPendingCertificates.bind(
-        this.certificateController
-      )
-    );
-    this.app.post(
-      "/api/certificates/bulk-approve",
-      this.certificateController.bulkApproveCertificates.bind(
-        this.certificateController
-      )
+      "/api/certificates/download/:tipo/:idParticipacion",
+      validateJWT, // Requiere autenticación
+      this.certificateController.downloadCertificate.bind(this.certificateController)
     );
   }
 

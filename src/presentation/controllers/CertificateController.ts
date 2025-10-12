@@ -1,206 +1,17 @@
 import { Request, Response } from "express";
 import { BaseController } from "./BaseController";
-import {
-  GenerateCertificateRequestDTO,
-  CertificateResponseDTO,
-  CertificateListResponseDTO,
-} from "../dto/CertificateDTO";
+import { DIContainer } from "../../infrastructure/DIContainer";
 
 /**
  * Controlador para gestión de certificados
  * Maneja todas las operaciones relacionadas con certificados
  */
 export class CertificateController extends BaseController {
-  constructor() {
+  private container: DIContainer;
+
+  constructor(container: DIContainer) {
     super();
-  }
-
-  /**
-   * GET /api/certificates
-   * Obtener lista de certificados con filtros
-   */
-  public async getCertificates(req: Request, res: Response): Promise<void> {
-    await this.execute(req, res, async () => {
-      const { page, pageSize } = this.getPaginationParams(req);
-      const { search, tipo, estado, usuarioId } = req.query;
-
-      // TODO: Implement when getCertificatesUseCase is available in DIContainer
-      // const getCertificatesUseCase = this.container.getGetCertificatesUseCase();
-
-      // Mock response for now
-      const response: CertificateListResponseDTO = {
-        certificates: [
-          {
-            id: 1,
-            usuario: {
-              id: 1,
-              nombres: "Usuario Mock",
-              apellidos: "Apellido Mock",
-              cedula: "1234567890",
-            },
-            evento: {
-              id: 1,
-              nombre: "Evento Mock",
-            },
-            tipo: "evento",
-            fechaGeneracion: new Date(),
-            aprobado: true,
-            pdfUrl: "/certificates/mock-certificate.pdf",
-          },
-        ],
-        total: 1,
-        page: page,
-        pageSize: pageSize,
-      };
-
-      return response;
-    });
-  }
-
-  /**
-   * GET /api/certificates/:id
-   * Obtener certificado por ID
-   */
-  public async getCertificateById(req: Request, res: Response): Promise<void> {
-    await this.execute(req, res, async () => {
-      const certificateId = parseInt(req.params.id!);
-      if (isNaN(certificateId)) {
-        throw new Error("ID de certificado inválido");
-      }
-
-      // TODO: Implement when getCertificateByIdUseCase is available in DIContainer
-      // const getCertificateByIdUseCase = this.container.getGetCertificateByIdUseCase();
-
-      // Mock response for now
-      return {
-        id: certificateId,
-        usuario: {
-          id: 1,
-          nombres: "Usuario Mock",
-          apellidos: "Apellido Mock",
-          cedula: "1234567890",
-        },
-        evento: {
-          id: 1,
-          nombre: "Evento Mock",
-        },
-        tipo: "evento",
-        fechaGeneracion: new Date(),
-        aprobado: true,
-        pdfUrl: "/certificates/mock-certificate.pdf",
-      };
-    });
-  }
-
-  /**
-   * POST /api/certificates/generate
-   * Generar nuevo certificado
-   */
-  public async generateCertificate(req: Request, res: Response): Promise<void> {
-    await this.execute(req, res, async () => {
-      const certificateData: GenerateCertificateRequestDTO = req.body;
-
-      // Validación básica
-      if (!certificateData.usuarioId || !certificateData.tipo) {
-        throw new Error("Faltan campos obligatorios: usuarioId, tipo");
-      }
-
-      if (certificateData.tipo === "evento" && !certificateData.eventoId) {
-        throw new Error("EventoId es requerido para certificados de evento");
-      }
-
-      if (certificateData.tipo === "curso" && !certificateData.cursoId) {
-        throw new Error("CursoId es requerido para certificados de curso");
-      }
-
-      // TODO: Implement when generateCertificateUseCase is available in DIContainer
-      // const generateCertificateUseCase = this.container.getGenerateCertificateUseCase();
-
-      // Mock response for now
-      return {
-        id: Date.now(),
-        usuario: {
-          id: certificateData.usuarioId,
-          nombres: "Usuario Mock",
-          apellidos: "Apellido Mock",
-          cedula: "1234567890",
-        },
-        evento: certificateData.eventoId
-          ? {
-              id: certificateData.eventoId,
-              nombre: "Evento Mock",
-            }
-          : undefined,
-        curso: certificateData.cursoId
-          ? {
-              id: certificateData.cursoId,
-              nombre: "Curso Mock",
-            }
-          : undefined,
-        tipo: certificateData.tipo,
-        fechaGeneracion: new Date(),
-        aprobado: false,
-        pdfUrl: undefined,
-      };
-    });
-  }
-
-  /**
-   * PUT /api/certificates/:id/approve
-   * Aprobar certificado
-   */
-  public async approveCertificate(req: Request, res: Response): Promise<void> {
-    await this.execute(req, res, async () => {
-      const certificateId = parseInt(req.params.id!);
-      if (isNaN(certificateId)) {
-        throw new Error("ID de certificado inválido");
-      }
-
-      // TODO: Implement when approveCertificateUseCase is available in DIContainer
-      // const approveCertificateUseCase = this.container.getApproveCertificateUseCase();
-
-      // Mock response for now
-      return {
-        id: certificateId,
-        usuario: {
-          id: 1,
-          nombres: "Usuario Mock",
-          apellidos: "Apellido Mock",
-          cedula: "1234567890",
-        },
-        evento: {
-          id: 1,
-          nombre: "Evento Mock",
-        },
-        tipo: "evento",
-        fechaGeneracion: new Date(),
-        aprobado: true,
-        pdfUrl: `/certificates/certificate-${certificateId}.pdf`,
-      };
-    });
-  }
-
-  /**
-   * GET /api/certificates/:id/download
-   * Descargar certificado en PDF
-   */
-  public async downloadCertificate(req: Request, res: Response): Promise<void> {
-    await this.execute(req, res, async () => {
-      const certificateId = parseInt(req.params.id!);
-      if (isNaN(certificateId)) {
-        throw new Error("ID de certificado inválido");
-      }
-
-      // TODO: Implement when downloadCertificateUseCase is available in DIContainer
-      // const downloadCertificateUseCase = this.container.getDownloadCertificateUseCase();
-
-      // Mock response for now - En un caso real, esto sería un stream de PDF
-      return {
-        message: "Certificado descargado exitosamente",
-        pdfUrl: `/certificates/certificate-${certificateId}.pdf`,
-        fileName: `certificado-${certificateId}.pdf`,
-      };
-    });
+    this.container = container;
   }
 
   /**
@@ -209,146 +20,202 @@ export class CertificateController extends BaseController {
    */
   public async getUserCertificates(req: Request, res: Response): Promise<void> {
     await this.execute(req, res, async () => {
-      const userId = this.getUserId(req);
-      const { page, pageSize } = this.getPaginationParams(req);
-      const { tipo, aprobado } = req.query;
+      const userId = (req as any).uid; // From JWT middleware
+      const prisma = this.container.getPrismaClient();
 
-      // TODO: Implement when getUserCertificatesUseCase is available in DIContainer
-      // const getUserCertificatesUseCase = this.container.getGetUserCertificatesUseCase();
-
-      // Mock response for now
-      const response: CertificateListResponseDTO = {
-        certificates: [
-          {
-            id: 1,
-            usuario: {
-              id: userId,
-              nombres: "Usuario Mock",
-              apellidos: "Apellido Mock",
-              cedula: "1234567890",
-            },
-            evento: {
-              id: 1,
-              nombre: "Mi Evento Mock",
-            },
-            tipo: "evento",
-            fechaGeneracion: new Date(),
-            aprobado: true,
-            pdfUrl: "/certificates/my-certificate.pdf",
+      // Obtener certificados de eventos
+      const certificadosEventos = await prisma.participacion.findMany({
+        where: {
+          inscripcion: {
+            id_usu_ins: userId
           },
-        ],
-        total: 1,
-        page: page,
-        pageSize: pageSize,
-      };
-
-      return response;
-    });
-  }
-
-  /**
-   * GET /api/certificates/statistics
-   * Obtener estadísticas de certificados
-   */
-  public async getCertificateStatistics(
-    req: Request,
-    res: Response
-  ): Promise<void> {
-    await this.execute(req, res, async () => {
-      const { fechaInicio, fechaFin, tipo } = req.query;
-
-      // TODO: Implement when getCertificateStatisticsUseCase is available in DIContainer
-      // const getCertificateStatisticsUseCase = this.container.getGetCertificateStatisticsUseCase();
-
-      // Mock response for now
-      return {
-        totalCertificados: 100,
-        certificadosAprobados: 85,
-        certificadosPendientes: 15,
-        porTipo: {
-          evento: 60,
-          curso: 40,
+          aprobado: true,
+          certificado_pdf: {
+            not: null
+          }
         },
-        porMes: [
-          { mes: "Enero", cantidad: 10 },
-          { mes: "Febrero", cantidad: 15 },
-          { mes: "Marzo", cantidad: 20 },
-        ],
-      };
-    });
-  }
+        include: {
+          inscripcion: {
+            include: {
+              evento: {
+                select: {
+                  id_eve: true,
+                  nom_eve: true,
+                  fec_ini_eve: true,
+                  fec_fin_eve: true,
+                  categoria: {
+                    select: {
+                      nom_cat: true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
 
-  /**
-   * GET /api/certificates/pending
-   * Obtener certificados pendientes de aprobación
-   */
-  public async getPendingCertificates(
-    req: Request,
-    res: Response
-  ): Promise<void> {
-    await this.execute(req, res, async () => {
-      const { page, pageSize } = this.getPaginationParams(req);
-      const { tipo, fechaInicio, fechaFin } = req.query;
-
-      // TODO: Implement when getPendingCertificatesUseCase is available in DIContainer
-      // const getPendingCertificatesUseCase = this.container.getGetPendingCertificatesUseCase();
-
-      // Mock response for now
-      const response: CertificateListResponseDTO = {
-        certificates: [
-          {
-            id: 1,
-            usuario: {
-              id: 1,
-              nombres: "Usuario Pendiente Mock",
-              apellidos: "Apellido Mock",
-              cedula: "1234567890",
-            },
-            curso: {
-              id: 1,
-              nombre: "Curso Mock",
-            },
-            tipo: "curso",
-            fechaGeneracion: new Date(),
-            aprobado: false,
-            pdfUrl: undefined,
+      // Obtener certificados de cursos
+      const certificadosCursos = await prisma.participacionCurso.findMany({
+        where: {
+          inscripcionCurso: {
+            id_usu_ins_cur: userId
           },
-        ],
-        total: 1,
-        page: page,
-        pageSize: pageSize,
-      };
+          aprobado: true,
+          certificado_pdf: {
+            not: null
+          }
+        },
+        include: {
+          inscripcionCurso: {
+            include: {
+              curso: {
+                select: {
+                  id_cur: true,
+                  nom_cur: true,
+                  fec_ini_cur: true,
+                  fec_fin_cur: true,
+                  categoria: {
+                    select: {
+                      nom_cat: true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
 
-      return response;
+      // Formatear certificados de eventos
+      const eventosFormateados = certificadosEventos.map(cert => ({
+        id: cert.id_par,
+        tipo: 'evento' as const,
+        nombre: cert.inscripcion.evento.nom_eve,
+        categoria: cert.inscripcion.evento.categoria.nom_cat,
+        fecha_inicio: cert.inscripcion.evento.fec_ini_eve,
+        fecha_fin: cert.inscripcion.evento.fec_fin_eve,
+        fecha_certificado: cert.fec_cer_par,
+        filename: cert.certificado_filename,
+        size: cert.certificado_size,
+        asistencia: cert.asi_par,
+        nota: null, // Los eventos no tienen nota, solo asistencia
+        aprobado: cert.aprobado
+      }));
+
+      // Formatear certificados de cursos
+      const cursosFormateados = certificadosCursos.map(cert => ({
+        id: cert.id_par_cur,
+        tipo: 'curso' as const,
+        nombre: cert.inscripcionCurso.curso.nom_cur,
+        categoria: cert.inscripcionCurso.curso.categoria.nom_cat,
+        fecha_inicio: cert.inscripcionCurso.curso.fec_ini_cur,
+        fecha_fin: cert.inscripcionCurso.curso.fec_fin_cur,
+        fecha_certificado: cert.fec_cer_par_cur,
+        filename: cert.certificado_filename,
+        size: cert.certificado_size,
+        asistencia: cert.asistencia_porcentaje,
+        nota: cert.nota_final,
+        aprobado: cert.aprobado
+      }));
+
+      // Combinar y ordenar por fecha de certificado
+      const todosCertificados = [...eventosFormateados, ...cursosFormateados]
+        .sort((a, b) => new Date(b.fecha_certificado || 0).getTime() - new Date(a.fecha_certificado || 0).getTime());
+
+      return {
+        success: true,
+        certificados: todosCertificados,
+        total: todosCertificados.length,
+        eventos: eventosFormateados.length,
+        cursos: cursosFormateados.length
+      };
     });
   }
 
   /**
-   * POST /api/certificates/bulk-approve
-   * Aprobar certificados en lote
+   * GET /api/certificates/download/:tipo/:idParticipacion
+   * Descargar certificado en PDF
    */
-  public async bulkApproveCertificates(
-    req: Request,
-    res: Response
-  ): Promise<void> {
-    await this.execute(req, res, async () => {
-      const { certificateIds } = req.body;
+  public async downloadCertificate(req: Request, res: Response): Promise<void> {
+    try {
+      const { tipo, idParticipacion } = req.params;
+      const userId = (req as any).uid; // From JWT middleware
+      const prisma = this.container.getPrismaClient();
 
-      if (!Array.isArray(certificateIds) || certificateIds.length === 0) {
-        throw new Error("Se requiere una lista válida de IDs de certificados");
+      let participacion = null;
+
+      if (tipo === 'evento') {
+        participacion = await prisma.participacion.findFirst({
+          where: {
+            id_par: idParticipacion,
+            inscripcion: {
+              id_usu_ins: userId
+            }
+          },
+          include: {
+            inscripcion: {
+              include: {
+                evento: true,
+                usuario: true
+              }
+            }
+          }
+        });
+      } else if (tipo === 'curso') {
+        participacion = await prisma.participacionCurso.findFirst({
+          where: {
+            id_par_cur: idParticipacion,
+            inscripcionCurso: {
+              id_usu_ins_cur: userId
+            }
+          },
+          include: {
+            inscripcionCurso: {
+              include: {
+                curso: true,
+                usuario: true
+              }
+            }
+          }
+        });
       }
 
-      // TODO: Implement when bulkApproveCertificatesUseCase is available in DIContainer
-      // const bulkApproveCertificatesUseCase = this.container.getBulkApproveCertificatesUseCase();
+      if (!participacion) {
+        res.status(404).json({
+          success: false,
+          message: 'Participación no encontrada'
+        });
+        return;
+      }
 
-      // Mock response for now
-      return {
-        message: `${certificateIds.length} certificados aprobados exitosamente`,
-        processedCount: certificateIds.length,
-        successCount: certificateIds.length,
-        failedCount: 0,
-        failedIds: [],
-      };
-    });
+      // Verificar que el certificado existe
+      const certificadoPdf = tipo === 'evento' ? participacion.certificado_pdf : participacion.certificado_pdf;
+      const filename = tipo === 'evento' ? participacion.certificado_filename : participacion.certificado_filename;
+
+      if (!certificadoPdf) {
+        res.status(404).json({
+          success: false,
+          message: 'Certificado no encontrado. Debe generar el certificado primero.'
+        });
+        return;
+      }
+
+      // Configurar headers para descarga de PDF
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', certificadoPdf.length);
+
+      // Enviar el PDF
+      res.send(certificadoPdf);
+
+    } catch (error: any) {
+      console.error('❌ Error al descargar certificado:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
   }
 }
