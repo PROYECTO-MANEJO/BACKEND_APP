@@ -7,6 +7,8 @@ import { ChangeRequestRoutes } from "./changeRequestRoutes";
 import { DeveloperRoutes } from "./developerRoutes";
 import { InscriptionRoutes } from "./inscriptionRoutes";
 import { ParticipationRoutes } from "./participationRoutes";
+import { HomepageRoutes } from "./homepageRoutes";
+import { CareerRoutes } from "./careerRoutes";
 
 export class AppRoutes {
   private router: Router;
@@ -48,6 +50,14 @@ export class AppRoutes {
     // Rutas de participaciones
     const participationRoutes = new ParticipationRoutes();
     this.router.use("/participations", participationRoutes.getRouter());
+
+    // Rutas de página principal
+    const homepageRoutes = new HomepageRoutes();
+    this.router.use("/homepage", homepageRoutes.getRouter());
+
+    // Rutas de carreras
+    const careerRoutes = new CareerRoutes();
+    this.router.use("/careers", careerRoutes.getRouter());
   }
 
   public getRouter(): Router {

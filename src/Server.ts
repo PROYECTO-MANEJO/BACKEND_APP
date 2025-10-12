@@ -7,6 +7,7 @@ import { UserController } from "./presentation/controllers/UserController";
 import { CourseController } from "./presentation/controllers/CourseController";
 import { EventController } from "./presentation/controllers/EventController";
 import { CertificateController } from "./presentation/controllers/CertificateController";
+import { HomepageController } from "./presentation/controllers/HomepageController";
 
 // Importar rutas
 import { AuthRoutes } from "./presentation/routes/authRoutes";
@@ -19,6 +20,7 @@ import {
   healthCheck,
 } from "./presentation/middleware/securityMiddleware";
 import { validateJWT } from "./presentation/middleware/jwtMiddleware";
+import multer from "multer";
 
 /**
  * Clase principal del servidor Express con Clean Architecture
@@ -34,6 +36,7 @@ export class Server {
   private courseController: CourseController;
   private eventController: EventController;
   private certificateController: CertificateController;
+  private homepageController: HomepageController;
 
   constructor(port: number = 3000) {
     this.port = port;
@@ -48,6 +51,7 @@ export class Server {
     this.courseController = new CourseController(this.container);
     this.eventController = new EventController(this.container);
     this.certificateController = new CertificateController(this.container);
+    this.homepageController = new HomepageController(this.container);
 
     this.setupMiddlewares();
     this.setupRoutes();
@@ -96,6 +100,7 @@ export class Server {
     this.setupCourseRoutes();
     this.setupEventRoutes();
     this.setupCertificateRoutes();
+    this.setupHomepageRoutes();
 
     // Ruta raíz para verificar que el servidor está funcionando
     this.app.get("/", (req, res) => {
@@ -264,6 +269,109 @@ export class Server {
       "/api/certificates/download/:tipo/:idParticipacion",
       validateJWT, // Requiere autenticación
       this.certificateController.downloadCertificate.bind(this.certificateController)
+    );
+  }
+
+  /**
+   * Configurar rutas de homepage (página principal)
+   */
+  private setupHomepageRoutes(): void {
+    // Configuración de multer para imágenes
+    const storage = multer.memoryStorage();
+    const upload = multer({
+      storage: storage,
+      limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB máximo
+      },
+      fileFilter: (req, file, cb) => {
+        // Verificar que sea una imagen
+        if (file.mimetype.startsWith('image/')) {
+          cb(null, true);
+        } else {
+          cb(new Error('Solo se permiten archivos de imagen') as any, false);
+        }
+      }
+    });
+
+    // RUTAS REFACTORIZADAS (NUEVAS)
+    // GET /api/homepage/content - Obtener contenido
+    this.app.get(
+      "/api/homepage/content",
+      this.homepageController.getContent.bind(this.homepageController)
+    );
+
+    // PUT /api/homepage/content - Actualizar contenido
+    this.app.put(
+      "/api/homepage/content",
+      validateJWT,
+      this.homepageController.updateContent.bind(this.homepageController)
+    );
+
+    // POST /api/homepage/image/:imageType - Subir imagen
+    this.app.post(
+      "/api/homepage/image/:imageType",
+      validateJWT,
+      upload.single('imagen'),
+      this.homepageController.uploadImage.bind(this.homepageController)
+    );
+
+    // GET /api/homepage/image/:imageType - Obtener imagen
+    this.app.get(
+      "/api/homepage/image/:imageType",
+      this.homepageController.getImage.bind(this.homepageController)
+    );
+
+    // GET /api/homepage/external-content - Para usuarios externos (solo públicos)
+    this.app.get(
+      "/api/homepage/external-content",
+      this.homepageController.getExternalContent.bind(this.homepageController)
+    );
+
+    // RUTAS LEGACY (COMPATIBILIDAD CON FRONTEND)
+    // GET /api/pagina-principal/contenido
+    this.app.get(
+      "/api/pagina-principal/contenido",
+      this.homepageController.getContent.bind(this.homepageController)
+    );
+
+    // PUT /api/pagina-principal/contenido
+    this.app.put(
+      "/api/pagina-principal/contenido",
+      validateJWT,
+      this.homepageController.updateContent.bind(this.homepageController)
+    );
+
+    // POST /api/pagina-principal/imagen/:tipoImagen
+    this.app.post(
+      "/api/pagina-principal/imagen/:tipoImagen",
+      validateJWT,
+      upload.single('imagen'),
+      this.homepageController.uploadImage.bind(this.homepageController)
+    );
+
+    // GET /api/pagina-principal/imagen/:tipoImagen
+    this.app.get(
+      "/api/pagina-principal/imagen/:tipoImagen",
+      this.homepageController.getImage.bind(this.homepageController)
+    );
+
+    // GET /api/pagina-principal/eventos-cursos-disponibles (para usuarios normales)
+    this.app.get(
+      "/api/pagina-principal/eventos-cursos-disponibles",
+      this.homepageController.getExternalContent.bind(this.homepageController)
+    );
+
+    // GET /api/pagina-principal/eventos-cursos-publicos (para usuarios no autenticados)
+    this.app.get(
+      "/api/pagina-principal/eventos-cursos-publicos",
+      this.homepageController.getPublicContent.bind(this.homepageController)
+    );
+
+    // GET /api/pagina-principal/eventos-cursos-carrera (para estudiantes)
+    this.app.get(
+      "/api/pagina-principal/eventos-cursos-carrera",
+      validateJWT,
+      this.homepageController.getStudentContent.bind(this.homepageController)
     );
   }
 

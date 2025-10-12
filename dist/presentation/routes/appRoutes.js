@@ -10,6 +10,8 @@ const changeRequestRoutes_1 = require("./changeRequestRoutes");
 const developerRoutes_1 = require("./developerRoutes");
 const inscriptionRoutes_1 = require("./inscriptionRoutes");
 const participationRoutes_1 = require("./participationRoutes");
+const homepageRoutes_1 = require("./homepageRoutes");
+const careerRoutes_1 = require("./careerRoutes");
 class AppRoutes {
     constructor() {
         this.router = (0, express_1.Router)();
@@ -40,6 +42,12 @@ class AppRoutes {
         // Rutas de participaciones
         const participationRoutes = new participationRoutes_1.ParticipationRoutes();
         this.router.use("/participations", participationRoutes.getRouter());
+        // Rutas de página principal
+        const homepageRoutes = new homepageRoutes_1.HomepageRoutes();
+        this.router.use("/homepage", homepageRoutes.getRouter());
+        // Rutas de carreras
+        const careerRoutes = new careerRoutes_1.CareerRoutes();
+        this.router.use("/careers", careerRoutes.getRouter());
     }
     getRouter() {
         return this.router;

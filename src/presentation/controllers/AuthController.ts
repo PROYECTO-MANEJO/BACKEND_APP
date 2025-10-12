@@ -15,7 +15,7 @@ export class AuthController extends BaseController {
    * User login - REAL implementation from auth.js
    */
   public async login(req: Request, res: Response): Promise<void> {
-    await this.execute(req, res, async () => {
+    try {
       const { email, password } = req.body;
       const prisma = this.container.getPrismaClient();
       const bcrypt = this.container.getBcrypt();
@@ -42,23 +42,38 @@ export class AuthController extends BaseController {
 
       // Check if account exists
       if (!cuenta) {
-        throw new Error('Email not found');
+        res.status(400).json({
+          success: false,
+          message: 'Email not found'
+        });
+        return;
       }
 
       // Check if user exists
       if (!cuenta.usuario) {
-        throw new Error('User not found');
+        res.status(400).json({
+          success: false,
+          message: 'User not found'
+        });
+        return;
       }
 
       // Check if account is verified (temporarily disabled for testing)
       // if (!cuenta.isVerified) {
-      //   throw new Error('Your account has not been verified yet. Check your email.');
+      //   return res.status(400).json({
+      //     success: false,
+      //     message: 'Your account has not been verified yet. Check your email.'
+      //   });
       // }
 
       // Verify password
       const validPassword = await bcrypt.compare(password, cuenta.usuario.pas_usu || '');
       if (!validPassword) {
-        throw new Error('Incorrect password');
+        res.status(400).json({
+          success: false,
+          message: 'Incorrect password'
+        });
+        return;
       }
 
       // Generate JWT token based on role
@@ -102,12 +117,18 @@ export class AuthController extends BaseController {
         }
       };
 
-      return {
+      res.status(200).json({
         success: true,
         user: userProfile,
         token
-      };
-    });
+      });
+    } catch (error) {
+      console.error('Login error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
   }
 
   /**
@@ -115,7 +136,7 @@ export class AuthController extends BaseController {
    * Register new user - REAL implementation from auth.js
    */
   public async register(req: Request, res: Response): Promise<void> {
-    await this.execute(req, res, async () => {
+    try {
       const { email, password, nombre, nombre2, apellido, apellido2, ced_usu, fec_nac_usu, carrera } = req.body;
       const prisma = this.container.getPrismaClient();
       const bcrypt = this.container.getBcrypt();
@@ -128,7 +149,11 @@ export class AuthController extends BaseController {
       });
 
       if (existingAccount) {
-        throw new Error('An account with this email already exists');
+        res.status(400).json({
+          success: false,
+          message: 'An account with this email already exists'
+        });
+        return;
       }
 
       // Check if user already exists with this cedula
@@ -137,23 +162,39 @@ export class AuthController extends BaseController {
       });
 
       if (existingUserByCedula) {
-        throw new Error('A user with this cedula already exists');
+        res.status(400).json({
+          success: false,
+          message: 'A user with this cedula already exists'
+        });
+        return;
       }
 
       if (!ced_usu) {
-        throw new Error('Cedula is required');
+        res.status(400).json({
+          success: false,
+          message: 'Cedula is required'
+        });
+        return;
       }
 
       // Validate password strength
       const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
       if (!passwordRegex.test(password)) {
-        throw new Error('Password must contain at least 6 characters, one uppercase letter, one number and one special character (@$!%*?&)');
+        res.status(400).json({
+          success: false,
+          message: 'Password must contain at least 6 characters, one uppercase letter, one number and one special character (@$!%*?&)'
+        });
+        return;
       }
 
       // Validate career for UTA users
       if (email && email.endsWith('@uta.edu.ec')) {
         if (!carrera) {
-          throw new Error('Career is required for UTA students');
+          res.status(400).json({
+            success: false,
+            message: 'Career is required for UTA students'
+          });
+          return;
         }
         
         // Check if career exists
@@ -162,7 +203,11 @@ export class AuthController extends BaseController {
         });
         
         if (!carreraExists) {
-          throw new Error('Selected career is not valid');
+          res.status(400).json({
+            success: false,
+            message: 'Selected career is not valid'
+          });
+          return;
         }
       }
 
@@ -178,7 +223,11 @@ export class AuthController extends BaseController {
       if (fec_nac_usu) {
         fechaNacimiento = new Date(fec_nac_usu);
         if (isNaN(fechaNacimiento.getTime())) {
-          throw new Error('Invalid birth date. Use YYYY-MM-DD format');
+          res.status(400).json({
+            success: false,
+            message: 'Invalid birth date. Use YYYY-MM-DD format'
+          });
+          return;
         }
       } else {
         fechaNacimiento = new Date('2000-01-01');
@@ -222,11 +271,17 @@ export class AuthController extends BaseController {
       // TODO: Send verification token
       // await sendVerificationToken(email, result.user.id_usu);
 
-      return {
+      res.status(201).json({
         success: true,
         message: 'A verification email has been sent to your email address. Please verify your account before logging in.'
-      };
-    });
+      });
+    } catch (error) {
+      console.error('Register error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
   }
 
   /**
