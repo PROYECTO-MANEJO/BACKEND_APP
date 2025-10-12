@@ -10,6 +10,7 @@ import { CertificateController } from "./presentation/controllers/CertificateCon
 import { HomepageController } from "./presentation/controllers/HomepageController";
 import { ChangeRequestController } from "./presentation/controllers/ChangeRequestController";
 import { InscriptionController } from "./presentation/controllers/InscriptionController";
+import { AdminController } from "./presentation/controllers/AdminController";
 
 // Importar rutas
 import { AuthRoutes } from "./presentation/routes/authRoutes";
@@ -41,6 +42,7 @@ export class Server {
   private homepageController: HomepageController;
   private changeRequestController: ChangeRequestController;
   private inscriptionController: InscriptionController;
+  private adminController: AdminController;
 
   constructor(port: number = 3000) {
     this.port = port;
@@ -58,6 +60,7 @@ export class Server {
     this.homepageController = new HomepageController(this.container);
     this.changeRequestController = new ChangeRequestController(this.container);
     this.inscriptionController = new InscriptionController(this.container);
+    this.adminController = new AdminController(this.container);
 
     this.setupMiddlewares();
     this.setupRoutes();
@@ -109,6 +112,7 @@ export class Server {
     this.setupInscriptionRoutes();
     this.setupHomepageRoutes();
     this.setupChangeRequestRoutes();
+    this.setupAdminRoutes();
 
     // Ruta raíz para verificar que el servidor está funcionando
     this.app.get("/", (req, res) => {
@@ -642,6 +646,34 @@ export class Server {
   }
 
   /**
+   * Configurar rutas administrativas
+   */
+  private setupAdminRoutes(): void {
+    // RUTAS ADMINISTRATIVAS - Requieren autenticación y permisos de admin
+    
+    // GET /api/admin/dashboard - Estadísticas del dashboard
+    this.app.get(
+      "/api/admin/dashboard",
+      validateJWT,
+      this.adminController.getDashboardStats.bind(this.adminController)
+    );
+
+    // GET /api/admin/recent-activity - Actividad reciente
+    this.app.get(
+      "/api/admin/recent-activity",
+      validateJWT,
+      this.adminController.getRecentActivity.bind(this.adminController)
+    );
+
+    // GET /api/admin/pending-approvals - Elementos pendientes de aprobación
+    this.app.get(
+      "/api/admin/pending-approvals",
+      validateJWT,
+      this.adminController.getPendingApprovals.bind(this.adminController)
+    );
+  }
+
+  /**
    * Obtener la aplicación Express (útil para testing)
    */
   public getApp(): Application {
@@ -658,6 +690,7 @@ export class Server {
       course: this.courseController,
       event: this.eventController,
       certificate: this.certificateController,
+      admin: this.adminController,
     };
   }
 }

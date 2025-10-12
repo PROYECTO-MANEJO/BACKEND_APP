@@ -6,6 +6,7 @@ export { AuthController } from "./AuthController";
 export { CourseController } from "./CourseController";
 export { EventController } from "./EventController";
 export { CertificateController } from "./CertificateController";
+export { AdminController } from "./AdminController";
 
 // Exportar tipos de DTOs
 export * from "../dto/UserDTO";

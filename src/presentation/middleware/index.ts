@@ -9,6 +9,11 @@ export {
 } from "./authMiddleware";
 
 export {
+  requireAdmin,
+  requireMaster,
+} from "./adminMiddleware";
+
+export {
   handleValidationErrors,
   validateUserCreation,
   validateUserUpdate,
