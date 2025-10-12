@@ -14,6 +14,13 @@ export {
 } from "./adminMiddleware";
 
 export {
+  requireStudent,
+  requireVerifiedDocuments,
+  requireCareerAssignment,
+  requireCompleteStudentProfile,
+} from "./studentMiddleware";
+
+export {
   handleValidationErrors,
   validateUserCreation,
   validateUserUpdate,

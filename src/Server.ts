@@ -20,6 +20,8 @@ import { InscriptionManagementController } from "./presentation/controllers/Insc
 import { ParticipationManagementController } from "./presentation/controllers/ParticipationManagementController";
 import { CertificateManagementController } from "./presentation/controllers/CertificateManagementController";
 import { ReportsController } from "./presentation/controllers/ReportsController";
+import { StudentDocumentController } from "./presentation/controllers/StudentDocumentController";
+import { StudentContentController } from "./presentation/controllers/StudentContentController";
 
 // Importar rutas
 import { AuthRoutes } from "./presentation/routes/authRoutes";
@@ -32,6 +34,7 @@ import {
   healthCheck,
 } from "./presentation/middleware/securityMiddleware";
 import { validateJWT } from "./presentation/middleware/jwtMiddleware";
+import { requireVerifiedDocuments } from "./presentation/middleware";
 import multer from "multer";
 
 /**
@@ -61,6 +64,8 @@ export class Server {
   private participationManagementController: ParticipationManagementController;
   private certificateManagementController: CertificateManagementController;
   private reportsController: ReportsController;
+  private studentDocumentController: StudentDocumentController;
+  private studentContentController: StudentContentController;
 
   constructor(port: number = 3000) {
     this.port = port;
@@ -88,6 +93,8 @@ export class Server {
     this.participationManagementController = new ParticipationManagementController(this.container);
     this.certificateManagementController = new CertificateManagementController(this.container);
     this.reportsController = new ReportsController(this.container);
+    this.studentDocumentController = new StudentDocumentController(this.container);
+    this.studentContentController = new StudentContentController(this.container);
 
     this.setupMiddlewares();
     this.setupRoutes();
@@ -145,6 +152,7 @@ export class Server {
     this.setupParticipationManagementRoutes();
     this.setupCertificateManagementRoutes();
     this.setupReportsRoutes();
+    this.setupStudentRoutes();
 
     // Ruta raíz para verificar que el servidor está funcionando
     this.app.get("/", (req, res) => {
@@ -1267,6 +1275,287 @@ export class Server {
       "/api/reportes/download/:id",
       validateJWT,
       this.reportsController.downloadReport.bind(this.reportsController)
+    );
+  }
+
+  /**
+   * Configurar rutas específicas para estudiantes
+   */
+  private setupStudentRoutes(): void {
+    // Configurar multer para subida de comprobantes de pago
+    const multer = require('multer');
+    const path = require('path');
+    
+    const receiptStorage = multer.diskStorage({
+      destination: (req: any, file: any, cb: any) => {
+        cb(null, 'uploads/comprobantes/');
+      },
+      filename: (req: any, file: any, cb: any) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'comprobante-estudiante-' + uniqueSuffix + path.extname(file.originalname));
+      }
+    });
+
+    const uploadReceipt = multer({
+      storage: receiptStorage,
+      limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB máximo
+      },
+      fileFilter: (req: any, file: any, cb: any) => {
+        // Permitir archivos PDF e imágenes
+        if (file.mimetype === 'application/pdf' || file.mimetype.startsWith('image/')) {
+          cb(null, true);
+        } else {
+          cb(new Error('Tipo de archivo no permitido. Solo PDF e imágenes.'), false);
+        }
+      }
+    });
+
+    // Configuración de multer para subida de documentos
+    const documentStorage = multer.memoryStorage();
+    const upload = multer({
+      storage: documentStorage,
+      limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB máximo
+      },
+      fileFilter: (req: any, file: any, cb: any) => {
+        // Solo permitir PDFs
+        if (file.mimetype === 'application/pdf') {
+          cb(null, true);
+        } else {
+          cb(new Error('Solo se permiten archivos PDF'));
+        }
+      }
+    });
+
+    // RUTAS DE GESTIÓN DE DOCUMENTOS ESTUDIANTILES - Requieren JWT y rol ESTUDIANTE
+
+    // POST /api/student/documents/upload - Subir documentos (cédula y matrícula)
+    this.app.post(
+      "/api/student/documents/upload",
+      validateJWT,
+      upload.fields([
+        { name: 'cedula', maxCount: 1 },
+        { name: 'matricula', maxCount: 1 }
+      ]),
+      this.studentDocumentController.uploadStudentDocuments.bind(this.studentDocumentController)
+    );
+
+    // GET /api/student/documents/status - Estado de verificación de documentos
+    this.app.get(
+      "/api/student/documents/status",
+      validateJWT,
+      this.studentDocumentController.getDocumentStatus.bind(this.studentDocumentController)
+    );
+
+    // GET /api/student/documents/download/:type - Descargar documento específico
+    this.app.get(
+      "/api/student/documents/download/:type",
+      validateJWT,
+      this.studentDocumentController.downloadDocument.bind(this.studentDocumentController)
+    );
+
+    // PUT /api/student/documents/update/:type - Actualizar documento específico
+    this.app.put(
+      "/api/student/documents/update/:type",
+      validateJWT,
+      upload.single('document'),
+      this.studentDocumentController.updateDocument.bind(this.studentDocumentController)
+    );
+
+    // GET /api/student/documents/history - Historial de verificaciones
+    this.app.get(
+      "/api/student/documents/history",
+      validateJWT,
+      this.studentDocumentController.getVerificationHistory.bind(this.studentDocumentController)
+    );
+
+    // GET /api/student/documents/requirements - Requisitos para estudiantes
+    this.app.get(
+      "/api/student/documents/requirements",
+      validateJWT,
+      this.studentDocumentController.getDocumentRequirements.bind(this.studentDocumentController)
+    );
+
+    // RUTAS DE CONTENIDO PARA ESTUDIANTES - Solo funcionalidades básicas originales
+
+    // GET /api/student/events/available - Eventos disponibles para estudiantes
+    this.app.get(
+      "/api/student/events/available",
+      validateJWT,
+      this.studentContentController.getAvailableEvents.bind(this.studentContentController)
+    );
+
+    // GET /api/student/courses/available - Cursos disponibles para estudiantes
+    this.app.get(
+      "/api/student/courses/available",
+      validateJWT,
+      this.studentContentController.getAvailableCourses.bind(this.studentContentController)
+    );
+
+    // RUTAS LEGACY PARA COMPATIBILIDAD CON FRONTEND EXISTENTE
+
+    // POST /api/estudiante/documentos/subir - Legacy route
+    this.app.post(
+      "/api/estudiante/documentos/subir",
+      validateJWT,
+      upload.fields([
+        { name: 'cedula', maxCount: 1 },
+        { name: 'matricula', maxCount: 1 }
+      ]),
+      this.studentDocumentController.uploadStudentDocuments.bind(this.studentDocumentController)
+    );
+
+    // GET /api/estudiante/documentos/estado - Legacy route
+    this.app.get(
+      "/api/estudiante/documentos/estado",
+      validateJWT,
+      this.studentDocumentController.getDocumentStatus.bind(this.studentDocumentController)
+    );
+
+    // GET /api/estudiante/documentos/descargar/:tipo - Legacy route
+    this.app.get(
+      "/api/estudiante/documentos/descargar/:tipo",
+      validateJWT,
+      this.studentDocumentController.downloadDocument.bind(this.studentDocumentController)
+    );
+
+    // PUT /api/estudiante/documentos/actualizar/:tipo - Legacy route
+    this.app.put(
+      "/api/estudiante/documentos/actualizar/:tipo",
+      validateJWT,
+      upload.single('document'),
+      this.studentDocumentController.updateDocument.bind(this.studentDocumentController)
+    );
+
+    // GET /api/estudiante/documentos/historial - Legacy route
+    this.app.get(
+      "/api/estudiante/documentos/historial",
+      validateJWT,
+      this.studentDocumentController.getVerificationHistory.bind(this.studentDocumentController)
+    );
+
+    // GET /api/estudiante/requisitos - Legacy route
+    this.app.get(
+      "/api/estudiante/requisitos",
+      validateJWT,
+      this.studentDocumentController.getDocumentRequirements.bind(this.studentDocumentController)
+    );
+
+    // RUTAS LEGACY DE CONTENIDO PARA ESTUDIANTES
+
+    // GET /api/estudiante/eventos/disponibles - Legacy route
+    this.app.get(
+      "/api/estudiante/eventos/disponibles",
+      validateJWT,
+      this.studentContentController.getAvailableEvents.bind(this.studentContentController)
+    );
+
+    // GET /api/estudiante/cursos/disponibles - Legacy route
+    this.app.get(
+      "/api/estudiante/cursos/disponibles",
+      validateJWT,
+      this.studentContentController.getAvailableCourses.bind(this.studentContentController)
+    );
+
+    // RUTAS DE INSCRIPCIONES PARA ESTUDIANTES - Reutilizando InscriptionController existente
+
+    // POST /api/student/inscriptions/events - Inscripción a eventos (con validación de documentos)
+    this.app.post(
+      "/api/student/inscriptions/events",
+      validateJWT,
+      requireVerifiedDocuments, // Middleware específico para estudiantes
+      this.inscriptionController.enrollInEvent.bind(this.inscriptionController)
+    );
+
+    // POST /api/student/inscriptions/courses - Inscripción a cursos (con validación de documentos)
+    this.app.post(
+      "/api/student/inscriptions/courses", 
+      validateJWT,
+      requireVerifiedDocuments, // Middleware específico para estudiantes
+      this.inscriptionController.enrollInCourse.bind(this.inscriptionController)
+    );
+
+    // POST /api/student/inscriptions/events-with-file - Inscripción a eventos con comprobante
+    this.app.post(
+      "/api/student/inscriptions/events-with-file",
+      validateJWT,
+      requireVerifiedDocuments,
+      uploadReceipt.single('comprobante'),
+      this.inscriptionController.enrollInEventWithFile.bind(this.inscriptionController)
+    );
+
+    // POST /api/student/inscriptions/courses-with-file - Inscripción a cursos con comprobante
+    this.app.post(
+      "/api/student/inscriptions/courses-with-file",
+      validateJWT,
+      requireVerifiedDocuments,
+      uploadReceipt.single('comprobante'),
+      this.inscriptionController.enrollInCourseWithFile.bind(this.inscriptionController)
+    );
+
+    // GET /api/student/inscriptions/my-events - Mis inscripciones a eventos
+    this.app.get(
+      "/api/student/inscriptions/my-events",
+      validateJWT,
+      this.inscriptionController.getMyEventInscriptions.bind(this.inscriptionController)
+    );
+
+    // GET /api/student/inscriptions/my-courses - Mis inscripciones a cursos
+    this.app.get(
+      "/api/student/inscriptions/my-courses",
+      validateJWT,
+      this.inscriptionController.getMyCourseInscriptions.bind(this.inscriptionController)
+    );
+
+    // RUTAS LEGACY DE INSCRIPCIONES PARA ESTUDIANTES
+
+    // POST /api/estudiante/inscripciones/eventos - Legacy route
+    this.app.post(
+      "/api/estudiante/inscripciones/eventos",
+      validateJWT,
+      requireVerifiedDocuments,
+      this.inscriptionController.enrollInEvent.bind(this.inscriptionController)
+    );
+
+    // POST /api/estudiante/inscripciones/cursos - Legacy route
+    this.app.post(
+      "/api/estudiante/inscripciones/cursos",
+      validateJWT,
+      requireVerifiedDocuments,
+      this.inscriptionController.enrollInCourse.bind(this.inscriptionController)
+    );
+
+    // POST /api/estudiante/inscripciones/eventos-con-archivo - Legacy route
+    this.app.post(
+      "/api/estudiante/inscripciones/eventos-con-archivo",
+      validateJWT,
+      requireVerifiedDocuments,
+      uploadReceipt.single('comprobante'),
+      this.inscriptionController.enrollInEventWithFile.bind(this.inscriptionController)
+    );
+
+    // POST /api/estudiante/inscripciones/cursos-con-archivo - Legacy route
+    this.app.post(
+      "/api/estudiante/inscripciones/cursos-con-archivo",
+      validateJWT,
+      requireVerifiedDocuments,
+      uploadReceipt.single('comprobante'),
+      this.inscriptionController.enrollInCourseWithFile.bind(this.inscriptionController)
+    );
+
+    // GET /api/estudiante/inscripciones/mis-eventos - Legacy route
+    this.app.get(
+      "/api/estudiante/inscripciones/mis-eventos",
+      validateJWT,
+      this.inscriptionController.getMyEventInscriptions.bind(this.inscriptionController)
+    );
+
+    // GET /api/estudiante/inscripciones/mis-cursos - Legacy route
+    this.app.get(
+      "/api/estudiante/inscripciones/mis-cursos",
+      validateJWT,
+      this.inscriptionController.getMyCourseInscriptions.bind(this.inscriptionController)
     );
   }
 }
