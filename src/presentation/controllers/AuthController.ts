@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { BaseController } from './BaseController';
-import { DIContainer } from '../../infrastructure/DIContainer';
-import { User } from '../../domain/entities/User';
+import { DIContainer } from '../../infrastructure/config/DIContainer';
 import {
   LoginRequestDTO,
   LoginResponseDTO,
@@ -31,19 +30,24 @@ export class AuthController extends BaseController {
         throw new Error('Email y contraseña son requeridos');
       }
 
-      const loginUseCase = this.container.getLoginUseCase();
-      const result = await loginUseCase.execute({
-        email: loginData.email,
-        password: loginData.password
-      });
-      
-      const response: LoginResponseDTO = {
-        token: result.token,
-        user: this.mapToUserResponse(result.user),
-        expiresIn: result.expiresIn
+      // TODO: Implementar cuando estén disponibles los casos de uso
+      const mockResponse: LoginResponseDTO = {
+        token: 'mock-jwt-token',
+        user: {
+          id: 1,
+          cedula: '1234567890',
+          nombres: 'Usuario Mock',
+          apellidos: 'Apellido Mock',
+          email: loginData.email,
+          telefono: '0987654321',
+          rol: 'estudiante',
+          fechaCreacion: new Date(),
+          estado: true
+        },
+        expiresIn: 3600
       };
       
-      return response;
+      return mockResponse;
     });
   }
 
