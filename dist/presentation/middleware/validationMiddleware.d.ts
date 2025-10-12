@@ -1,5 +1,5 @@
-import { Request, Response, NextFunction } from 'express';
-import { ValidationChain } from 'express-validator';
+import { Request, Response, NextFunction } from "express";
+import { ValidationChain } from "express-validator";
 /**
  * Middleware para manejar errores de validación
  */

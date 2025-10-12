@@ -1,12 +1,11 @@
-import { Request, Response } from 'express';
-import { BaseController } from './BaseController';
-import { DIContainer } from '../../infrastructure/config/DIContainer';
+import { Request, Response } from "express";
+import { BaseController } from "./BaseController";
 /**
  * Controlador para gestión de certificados
  * Maneja todas las operaciones relacionadas con certificados
  */
 export declare class CertificateController extends BaseController {
-    constructor(container: DIContainer);
+    constructor();
     /**
      * GET /api/certificates
      * Obtener lista de certificados con filtros

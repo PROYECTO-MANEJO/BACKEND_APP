@@ -4,7 +4,7 @@
  * Implementación para manejo de autenticación y cuentas de usuario
  * Maneja operaciones básicas según el esquema Prisma real
  */
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 export interface AccountData {
     id?: string;
     email: string;

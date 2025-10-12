@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CertificateRoutes = exports.EventRoutes = exports.CourseRoutes = exports.AuthRoutes = exports.UserRoutes = exports.AppRoutes = exports.apiRoutes = void 0;
 const tslib_1 = require("tslib");
 const express_1 = require("express");
-const DIContainer_1 = require("../../infrastructure/config/DIContainer");
 const verificationRoutes_1 = require("./verificationRoutes");
 const passwordRecoveryRoutes_1 = require("./passwordRecoveryRoutes");
 const changeRequestRoutes_1 = tslib_1.__importDefault(require("./changeRequestRoutes"));
@@ -11,10 +10,8 @@ const appRoutes_1 = require("./appRoutes");
 // Crear router principal
 const router = (0, express_1.Router)();
 exports.apiRoutes = router;
-// Obtener instancia del DIContainer
-const container = DIContainer_1.DIContainer.getInstance();
 // Rutas refactorizadas (Clean Architecture)
-const appRoutes = new appRoutes_1.AppRoutes(container);
+const appRoutes = new appRoutes_1.AppRoutes();
 router.use("/", appRoutes.getRouter());
 // Rutas legacy (mantener temporalmente)
 router.use("/verification", verificationRoutes_1.verificationRoutes);

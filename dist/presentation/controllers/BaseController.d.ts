@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Request, Response } from "express";
 export declare abstract class BaseController {
     /**
      * Ejecuta un caso de uso y maneja la respuesta HTTP

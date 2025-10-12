@@ -152,7 +152,7 @@ export declare class Enrollment {
         instructor: string | undefined;
         priorityScore: number;
         requiresApproval: boolean;
-        approvalStatus: "APPROVED" | "REJECTED" | "PENDING" | undefined;
+        approvalStatus: "PENDING" | "APPROVED" | "REJECTED" | undefined;
         approvedBy: string | undefined;
         approvalDate: Date | undefined;
         approvalNotes: string | undefined;

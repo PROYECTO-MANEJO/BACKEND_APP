@@ -1,12 +1,11 @@
-import { Request, Response } from 'express';
-import { BaseController } from './BaseController';
-import { DIContainer } from '../../infrastructure/config/DIContainer';
+import { Request, Response } from "express";
+import { BaseController } from "./BaseController";
 /**
  * Controlador para gestión de cursos
  * Maneja todas las operaciones CRUD y funcionalidades relacionadas con cursos
  */
 export declare class CourseController extends BaseController {
-    constructor(container: DIContainer);
+    constructor();
     /**
      * GET /api/courses
      * Obtener lista de cursos con filtros

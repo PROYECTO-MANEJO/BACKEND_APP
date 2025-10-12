@@ -4,7 +4,7 @@
  * Implementación para certificados tanto de eventos como de cursos
  * Maneja operaciones básicas según el esquema Prisma real
  */
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 export interface CertificateData {
     id?: string;
     certificatePdf?: Buffer;
@@ -16,7 +16,7 @@ export interface CertificateData {
     attendancePercentage?: number;
     finalGrade?: number;
     enrollmentId: string;
-    type: 'event' | 'course';
+    type: "event" | "course";
 }
 export declare class PrismaCertificateRepository {
     private prisma;

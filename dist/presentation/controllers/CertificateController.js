@@ -7,7 +7,7 @@ const BaseController_1 = require("./BaseController");
  * Maneja todas las operaciones relacionadas con certificados
  */
 class CertificateController extends BaseController_1.BaseController {
-    constructor(container) {
+    constructor() {
         super();
     }
     /**
@@ -27,23 +27,23 @@ class CertificateController extends BaseController_1.BaseController {
                         id: 1,
                         usuario: {
                             id: 1,
-                            nombres: 'Usuario Mock',
-                            apellidos: 'Apellido Mock',
-                            cedula: '1234567890'
+                            nombres: "Usuario Mock",
+                            apellidos: "Apellido Mock",
+                            cedula: "1234567890",
                         },
                         evento: {
                             id: 1,
-                            nombre: 'Evento Mock'
+                            nombre: "Evento Mock",
                         },
-                        tipo: 'evento',
+                        tipo: "evento",
                         fechaGeneracion: new Date(),
                         aprobado: true,
-                        pdfUrl: '/certificates/mock-certificate.pdf'
-                    }
+                        pdfUrl: "/certificates/mock-certificate.pdf",
+                    },
                 ],
                 total: 1,
                 page: page,
-                pageSize: pageSize
+                pageSize: pageSize,
             };
             return response;
         });
@@ -56,7 +56,7 @@ class CertificateController extends BaseController_1.BaseController {
         await this.execute(req, res, async () => {
             const certificateId = parseInt(req.params.id);
             if (isNaN(certificateId)) {
-                throw new Error('ID de certificado inválido');
+                throw new Error("ID de certificado inválido");
             }
             // TODO: Implement when getCertificateByIdUseCase is available in DIContainer
             // const getCertificateByIdUseCase = this.container.getGetCertificateByIdUseCase();
@@ -65,18 +65,18 @@ class CertificateController extends BaseController_1.BaseController {
                 id: certificateId,
                 usuario: {
                     id: 1,
-                    nombres: 'Usuario Mock',
-                    apellidos: 'Apellido Mock',
-                    cedula: '1234567890'
+                    nombres: "Usuario Mock",
+                    apellidos: "Apellido Mock",
+                    cedula: "1234567890",
                 },
                 evento: {
                     id: 1,
-                    nombre: 'Evento Mock'
+                    nombre: "Evento Mock",
                 },
-                tipo: 'evento',
+                tipo: "evento",
                 fechaGeneracion: new Date(),
                 aprobado: true,
-                pdfUrl: '/certificates/mock-certificate.pdf'
+                pdfUrl: "/certificates/mock-certificate.pdf",
             };
         });
     }
@@ -89,13 +89,13 @@ class CertificateController extends BaseController_1.BaseController {
             const certificateData = req.body;
             // Validación básica
             if (!certificateData.usuarioId || !certificateData.tipo) {
-                throw new Error('Faltan campos obligatorios: usuarioId, tipo');
+                throw new Error("Faltan campos obligatorios: usuarioId, tipo");
             }
-            if (certificateData.tipo === 'evento' && !certificateData.eventoId) {
-                throw new Error('EventoId es requerido para certificados de evento');
+            if (certificateData.tipo === "evento" && !certificateData.eventoId) {
+                throw new Error("EventoId es requerido para certificados de evento");
             }
-            if (certificateData.tipo === 'curso' && !certificateData.cursoId) {
-                throw new Error('CursoId es requerido para certificados de curso');
+            if (certificateData.tipo === "curso" && !certificateData.cursoId) {
+                throw new Error("CursoId es requerido para certificados de curso");
             }
             // TODO: Implement when generateCertificateUseCase is available in DIContainer
             // const generateCertificateUseCase = this.container.getGenerateCertificateUseCase();
@@ -104,22 +104,26 @@ class CertificateController extends BaseController_1.BaseController {
                 id: Date.now(),
                 usuario: {
                     id: certificateData.usuarioId,
-                    nombres: 'Usuario Mock',
-                    apellidos: 'Apellido Mock',
-                    cedula: '1234567890'
+                    nombres: "Usuario Mock",
+                    apellidos: "Apellido Mock",
+                    cedula: "1234567890",
                 },
-                evento: certificateData.eventoId ? {
-                    id: certificateData.eventoId,
-                    nombre: 'Evento Mock'
-                } : undefined,
-                curso: certificateData.cursoId ? {
-                    id: certificateData.cursoId,
-                    nombre: 'Curso Mock'
-                } : undefined,
+                evento: certificateData.eventoId
+                    ? {
+                        id: certificateData.eventoId,
+                        nombre: "Evento Mock",
+                    }
+                    : undefined,
+                curso: certificateData.cursoId
+                    ? {
+                        id: certificateData.cursoId,
+                        nombre: "Curso Mock",
+                    }
+                    : undefined,
                 tipo: certificateData.tipo,
                 fechaGeneracion: new Date(),
                 aprobado: false,
-                pdfUrl: undefined
+                pdfUrl: undefined,
             };
         });
     }
@@ -131,7 +135,7 @@ class CertificateController extends BaseController_1.BaseController {
         await this.execute(req, res, async () => {
             const certificateId = parseInt(req.params.id);
             if (isNaN(certificateId)) {
-                throw new Error('ID de certificado inválido');
+                throw new Error("ID de certificado inválido");
             }
             // TODO: Implement when approveCertificateUseCase is available in DIContainer
             // const approveCertificateUseCase = this.container.getApproveCertificateUseCase();
@@ -140,18 +144,18 @@ class CertificateController extends BaseController_1.BaseController {
                 id: certificateId,
                 usuario: {
                     id: 1,
-                    nombres: 'Usuario Mock',
-                    apellidos: 'Apellido Mock',
-                    cedula: '1234567890'
+                    nombres: "Usuario Mock",
+                    apellidos: "Apellido Mock",
+                    cedula: "1234567890",
                 },
                 evento: {
                     id: 1,
-                    nombre: 'Evento Mock'
+                    nombre: "Evento Mock",
                 },
-                tipo: 'evento',
+                tipo: "evento",
                 fechaGeneracion: new Date(),
                 aprobado: true,
-                pdfUrl: `/certificates/certificate-${certificateId}.pdf`
+                pdfUrl: `/certificates/certificate-${certificateId}.pdf`,
             };
         });
     }
@@ -163,15 +167,15 @@ class CertificateController extends BaseController_1.BaseController {
         await this.execute(req, res, async () => {
             const certificateId = parseInt(req.params.id);
             if (isNaN(certificateId)) {
-                throw new Error('ID de certificado inválido');
+                throw new Error("ID de certificado inválido");
             }
             // TODO: Implement when downloadCertificateUseCase is available in DIContainer
             // const downloadCertificateUseCase = this.container.getDownloadCertificateUseCase();
             // Mock response for now - En un caso real, esto sería un stream de PDF
             return {
-                message: 'Certificado descargado exitosamente',
+                message: "Certificado descargado exitosamente",
                 pdfUrl: `/certificates/certificate-${certificateId}.pdf`,
-                fileName: `certificado-${certificateId}.pdf`
+                fileName: `certificado-${certificateId}.pdf`,
             };
         });
     }
@@ -193,23 +197,23 @@ class CertificateController extends BaseController_1.BaseController {
                         id: 1,
                         usuario: {
                             id: userId,
-                            nombres: 'Usuario Mock',
-                            apellidos: 'Apellido Mock',
-                            cedula: '1234567890'
+                            nombres: "Usuario Mock",
+                            apellidos: "Apellido Mock",
+                            cedula: "1234567890",
                         },
                         evento: {
                             id: 1,
-                            nombre: 'Mi Evento Mock'
+                            nombre: "Mi Evento Mock",
                         },
-                        tipo: 'evento',
+                        tipo: "evento",
                         fechaGeneracion: new Date(),
                         aprobado: true,
-                        pdfUrl: '/certificates/my-certificate.pdf'
-                    }
+                        pdfUrl: "/certificates/my-certificate.pdf",
+                    },
                 ],
                 total: 1,
                 page: page,
-                pageSize: pageSize
+                pageSize: pageSize,
             };
             return response;
         });
@@ -230,13 +234,13 @@ class CertificateController extends BaseController_1.BaseController {
                 certificadosPendientes: 15,
                 porTipo: {
                     evento: 60,
-                    curso: 40
+                    curso: 40,
                 },
                 porMes: [
-                    { mes: 'Enero', cantidad: 10 },
-                    { mes: 'Febrero', cantidad: 15 },
-                    { mes: 'Marzo', cantidad: 20 }
-                ]
+                    { mes: "Enero", cantidad: 10 },
+                    { mes: "Febrero", cantidad: 15 },
+                    { mes: "Marzo", cantidad: 20 },
+                ],
             };
         });
     }
@@ -257,23 +261,23 @@ class CertificateController extends BaseController_1.BaseController {
                         id: 1,
                         usuario: {
                             id: 1,
-                            nombres: 'Usuario Pendiente Mock',
-                            apellidos: 'Apellido Mock',
-                            cedula: '1234567890'
+                            nombres: "Usuario Pendiente Mock",
+                            apellidos: "Apellido Mock",
+                            cedula: "1234567890",
                         },
                         curso: {
                             id: 1,
-                            nombre: 'Curso Mock'
+                            nombre: "Curso Mock",
                         },
-                        tipo: 'curso',
+                        tipo: "curso",
                         fechaGeneracion: new Date(),
                         aprobado: false,
-                        pdfUrl: undefined
-                    }
+                        pdfUrl: undefined,
+                    },
                 ],
                 total: 1,
                 page: page,
-                pageSize: pageSize
+                pageSize: pageSize,
             };
             return response;
         });
@@ -286,7 +290,7 @@ class CertificateController extends BaseController_1.BaseController {
         await this.execute(req, res, async () => {
             const { certificateIds } = req.body;
             if (!Array.isArray(certificateIds) || certificateIds.length === 0) {
-                throw new Error('Se requiere una lista válida de IDs de certificados');
+                throw new Error("Se requiere una lista válida de IDs de certificados");
             }
             // TODO: Implement when bulkApproveCertificatesUseCase is available in DIContainer
             // const bulkApproveCertificatesUseCase = this.container.getBulkApproveCertificatesUseCase();
@@ -296,7 +300,7 @@ class CertificateController extends BaseController_1.BaseController {
                 processedCount: certificateIds.length,
                 successCount: certificateIds.length,
                 failedCount: 0,
-                failedIds: []
+                failedIds: [],
             };
         });
     }

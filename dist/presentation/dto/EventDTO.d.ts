@@ -8,7 +8,7 @@ export interface CreateEventRequestDTO {
     capacidadMaxima: number;
     carreraIds: number[];
     precio?: number;
-    modalidad: 'presencial' | 'virtual' | 'hibrida';
+    modalidad: "presencial" | "virtual" | "hibrida";
     estado?: boolean;
 }
 export interface UpdateEventRequestDTO {
@@ -21,7 +21,7 @@ export interface UpdateEventRequestDTO {
     capacidadMaxima?: number;
     carreraIds?: number[];
     precio?: number;
-    modalidad?: 'presencial' | 'virtual' | 'hibrida';
+    modalidad?: "presencial" | "virtual" | "hibrida";
     estado?: boolean;
 }
 export interface EventResponseDTO {

@@ -1,5 +1,7 @@
 import express, { Application } from "express";
-// Importar controladores directamente sin DIContainer por ahora
+// Import DIContainer for dependency injection
+import { DIContainer } from "./infrastructure/DIContainer";
+// Import controllers
 import { AuthController } from "./presentation/controllers/AuthController";
 import { UserController } from "./presentation/controllers/UserController";
 import { CourseController } from "./presentation/controllers/CourseController";
@@ -26,8 +28,9 @@ import {
 export class Server {
   private app: Application;
   private port: number;
+  private container: DIContainer;
 
-  // Controladores
+  // Controllers
   private authController: AuthController;
   private userController: UserController;
   private courseController: CourseController;
@@ -37,13 +40,16 @@ export class Server {
   constructor(port: number = 3000) {
     this.port = port;
     this.app = express();
+    
+    // Initialize dependency injection container
+    this.container = DIContainer.getInstance();
 
-    // Inicializar controladores (sin DIContainer por ahora)
-    this.authController = new AuthController();
-    this.userController = new UserController();
-    this.courseController = new CourseController();
-    this.eventController = new EventController();
-    this.certificateController = new CertificateController();
+    // Initialize controllers with dependency injection
+    this.authController = new AuthController(this.container);
+    this.userController = new UserController(); // TODO: Add DI later
+    this.courseController = new CourseController(); // TODO: Add DI later
+    this.eventController = new EventController(); // TODO: Add DI later
+    this.certificateController = new CertificateController(); // TODO: Add DI later
 
     this.setupMiddlewares();
     this.setupRoutes();
@@ -380,22 +386,30 @@ export class Server {
     try {
       // El DIContainer se inicializa automáticamente al ser creado
 
-      this.app.listen(this.port, () => {
-        console.log("🚀 ========================================");
-        console.log(`🚀 Servidor iniciado exitosamente`);
-        console.log(`🚀 Puerto: ${this.port}`);
-        console.log(`🚀 Ambiente: ${process.env.NODE_ENV || "development"}`);
-        console.log(`🚀 Health Check: http://localhost:${this.port}/health`);
-        console.log(`🚀 API Base: http://localhost:${this.port}/api`);
-        console.log("🚀 ========================================");
-        console.log("🏗️  Clean Architecture Structure:");
-        console.log(
-          "   📁 Presentation Layer: Controllers, Routes, Middlewares"
-        );
-        console.log("   📁 Application Layer: Use Cases (Mock Implementation)");
-        console.log("   📁 Domain Layer: Entities, Repositories (Interfaces)");
-        console.log("   📁 Infrastructure Layer: Database, External Services");
-        console.log("🚀 ========================================");
+      return new Promise<void>((resolve, reject) => {
+        const server = this.app.listen(this.port, () => {
+          console.log("🚀 ========================================");
+          console.log(`🚀 Servidor iniciado exitosamente`);
+          console.log(`🚀 Puerto: ${this.port}`);
+          console.log(`🚀 Ambiente: ${process.env.NODE_ENV || "development"}`);
+          console.log(`🚀 Health Check: http://localhost:${this.port}/health`);
+          console.log(`🚀 API Base: http://localhost:${this.port}/api`);
+          console.log("🚀 ========================================");
+          console.log("🏗️  Clean Architecture Structure:");
+          console.log(
+            "   📁 Presentation Layer: Controllers, Routes, Middlewares"
+          );
+          console.log("   📁 Application Layer: Use Cases (Mock Implementation)");
+          console.log("   📁 Domain Layer: Entities, Repositories (Interfaces)");
+          console.log("   📁 Infrastructure Layer: Database, External Services");
+          console.log("🚀 ========================================");
+          resolve();
+        });
+
+        server.on('error', (error) => {
+          console.error("❌ Error al iniciar el servidor:", error);
+          reject(error);
+        });
       });
     } catch (error) {
       console.error("❌ Error al iniciar el servidor:", error);

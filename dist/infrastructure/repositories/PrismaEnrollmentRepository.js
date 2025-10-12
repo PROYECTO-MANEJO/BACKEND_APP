@@ -14,7 +14,7 @@ class PrismaEnrollmentRepository {
     // ===== INSCRIPCIONES DE EVENTOS =====
     async createEventEnrollment(enrollmentData) {
         if (!enrollmentData.eventId) {
-            throw new Error('Event ID is required for event enrollment');
+            throw new Error("Event ID is required for event enrollment");
         }
         const inscripcion = await this.prisma.inscripcion.create({
             data: {
@@ -28,22 +28,22 @@ class PrismaEnrollmentRepository {
                 fec_subida_comprobante: enrollmentData.proofUploadDate || null,
                 id_usu_ins: enrollmentData.userId,
                 id_eve_ins: enrollmentData.eventId,
-                estado_pago: enrollmentData.paymentStatus || 'PENDIENTE',
+                estado_pago: enrollmentData.paymentStatus || "PENDIENTE",
                 id_admin_aprobador: enrollmentData.approvingAdminId || null,
                 fec_aprobacion: enrollmentData.approvalDate || null,
-                carta_motivacion: enrollmentData.motivationLetter || null
+                carta_motivacion: enrollmentData.motivationLetter || null,
             },
             include: {
                 usuario: true,
                 evento: true,
-                adminAprobador: true
-            }
+                adminAprobador: true,
+            },
         });
-        return this.mapToEnrollmentData(inscripcion, 'event');
+        return this.mapToEnrollmentData(inscripcion, "event");
     }
     async createCourseEnrollment(enrollmentData) {
         if (!enrollmentData.courseId) {
-            throw new Error('Course ID is required for course enrollment');
+            throw new Error("Course ID is required for course enrollment");
         }
         const inscripcion = await this.prisma.inscripcionCurso.create({
             data: {
@@ -57,18 +57,18 @@ class PrismaEnrollmentRepository {
                 fec_subida_comprobante: enrollmentData.proofUploadDate || null,
                 id_usu_ins_cur: enrollmentData.userId,
                 id_cur_ins: enrollmentData.courseId,
-                estado_pago_cur: enrollmentData.paymentStatus || 'PENDIENTE',
+                estado_pago_cur: enrollmentData.paymentStatus || "PENDIENTE",
                 id_admin_aprobador_cur: enrollmentData.approvingAdminId || null,
                 fec_aprobacion_cur: enrollmentData.approvalDate || null,
-                carta_motivacion: enrollmentData.motivationLetter || null
+                carta_motivacion: enrollmentData.motivationLetter || null,
             },
             include: {
                 usuario: true,
                 curso: true,
-                adminAprobador: true
-            }
+                adminAprobador: true,
+            },
         });
-        return this.mapToEnrollmentData(inscripcion, 'course');
+        return this.mapToEnrollmentData(inscripcion, "course");
     }
     // ===== BÚSQUEDAS =====
     async findEventEnrollmentById(id) {
@@ -77,12 +77,12 @@ class PrismaEnrollmentRepository {
             include: {
                 usuario: true,
                 evento: true,
-                adminAprobador: true
-            }
+                adminAprobador: true,
+            },
         });
         if (!inscripcion)
             return null;
-        return this.mapToEnrollmentData(inscripcion, 'event');
+        return this.mapToEnrollmentData(inscripcion, "event");
     }
     async findCourseEnrollmentById(id) {
         const inscripcion = await this.prisma.inscripcionCurso.findUnique({
@@ -90,12 +90,12 @@ class PrismaEnrollmentRepository {
             include: {
                 usuario: true,
                 curso: true,
-                adminAprobador: true
-            }
+                adminAprobador: true,
+            },
         });
         if (!inscripcion)
             return null;
-        return this.mapToEnrollmentData(inscripcion, 'course');
+        return this.mapToEnrollmentData(inscripcion, "course");
     }
     async findEventEnrollmentsByUser(userId) {
         const inscripciones = await this.prisma.inscripcion.findMany({
@@ -103,10 +103,10 @@ class PrismaEnrollmentRepository {
             include: {
                 usuario: true,
                 evento: true,
-                adminAprobador: true
-            }
+                adminAprobador: true,
+            },
         });
-        return inscripciones.map(inscripcion => this.mapToEnrollmentData(inscripcion, 'event'));
+        return inscripciones.map((inscripcion) => this.mapToEnrollmentData(inscripcion, "event"));
     }
     async findCourseEnrollmentsByUser(userId) {
         const inscripciones = await this.prisma.inscripcionCurso.findMany({
@@ -114,10 +114,10 @@ class PrismaEnrollmentRepository {
             include: {
                 usuario: true,
                 curso: true,
-                adminAprobador: true
-            }
+                adminAprobador: true,
+            },
         });
-        return inscripciones.map(inscripcion => this.mapToEnrollmentData(inscripcion, 'course'));
+        return inscripciones.map((inscripcion) => this.mapToEnrollmentData(inscripcion, "course"));
     }
     async findEventEnrollmentsByEvent(eventId) {
         const inscripciones = await this.prisma.inscripcion.findMany({
@@ -125,10 +125,10 @@ class PrismaEnrollmentRepository {
             include: {
                 usuario: true,
                 evento: true,
-                adminAprobador: true
-            }
+                adminAprobador: true,
+            },
         });
-        return inscripciones.map(inscripcion => this.mapToEnrollmentData(inscripcion, 'event'));
+        return inscripciones.map((inscripcion) => this.mapToEnrollmentData(inscripcion, "event"));
     }
     async findCourseEnrollmentsByCourse(courseId) {
         const inscripciones = await this.prisma.inscripcionCurso.findMany({
@@ -136,22 +136,22 @@ class PrismaEnrollmentRepository {
             include: {
                 usuario: true,
                 curso: true,
-                adminAprobador: true
-            }
+                adminAprobador: true,
+            },
         });
-        return inscripciones.map(inscripcion => this.mapToEnrollmentData(inscripcion, 'course'));
+        return inscripciones.map((inscripcion) => this.mapToEnrollmentData(inscripcion, "course"));
     }
     async findEnrollmentsByPaymentStatus(status, type) {
-        if (type === 'event') {
+        if (type === "event") {
             const inscripciones = await this.prisma.inscripcion.findMany({
                 where: { estado_pago: status },
                 include: {
                     usuario: true,
                     evento: true,
-                    adminAprobador: true
-                }
+                    adminAprobador: true,
+                },
             });
-            return inscripciones.map(inscripcion => this.mapToEnrollmentData(inscripcion, 'event'));
+            return inscripciones.map((inscripcion) => this.mapToEnrollmentData(inscripcion, "event"));
         }
         else {
             const inscripciones = await this.prisma.inscripcionCurso.findMany({
@@ -159,10 +159,10 @@ class PrismaEnrollmentRepository {
                 include: {
                     usuario: true,
                     curso: true,
-                    adminAprobador: true
-                }
+                    adminAprobador: true,
+                },
             });
-            return inscripciones.map(inscripcion => this.mapToEnrollmentData(inscripcion, 'course'));
+            return inscripciones.map((inscripcion) => this.mapToEnrollmentData(inscripcion, "course"));
         }
     }
     // ===== ACTUALIZACIONES =====
@@ -180,15 +180,15 @@ class PrismaEnrollmentRepository {
                 estado_pago: enrollmentData.paymentStatus,
                 id_admin_aprobador: enrollmentData.approvingAdminId,
                 fec_aprobacion: enrollmentData.approvalDate,
-                carta_motivacion: enrollmentData.motivationLetter
+                carta_motivacion: enrollmentData.motivationLetter,
             },
             include: {
                 usuario: true,
                 evento: true,
-                adminAprobador: true
-            }
+                adminAprobador: true,
+            },
         });
-        return this.mapToEnrollmentData(inscripcion, 'event');
+        return this.mapToEnrollmentData(inscripcion, "event");
     }
     async updateCourseEnrollment(id, enrollmentData) {
         const inscripcion = await this.prisma.inscripcionCurso.update({
@@ -204,34 +204,36 @@ class PrismaEnrollmentRepository {
                 estado_pago_cur: enrollmentData.paymentStatus,
                 id_admin_aprobador_cur: enrollmentData.approvingAdminId,
                 fec_aprobacion_cur: enrollmentData.approvalDate,
-                carta_motivacion: enrollmentData.motivationLetter
+                carta_motivacion: enrollmentData.motivationLetter,
             },
             include: {
                 usuario: true,
                 curso: true,
-                adminAprobador: true
-            }
+                adminAprobador: true,
+            },
         });
-        return this.mapToEnrollmentData(inscripcion, 'course');
+        return this.mapToEnrollmentData(inscripcion, "course");
     }
     // ===== ELIMINACIONES =====
     async deleteEventEnrollment(id) {
         await this.prisma.inscripcion.delete({
-            where: { id_ins: id }
+            where: { id_ins: id },
         });
     }
     async deleteCourseEnrollment(id) {
         await this.prisma.inscripcionCurso.delete({
-            where: { id_ins_cur: id }
+            where: { id_ins_cur: id },
         });
     }
     // ===== UTILITY METHODS =====
     mapToEnrollmentData(inscripcion, type) {
-        if (type === 'event') {
+        if (type === "event") {
             return {
                 id: inscripcion.id_ins,
                 enrollmentDate: inscripcion.fec_ins,
-                value: inscripcion.val_ins ? parseFloat(inscripcion.val_ins.toString()) : undefined,
+                value: inscripcion.val_ins
+                    ? parseFloat(inscripcion.val_ins.toString())
+                    : undefined,
                 paymentMethod: inscripcion.met_pag_ins || undefined,
                 paymentOrderLink: inscripcion.enl_ord_pag_ins || undefined,
                 paymentProof: inscripcion.comprobante_pago_pdf || undefined,
@@ -243,14 +245,16 @@ class PrismaEnrollmentRepository {
                 paymentStatus: inscripcion.estado_pago,
                 approvingAdminId: inscripcion.id_admin_aprobador || undefined,
                 approvalDate: inscripcion.fec_aprobacion || undefined,
-                motivationLetter: inscripcion.carta_motivacion || undefined
+                motivationLetter: inscripcion.carta_motivacion || undefined,
             };
         }
         else {
             return {
                 id: inscripcion.id_ins_cur,
                 enrollmentDate: inscripcion.fec_ins_cur,
-                value: inscripcion.val_ins_cur ? parseFloat(inscripcion.val_ins_cur.toString()) : undefined,
+                value: inscripcion.val_ins_cur
+                    ? parseFloat(inscripcion.val_ins_cur.toString())
+                    : undefined,
                 paymentMethod: inscripcion.met_pag_ins_cur || undefined,
                 paymentOrderLink: inscripcion.enl_ord_pag_ins_cur || undefined,
                 paymentProof: inscripcion.comprobante_pago_pdf || undefined,
@@ -262,7 +266,7 @@ class PrismaEnrollmentRepository {
                 paymentStatus: inscripcion.estado_pago_cur,
                 approvingAdminId: inscripcion.id_admin_aprobador_cur || undefined,
                 approvalDate: inscripcion.fec_aprobacion_cur || undefined,
-                motivationLetter: inscripcion.carta_motivacion || undefined
+                motivationLetter: inscripcion.carta_motivacion || undefined,
             };
         }
     }

@@ -21,12 +21,12 @@ class BaseController {
         if (data) {
             res.status(200).json({
                 success: true,
-                data
+                data,
             });
         }
         else {
             res.status(200).json({
-                success: true
+                success: true,
             });
         }
     }
@@ -37,12 +37,12 @@ class BaseController {
         if (data) {
             res.status(201).json({
                 success: true,
-                data
+                data,
             });
         }
         else {
             res.status(201).json({
-                success: true
+                success: true,
             });
         }
     }
@@ -58,34 +58,34 @@ class BaseController {
     badRequest(res, message) {
         res.status(400).json({
             success: false,
-            error: message
+            error: message,
         });
     }
     /**
      * Respuesta de no autorizado (401)
      */
-    unauthorized(res, message = 'No autorizado') {
+    unauthorized(res, message = "No autorizado") {
         res.status(401).json({
             success: false,
-            error: message
+            error: message,
         });
     }
     /**
      * Respuesta de prohibido (403)
      */
-    forbidden(res, message = 'Prohibido') {
+    forbidden(res, message = "Prohibido") {
         res.status(403).json({
             success: false,
-            error: message
+            error: message,
         });
     }
     /**
      * Respuesta de no encontrado (404)
      */
-    notFound(res, message = 'No encontrado') {
+    notFound(res, message = "No encontrado") {
         res.status(404).json({
             success: false,
-            error: message
+            error: message,
         });
     }
     /**
@@ -94,55 +94,55 @@ class BaseController {
     conflict(res, message) {
         res.status(409).json({
             success: false,
-            error: message
+            error: message,
         });
     }
     /**
      * Respuesta de error interno del servidor (500)
      */
-    internalError(res, message = 'Error interno del servidor') {
+    internalError(res, message = "Error interno del servidor") {
         res.status(500).json({
             success: false,
-            error: message
+            error: message,
         });
     }
     /**
      * Manejo centralizado de errores
      */
     handleError(res, error) {
-        console.error('Controller Error:', error);
+        console.error("Controller Error:", error);
         // Errores de dominio (reglas de negocio)
-        if (error.name === 'DomainError') {
+        if (error.name === "DomainError") {
             this.badRequest(res, error.message);
             return;
         }
         // Errores de validación
-        if (error.name === 'ValidationError') {
+        if (error.name === "ValidationError") {
             this.badRequest(res, error.message);
             return;
         }
         // Errores de no encontrado
-        if (error.name === 'NotFoundError') {
+        if (error.name === "NotFoundError") {
             this.notFound(res, error.message);
             return;
         }
         // Errores de conflicto
-        if (error.name === 'ConflictError') {
+        if (error.name === "ConflictError") {
             this.conflict(res, error.message);
             return;
         }
         // Errores de autorización
-        if (error.name === 'UnauthorizedError') {
+        if (error.name === "UnauthorizedError") {
             this.unauthorized(res, error.message);
             return;
         }
         // Errores de permisos
-        if (error.name === 'ForbiddenError') {
+        if (error.name === "ForbiddenError") {
             this.forbidden(res, error.message);
             return;
         }
         // Error genérico del servidor
-        this.internalError(res, 'Ha ocurrido un error interno en el servidor');
+        this.internalError(res, "Ha ocurrido un error interno en el servidor");
     }
     /**
      * Extrae parámetros de paginación de la query string

@@ -9,16 +9,16 @@ const jsonwebtoken_1 = tslib_1.__importDefault(require("jsonwebtoken"));
  */
 const authenticateToken = (req, res, next) => {
     try {
-        const authHeader = req.headers['authorization'];
-        const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+        const authHeader = req.headers["authorization"];
+        const token = authHeader && authHeader.split(" ")[1]; // Bearer TOKEN
         if (!token) {
             res.status(401).json({
                 success: false,
-                error: 'Token de acceso requerido'
+                error: "Token de acceso requerido",
             });
             return;
         }
-        const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
+        const jwtSecret = process.env.JWT_SECRET || "your-secret-key";
         const decoded = jsonwebtoken_1.default.verify(token, jwtSecret);
         // Agregar información del usuario al request
         req.userId = decoded.userId;
@@ -30,20 +30,20 @@ const authenticateToken = (req, res, next) => {
         if (error instanceof jsonwebtoken_1.default.TokenExpiredError) {
             res.status(401).json({
                 success: false,
-                error: 'Token expirado'
+                error: "Token expirado",
             });
             return;
         }
         if (error instanceof jsonwebtoken_1.default.JsonWebTokenError) {
             res.status(401).json({
                 success: false,
-                error: 'Token inválido'
+                error: "Token inválido",
             });
             return;
         }
         res.status(500).json({
             success: false,
-            error: 'Error interno del servidor'
+            error: "Error interno del servidor",
         });
     }
 };
@@ -59,14 +59,14 @@ const authorize = (...allowedRoles) => {
             if (!userRole) {
                 res.status(401).json({
                     success: false,
-                    error: 'Usuario no autenticado'
+                    error: "Usuario no autenticado",
                 });
                 return;
             }
             if (!allowedRoles.includes(userRole)) {
                 res.status(403).json({
                     success: false,
-                    error: 'No tienes permisos para acceder a este recurso'
+                    error: "No tienes permisos para acceder a este recurso",
                 });
                 return;
             }
@@ -75,7 +75,7 @@ const authorize = (...allowedRoles) => {
         catch (error) {
             res.status(500).json({
                 success: false,
-                error: 'Error interno del servidor'
+                error: "Error interno del servidor",
             });
         }
     };
@@ -87,10 +87,10 @@ exports.authorize = authorize;
  */
 const optionalAuth = (req, res, next) => {
     try {
-        const authHeader = req.headers['authorization'];
-        const token = authHeader && authHeader.split(' ')[1];
+        const authHeader = req.headers["authorization"];
+        const token = authHeader && authHeader.split(" ")[1];
         if (token) {
-            const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
+            const jwtSecret = process.env.JWT_SECRET || "your-secret-key";
             const decoded = jsonwebtoken_1.default.verify(token, jwtSecret);
             req.userId = decoded.userId;
             req.userRole = decoded.role;
@@ -114,7 +114,7 @@ const authorizeOwnerOrAdmin = (req, res, next) => {
         const userRole = req.userRole;
         const requestedUserId = parseInt(req.params.userId || req.params.id);
         // Los administradores pueden acceder a cualquier recurso
-        if (userRole === 'administrador' || userRole === 'admin') {
+        if (userRole === "administrador" || userRole === "admin") {
             next();
             return;
         }
@@ -125,13 +125,13 @@ const authorizeOwnerOrAdmin = (req, res, next) => {
         }
         res.status(403).json({
             success: false,
-            error: 'No tienes permisos para acceder a este recurso'
+            error: "No tienes permisos para acceder a este recurso",
         });
     }
     catch (error) {
         res.status(500).json({
             success: false,
-            error: 'Error interno del servidor'
+            error: "Error interno del servidor",
         });
     }
 };

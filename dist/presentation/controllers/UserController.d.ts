@@ -1,9 +1,7 @@
-import { Request, Response } from 'express';
-import { BaseController } from './BaseController';
-import { DIContainer } from '../../infrastructure/config/DIContainer';
+import { Request, Response } from "express";
+import { BaseController } from "./BaseController";
 export declare class UserController extends BaseController {
-    private container;
-    constructor(container: DIContainer);
+    constructor();
     /**
      * GET /api/users
      * Obtener lista de usuarios con paginación

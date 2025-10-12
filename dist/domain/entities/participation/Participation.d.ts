@@ -118,7 +118,7 @@ export declare class Participation {
         enrollmentDate: Date;
         completionDate: Date | undefined;
         progressPercentage: number;
-        paymentStatus: "APPROVED" | "REJECTED" | "PENDING";
+        paymentStatus: "PENDING" | "APPROVED" | "REJECTED";
     };
     getDetailedReport(): {
         participantId: string;
@@ -147,7 +147,7 @@ export declare class Participation {
         enrollmentDate: Date;
         completionDate: Date | undefined;
         progressPercentage: number;
-        paymentStatus: "APPROVED" | "REJECTED" | "PENDING";
+        paymentStatus: "PENDING" | "APPROVED" | "REJECTED";
     };
 }
 //# sourceMappingURL=Participation.d.ts.map

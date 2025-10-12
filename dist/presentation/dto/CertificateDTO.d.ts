@@ -2,7 +2,7 @@ export interface GenerateCertificateRequestDTO {
     usuarioId: number;
     eventoId?: number;
     cursoId?: number;
-    tipo: 'evento' | 'curso';
+    tipo: "evento" | "curso";
 }
 export interface CertificateResponseDTO {
     id: number;

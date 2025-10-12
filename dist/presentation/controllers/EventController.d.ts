@@ -1,12 +1,11 @@
-import { Request, Response } from 'express';
-import { BaseController } from './BaseController';
-import { DIContainer } from '../../infrastructure/config/DIContainer';
+import { Request, Response } from "express";
+import { BaseController } from "./BaseController";
 /**
  * Controlador para gestión de eventos
  * Maneja todas las operaciones CRUD y funcionalidades relacionadas con eventos
  */
 export declare class EventController extends BaseController {
-    constructor(container: DIContainer);
+    constructor();
     /**
      * GET /api/events
      * Obtener lista de eventos con filtros

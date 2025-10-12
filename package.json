@@ -37,6 +37,7 @@
     "db:backup": "bash scripts/db.sh backup",
     "db:clean": "bash scripts/db.sh clean",
     "db:help": "bash scripts/db.sh help",
+    "postgres": "bash scripts/postgres-only.sh",
     "postinstall": "prisma generate"
   },
   "keywords": [],
@@ -59,7 +60,7 @@
     "nodemailer": "^7.0.3",
     "path": "^0.12.7",
     "pdfkit": "^0.17.1",
-    "pg": "^8.16.0"
+    "pg": "^8.16.3"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
@@ -72,6 +73,7 @@
     "@types/pg": "^8.15.5",
     "nodemon": "^3.1.10",
     "prisma": "^6.10.1",
+    "rimraf": "^6.0.1",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.3"

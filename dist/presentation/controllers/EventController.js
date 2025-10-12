@@ -7,7 +7,7 @@ const BaseController_1 = require("./BaseController");
  * Maneja todas las operaciones CRUD y funcionalidades relacionadas con eventos
  */
 class EventController extends BaseController_1.BaseController {
-    constructor(container) {
+    constructor() {
         super();
     }
     /**
@@ -25,24 +25,24 @@ class EventController extends BaseController_1.BaseController {
                 events: [
                     {
                         id: 1,
-                        nombre: 'Evento Mock',
-                        descripcion: 'Descripción del evento mock',
+                        nombre: "Evento Mock",
+                        descripcion: "Descripción del evento mock",
                         fechaInicio: new Date(),
                         fechaFin: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-                        area: 'Tecnología',
-                        audiencia: 'Estudiantes',
+                        area: "Tecnología",
+                        audiencia: "Estudiantes",
                         capacidadMaxima: 100,
                         inscritosActuales: 0,
-                        carreras: [{ id: 1, nombre: 'Carrera Mock' }],
+                        carreras: [{ id: 1, nombre: "Carrera Mock" }],
                         precio: 50,
-                        modalidad: 'virtual',
+                        modalidad: "virtual",
                         estado: true,
-                        fechaCreacion: new Date()
-                    }
+                        fechaCreacion: new Date(),
+                    },
                 ],
                 total: 1,
                 page: page,
-                pageSize: pageSize
+                pageSize: pageSize,
             };
             return response;
         });
@@ -55,26 +55,26 @@ class EventController extends BaseController_1.BaseController {
         await this.execute(req, res, async () => {
             const eventId = parseInt(req.params.id);
             if (isNaN(eventId)) {
-                throw new Error('ID de evento inválido');
+                throw new Error("ID de evento inválido");
             }
             // TODO: Implement when getEventByIdUseCase is available in DIContainer
             // const getEventByIdUseCase = this.container.getGetEventByIdUseCase();
             // Mock response for now
             return {
                 id: eventId,
-                nombre: 'Evento Mock',
-                descripcion: 'Descripción del evento mock',
+                nombre: "Evento Mock",
+                descripcion: "Descripción del evento mock",
                 fechaInicio: new Date(),
                 fechaFin: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-                area: 'Tecnología',
-                audiencia: 'Estudiantes',
+                area: "Tecnología",
+                audiencia: "Estudiantes",
                 capacidadMaxima: 100,
                 inscritosActuales: 0,
-                carreras: [{ id: 1, nombre: 'Carrera Mock' }],
+                carreras: [{ id: 1, nombre: "Carrera Mock" }],
                 precio: 50,
-                modalidad: 'virtual',
+                modalidad: "virtual",
                 estado: true,
-                fechaCreacion: new Date()
+                fechaCreacion: new Date(),
             };
         });
     }
@@ -86,8 +86,11 @@ class EventController extends BaseController_1.BaseController {
         await this.execute(req, res, async () => {
             const eventData = req.body;
             // Validación básica
-            if (!eventData.nombre || !eventData.descripcion || !eventData.fechaInicio || !eventData.fechaFin) {
-                throw new Error('Faltan campos obligatorios: nombre, descripcion, fechaInicio, fechaFin');
+            if (!eventData.nombre ||
+                !eventData.descripcion ||
+                !eventData.fechaInicio ||
+                !eventData.fechaFin) {
+                throw new Error("Faltan campos obligatorios: nombre, descripcion, fechaInicio, fechaFin");
             }
             // TODO: Implement when createEventUseCase is available in DIContainer
             // const createEventUseCase = this.container.getCreateEventUseCase();
@@ -102,11 +105,14 @@ class EventController extends BaseController_1.BaseController {
                 audiencia: eventData.audiencia,
                 capacidadMaxima: eventData.capacidadMaxima,
                 inscritosActuales: 0,
-                carreras: eventData.carreraIds.map(id => ({ id, nombre: `Carrera ${id}` })),
+                carreras: eventData.carreraIds.map((id) => ({
+                    id,
+                    nombre: `Carrera ${id}`,
+                })),
                 precio: eventData.precio || 0,
                 modalidad: eventData.modalidad,
                 estado: eventData.estado ?? true,
-                fechaCreacion: new Date()
+                fechaCreacion: new Date(),
             };
         });
     }
@@ -118,7 +124,7 @@ class EventController extends BaseController_1.BaseController {
         await this.execute(req, res, async () => {
             const eventId = parseInt(req.params.id);
             if (isNaN(eventId)) {
-                throw new Error('ID de evento inválido');
+                throw new Error("ID de evento inválido");
             }
             const eventData = req.body;
             // TODO: Implement when updateEventUseCase is available in DIContainer
@@ -126,19 +132,26 @@ class EventController extends BaseController_1.BaseController {
             // Mock response for now
             return {
                 id: eventId,
-                nombre: eventData.nombre || 'Evento Mock Actualizado',
-                descripcion: eventData.descripcion || 'Descripción actualizada',
-                fechaInicio: eventData.fechaInicio ? new Date(eventData.fechaInicio) : new Date(),
-                fechaFin: eventData.fechaFin ? new Date(eventData.fechaFin) : new Date(),
-                area: eventData.area || 'Tecnología',
-                audiencia: eventData.audiencia || 'Estudiantes',
+                nombre: eventData.nombre || "Evento Mock Actualizado",
+                descripcion: eventData.descripcion || "Descripción actualizada",
+                fechaInicio: eventData.fechaInicio
+                    ? new Date(eventData.fechaInicio)
+                    : new Date(),
+                fechaFin: eventData.fechaFin
+                    ? new Date(eventData.fechaFin)
+                    : new Date(),
+                area: eventData.area || "Tecnología",
+                audiencia: eventData.audiencia || "Estudiantes",
                 capacidadMaxima: eventData.capacidadMaxima || 100,
                 inscritosActuales: 0,
-                carreras: eventData.carreraIds?.map(id => ({ id, nombre: `Carrera ${id}` })) || [{ id: 1, nombre: 'Carrera Mock' }],
+                carreras: eventData.carreraIds?.map((id) => ({
+                    id,
+                    nombre: `Carrera ${id}`,
+                })) || [{ id: 1, nombre: "Carrera Mock" }],
                 precio: eventData.precio || 0,
-                modalidad: eventData.modalidad || 'virtual',
+                modalidad: eventData.modalidad || "virtual",
                 estado: eventData.estado ?? true,
-                fechaCreacion: new Date()
+                fechaCreacion: new Date(),
             };
         });
     }
@@ -150,12 +163,12 @@ class EventController extends BaseController_1.BaseController {
         await this.execute(req, res, async () => {
             const eventId = parseInt(req.params.id);
             if (isNaN(eventId)) {
-                throw new Error('ID de evento inválido');
+                throw new Error("ID de evento inválido");
             }
             // TODO: Implement when deleteEventUseCase is available in DIContainer
             // const deleteEventUseCase = this.container.getDeleteEventUseCase();
             // Mock response for now
-            return { message: 'Evento eliminado exitosamente' };
+            return { message: "Evento eliminado exitosamente" };
         });
     }
     /**
@@ -168,7 +181,7 @@ class EventController extends BaseController_1.BaseController {
             const userId = this.getUserId(req);
             const enrollmentData = req.body;
             if (isNaN(eventId)) {
-                throw new Error('ID de evento inválido');
+                throw new Error("ID de evento inválido");
             }
             // TODO: Implement when enrollToEventUseCase is available in DIContainer
             // const enrollToEventUseCase = this.container.getEnrollToEventUseCase();
@@ -177,17 +190,17 @@ class EventController extends BaseController_1.BaseController {
                 id: Date.now(),
                 usuario: {
                     id: userId,
-                    nombres: 'Usuario Mock',
-                    apellidos: 'Apellido Mock',
-                    email: 'user@mock.com'
+                    nombres: "Usuario Mock",
+                    apellidos: "Apellido Mock",
+                    email: "user@mock.com",
                 },
                 evento: {
                     id: eventId,
-                    nombre: 'Evento Mock'
+                    nombre: "Evento Mock",
                 },
                 fechaInscripcion: new Date(),
-                estadoPago: 'pendiente',
-                certificadoGenerado: false
+                estadoPago: "pendiente",
+                certificadoGenerado: false,
             };
         });
     }
@@ -200,7 +213,7 @@ class EventController extends BaseController_1.BaseController {
             const eventId = parseInt(req.params.id);
             const { page, pageSize } = this.getPaginationParams(req);
             if (isNaN(eventId)) {
-                throw new Error('ID de evento inválido');
+                throw new Error("ID de evento inválido");
             }
             // TODO: Implement when getEventEnrollmentsUseCase is available in DIContainer
             // const getEventEnrollmentsUseCase = this.container.getGetEventEnrollmentsUseCase();
@@ -211,22 +224,22 @@ class EventController extends BaseController_1.BaseController {
                         id: 1,
                         usuario: {
                             id: 1,
-                            nombres: 'Usuario Mock',
-                            apellidos: 'Apellido Mock',
-                            email: 'user@mock.com'
+                            nombres: "Usuario Mock",
+                            apellidos: "Apellido Mock",
+                            email: "user@mock.com",
                         },
                         evento: {
                             id: eventId,
-                            nombre: 'Evento Mock'
+                            nombre: "Evento Mock",
                         },
                         fechaInscripcion: new Date(),
-                        estadoPago: 'completado',
-                        certificadoGenerado: false
-                    }
+                        estadoPago: "completado",
+                        certificadoGenerado: false,
+                    },
                 ],
                 total: 1,
                 page: page,
-                pageSize: pageSize
+                pageSize: pageSize,
             };
         });
     }
@@ -245,24 +258,24 @@ class EventController extends BaseController_1.BaseController {
                 events: [
                     {
                         id: 1,
-                        nombre: 'Evento Próximo Mock',
-                        descripcion: 'Descripción del evento próximo',
+                        nombre: "Evento Próximo Mock",
+                        descripcion: "Descripción del evento próximo",
                         fechaInicio: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Próxima semana
                         fechaFin: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000),
-                        area: 'Tecnología',
-                        audiencia: 'Estudiantes',
+                        area: "Tecnología",
+                        audiencia: "Estudiantes",
                         capacidadMaxima: 100,
                         inscritosActuales: 15,
-                        carreras: [{ id: 1, nombre: 'Carrera Mock' }],
+                        carreras: [{ id: 1, nombre: "Carrera Mock" }],
                         precio: 50,
-                        modalidad: 'virtual',
+                        modalidad: "virtual",
                         estado: true,
-                        fechaCreacion: new Date()
-                    }
+                        fechaCreacion: new Date(),
+                    },
                 ],
                 total: 1,
                 page: page,
-                pageSize: pageSize
+                pageSize: pageSize,
             };
             return response;
         });
@@ -285,22 +298,22 @@ class EventController extends BaseController_1.BaseController {
                         id: 1,
                         usuario: {
                             id: userId,
-                            nombres: 'Usuario Mock',
-                            apellidos: 'Apellido Mock',
-                            email: 'user@mock.com'
+                            nombres: "Usuario Mock",
+                            apellidos: "Apellido Mock",
+                            email: "user@mock.com",
                         },
                         evento: {
                             id: 1,
-                            nombre: 'Mi Evento Mock'
+                            nombre: "Mi Evento Mock",
                         },
                         fechaInscripcion: new Date(),
-                        estadoPago: 'completado',
-                        certificadoGenerado: true
-                    }
+                        estadoPago: "completado",
+                        certificadoGenerado: true,
+                    },
                 ],
                 total: 1,
                 page: page,
-                pageSize: pageSize
+                pageSize: pageSize,
             };
         });
     }
@@ -320,24 +333,24 @@ class EventController extends BaseController_1.BaseController {
                 events: [
                     {
                         id: 1,
-                        nombre: `Evento de ${area || 'General'} Mock`,
-                        descripcion: `Descripción del evento de ${area || 'General'}`,
+                        nombre: `Evento de ${area || "General"} Mock`,
+                        descripcion: `Descripción del evento de ${area || "General"}`,
                         fechaInicio: new Date(),
                         fechaFin: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-                        area: area || 'General',
-                        audiencia: 'Estudiantes',
+                        area: area || "General",
+                        audiencia: "Estudiantes",
                         capacidadMaxima: 100,
                         inscritosActuales: 10,
-                        carreras: [{ id: 1, nombre: 'Carrera Mock' }],
+                        carreras: [{ id: 1, nombre: "Carrera Mock" }],
                         precio: 50,
-                        modalidad: 'virtual',
+                        modalidad: "virtual",
                         estado: true,
-                        fechaCreacion: new Date()
-                    }
+                        fechaCreacion: new Date(),
+                    },
                 ],
                 total: 1,
                 page: page,
-                pageSize: pageSize
+                pageSize: pageSize,
             };
             return response;
         });

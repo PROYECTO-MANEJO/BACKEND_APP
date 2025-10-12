@@ -4,7 +4,7 @@
  * Implementación para inscripciones tanto de eventos como de cursos
  * Maneja operaciones básicas según el esquema Prisma real
  */
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 export interface EnrollmentData {
     id?: string;
     enrollmentDate: Date;
@@ -34,7 +34,7 @@ export declare class PrismaEnrollmentRepository {
     findCourseEnrollmentsByUser(userId: string): Promise<EnrollmentData[]>;
     findEventEnrollmentsByEvent(eventId: string): Promise<EnrollmentData[]>;
     findCourseEnrollmentsByCourse(courseId: string): Promise<EnrollmentData[]>;
-    findEnrollmentsByPaymentStatus(status: string, type: 'event' | 'course'): Promise<EnrollmentData[]>;
+    findEnrollmentsByPaymentStatus(status: string, type: "event" | "course"): Promise<EnrollmentData[]>;
     updateEventEnrollment(id: string, enrollmentData: Partial<EnrollmentData>): Promise<EnrollmentData>;
     updateCourseEnrollment(id: string, enrollmentData: Partial<EnrollmentData>): Promise<EnrollmentData>;
     deleteEventEnrollment(id: string): Promise<void>;

@@ -1,9 +1,7 @@
-import { Router } from 'express';
-import { DIContainer } from '../../infrastructure/config/DIContainer';
+import { Router } from "express";
 export declare class AppRoutes {
     private router;
-    private container;
-    constructor(container: DIContainer);
+    constructor();
     private setupRoutes;
     getRouter(): Router;
 }

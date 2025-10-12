@@ -20,11 +20,11 @@ class PrismaAuthenticationRepository {
                 isVerified: accountData.isVerified,
                 id_usu_per: accountData.userId,
                 emailVerificationToken: accountData.emailVerificationToken || null,
-                emailVerificationExpiry: accountData.emailVerificationExpiry || null
+                emailVerificationExpiry: accountData.emailVerificationExpiry || null,
             },
             include: {
-                usuario: true
-            }
+                usuario: true,
+            },
         });
         return this.mapToAccountData(cuenta);
     }
@@ -35,10 +35,10 @@ class PrismaAuthenticationRepository {
             include: {
                 usuario: {
                     include: {
-                        carrera: true
-                    }
-                }
-            }
+                        carrera: true,
+                    },
+                },
+            },
         });
         if (!cuenta)
             return null;
@@ -48,9 +48,9 @@ class PrismaAuthenticationRepository {
                 cedula: cuenta.usuario.ced_usu,
                 firstName: cuenta.usuario.nom_usu1,
                 lastName: cuenta.usuario.ape_usu1,
-                password: cuenta.usuario.pas_usu || undefined
+                password: cuenta.usuario.pas_usu || undefined,
             },
-            account: this.mapToAccountData(cuenta)
+            account: this.mapToAccountData(cuenta),
         };
     }
     async findByCedula(cedula) {
@@ -58,8 +58,8 @@ class PrismaAuthenticationRepository {
             where: { ced_usu: cedula },
             include: {
                 cuentas: true,
-                carrera: true
-            }
+                carrera: true,
+            },
         });
         if (!usuario || !usuario.cuentas || usuario.cuentas.length === 0)
             return null;
@@ -70,9 +70,9 @@ class PrismaAuthenticationRepository {
                 cedula: usuario.ced_usu,
                 firstName: usuario.nom_usu1,
                 lastName: usuario.ape_usu1,
-                password: usuario.pas_usu || undefined
+                password: usuario.pas_usu || undefined,
             },
-            account: this.mapToAccountData(cuenta)
+            account: this.mapToAccountData(cuenta),
         };
     }
     async findByVerificationToken(token) {
@@ -81,10 +81,10 @@ class PrismaAuthenticationRepository {
             include: {
                 usuario: {
                     include: {
-                        carrera: true
-                    }
-                }
-            }
+                        carrera: true,
+                    },
+                },
+            },
         });
         if (!cuenta)
             return null;
@@ -94,9 +94,9 @@ class PrismaAuthenticationRepository {
                 cedula: cuenta.usuario.ced_usu,
                 firstName: cuenta.usuario.nom_usu1,
                 lastName: cuenta.usuario.ape_usu1,
-                password: cuenta.usuario.pas_usu || undefined
+                password: cuenta.usuario.pas_usu || undefined,
             },
-            account: this.mapToAccountData(cuenta)
+            account: this.mapToAccountData(cuenta),
         };
     }
     async findByResetToken(token) {
@@ -104,13 +104,13 @@ class PrismaAuthenticationRepository {
             where: {
                 resetToken: token,
                 resetTokenExpiry: {
-                    gt: new Date() // Token no expirado
-                }
+                    gt: new Date(), // Token no expirado
+                },
             },
             include: {
                 cuentas: true,
-                carrera: true
-            }
+                carrera: true,
+            },
         });
         if (!usuario || !usuario.cuentas || usuario.cuentas.length === 0)
             return null;
@@ -121,9 +121,9 @@ class PrismaAuthenticationRepository {
                 cedula: usuario.ced_usu,
                 firstName: usuario.nom_usu1,
                 lastName: usuario.ape_usu1,
-                password: usuario.pas_usu || undefined
+                password: usuario.pas_usu || undefined,
             },
-            account: this.mapToAccountData(cuenta)
+            account: this.mapToAccountData(cuenta),
         };
     }
     // ===== ACTUALIZACIONES DE AUTENTICACIÓN =====
@@ -133,8 +133,8 @@ class PrismaAuthenticationRepository {
             data: {
                 pas_usu: hashedPassword,
                 resetToken: null, // Limpiar token si existe
-                resetTokenExpiry: null
-            }
+                resetTokenExpiry: null,
+            },
         });
     }
     async verifyAccount(accountId) {
@@ -143,8 +143,8 @@ class PrismaAuthenticationRepository {
             data: {
                 isVerified: true,
                 emailVerificationToken: null,
-                emailVerificationExpiry: null
-            }
+                emailVerificationExpiry: null,
+            },
         });
     }
     async setResetToken(userId, token, expiry) {
@@ -152,8 +152,8 @@ class PrismaAuthenticationRepository {
             where: { id_usu: userId },
             data: {
                 resetToken: token,
-                resetTokenExpiry: expiry
-            }
+                resetTokenExpiry: expiry,
+            },
         });
     }
     async setVerificationToken(accountId, token, expiry) {
@@ -161,20 +161,20 @@ class PrismaAuthenticationRepository {
             where: { id_cue: accountId },
             data: {
                 emailVerificationToken: token,
-                emailVerificationExpiry: expiry
-            }
+                emailVerificationExpiry: expiry,
+            },
         });
     }
     // ===== VALIDACIONES =====
     async isEmailTaken(email) {
         const count = await this.prisma.cuenta.count({
-            where: { cor_cue: email }
+            where: { cor_cue: email },
         });
         return count > 0;
     }
     async isCedulaTaken(cedula) {
         const count = await this.prisma.usuario.count({
-            where: { ced_usu: cedula }
+            where: { ced_usu: cedula },
         });
         return count > 0;
     }
@@ -184,8 +184,8 @@ class PrismaAuthenticationRepository {
             where: { id_cue: accountId },
             data: { rol_cue: role },
             include: {
-                usuario: true
-            }
+                usuario: true,
+            },
         });
         return this.mapToAccountData(cuenta);
     }
@@ -195,37 +195,37 @@ class PrismaAuthenticationRepository {
             include: {
                 usuario: {
                     include: {
-                        carrera: true
-                    }
-                }
-            }
+                        carrera: true,
+                    },
+                },
+            },
         });
-        return cuentas.map(cuenta => ({
+        return cuentas.map((cuenta) => ({
             user: {
                 id: cuenta.usuario.id_usu,
                 cedula: cuenta.usuario.ced_usu,
                 firstName: cuenta.usuario.nom_usu1,
                 lastName: cuenta.usuario.ape_usu1,
-                password: cuenta.usuario.pas_usu || undefined
+                password: cuenta.usuario.pas_usu || undefined,
             },
-            account: this.mapToAccountData(cuenta)
+            account: this.mapToAccountData(cuenta),
         }));
     }
     // ===== ESTADÍSTICAS =====
     async getUserStats() {
         const total = await this.prisma.cuenta.count();
         const verified = await this.prisma.cuenta.count({
-            where: { isVerified: true }
+            where: { isVerified: true },
         });
         // Contar por roles
         const roleStats = await this.prisma.cuenta.groupBy({
-            by: ['rol_cue'],
+            by: ["rol_cue"],
             _count: {
-                _all: true
-            }
+                _all: true,
+            },
         });
         const byRole = {};
-        roleStats.forEach(stat => {
+        roleStats.forEach((stat) => {
             byRole[stat.rol_cue] = stat._count._all;
         });
         return { total, verified, byRole };
@@ -233,7 +233,7 @@ class PrismaAuthenticationRepository {
     // ===== ELIMINACIONES =====
     async deleteAccount(accountId) {
         await this.prisma.cuenta.delete({
-            where: { id_cue: accountId }
+            where: { id_cue: accountId },
         });
     }
     // ===== UTILITY METHODS =====
@@ -245,7 +245,7 @@ class PrismaAuthenticationRepository {
             isVerified: cuenta.isVerified,
             userId: cuenta.id_usu_per,
             emailVerificationToken: cuenta.emailVerificationToken || undefined,
-            emailVerificationExpiry: cuenta.emailVerificationExpiry || undefined
+            emailVerificationExpiry: cuenta.emailVerificationExpiry || undefined,
         };
     }
 }

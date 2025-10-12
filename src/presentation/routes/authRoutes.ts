@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { AuthController } from "../controllers/AuthController";
+import { DIContainer } from "../../infrastructure/DIContainer";
 import {
   handleValidationErrors,
   validateLogin,
@@ -13,7 +14,9 @@ export class AuthRoutes {
 
   constructor() {
     this.router = Router();
-    this.authController = new AuthController();
+    // Use DIContainer for AuthController
+    const container = DIContainer.getInstance();
+    this.authController = new AuthController(container);
     this.setupRoutes();
   }
 

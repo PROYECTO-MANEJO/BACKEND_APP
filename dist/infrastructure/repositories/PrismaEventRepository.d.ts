@@ -4,7 +4,7 @@
  * Implementación simplificada que funciona con el esquema Prisma real
  * Maneja operaciones básicas de eventos según la estructura existente
  */
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 export interface EventData {
     id?: string;
     name: string;

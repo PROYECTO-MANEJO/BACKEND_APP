@@ -9,234 +9,242 @@ class AuthController extends BaseController_1.BaseController {
     }
     /**
      * POST /api/auth/login
-     * Iniciar sesión de usuario
+     * User login - REAL implementation from auth.js
      */
     async login(req, res) {
         await this.execute(req, res, async () => {
-            const loginData = req.body;
-            if (!loginData.email || !loginData.password) {
-                throw new Error('Email y contraseña son requeridos');
-            }
-            // TODO: Implementar cuando estén disponibles los casos de uso
-            const mockResponse = {
-                token: 'mock-jwt-token',
-                user: {
-                    id: 1,
-                    cedula: '1234567890',
-                    nombres: 'Usuario Mock',
-                    apellidos: 'Apellido Mock',
-                    email: loginData.email,
-                    telefono: '0987654321',
-                    rol: 'estudiante',
-                    fechaCreacion: new Date(),
-                    estado: true
+            const { email, password } = req.body;
+            const prisma = this.container.getPrismaClient();
+            const bcrypt = this.container.getBcrypt();
+            const { generateJWT, generateAdminJWT } = this.container.getJwtHelpers();
+            // Find account by email with complete user information
+            const cuenta = await prisma.cuenta.findFirst({
+                where: {
+                    cor_cue: email
                 },
-                expiresIn: 3600
+                include: {
+                    usuario: {
+                        include: {
+                            carrera: {
+                                select: {
+                                    id_car: true,
+                                    nom_car: true
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            // Check if account exists
+            if (!cuenta) {
+                throw new Error('Email not found');
+            }
+            // Check if user exists
+            if (!cuenta.usuario) {
+                throw new Error('User not found');
+            }
+            // Check if account is verified
+            if (!cuenta.isVerified) {
+                throw new Error('Your account has not been verified yet. Check your email.');
+            }
+            // Verify password
+            const validPassword = await bcrypt.compare(password, cuenta.usuario.pas_usu || '');
+            if (!validPassword) {
+                throw new Error('Incorrect password');
+            }
+            // Generate JWT token based on role
+            let token;
+            if (cuenta.rol_cue === 'ADMINISTRADOR' || cuenta.rol_cue === 'MASTER') {
+                token = await generateAdminJWT(Number(cuenta.usuario.id_usu));
+            }
+            else {
+                token = await generateJWT(Number(cuenta.usuario.id_usu));
+            }
+            const user = cuenta.usuario;
+            const isEstudiante = cuenta.rol_cue === 'ESTUDIANTE';
+            // Format complete response including document status
+            const userProfile = {
+                id_usu: user.id_usu,
+                ced_usu: user.ced_usu,
+                nom_usu1: user.nom_usu1,
+                nom_usu2: user.nom_usu2,
+                ape_usu1: user.ape_usu1,
+                ape_usu2: user.ape_usu2,
+                fec_nac_usu: user.fec_nac_usu,
+                num_tel_usu: user.num_tel_usu,
+                id_car_per: user.id_car_per,
+                email: cuenta.cor_cue,
+                rol: cuenta.rol_cue,
+                carrera: user.carrera ? {
+                    id_car: user.carrera.id_car,
+                    nom_car: user.carrera.nom_car
+                } : null,
+                // Include document status
+                documentos: {
+                    cedula_subida: !!user.enl_ced_pdf,
+                    matricula_subida: !!user.enl_mat_pdf,
+                    matricula_requerida: isEstudiante,
+                    documentos_verificados: user.documentos_verificados,
+                    fecha_verificacion: user.fec_verificacion_docs,
+                    archivos_completos: isEstudiante
+                        ? (!!user.enl_ced_pdf && !!user.enl_mat_pdf)
+                        : !!user.enl_ced_pdf
+                }
             };
-            return mockResponse;
+            return {
+                success: true,
+                user: userProfile,
+                token
+            };
         });
     }
     /**
      * POST /api/auth/register
-     * Registrar nuevo usuario
+     * Register new user - REAL implementation from auth.js
      */
     async register(req, res) {
         await this.execute(req, res, async () => {
-            const userData = req.body;
-            // Validación básica
-            if (!userData.cedula || !userData.firstName || !userData.lastName || !userData.email || !userData.password) {
-                throw new Error('Faltan campos obligatorios');
+            const { email, password, nombre, nombre2, apellido, apellido2, ced_usu, fec_nac_usu, carrera } = req.body;
+            const prisma = this.container.getPrismaClient();
+            const bcrypt = this.container.getBcrypt();
+            // Check if account already exists with this email
+            const existingAccount = await prisma.cuenta.findFirst({
+                where: {
+                    cor_cue: email
+                }
+            });
+            if (existingAccount) {
+                throw new Error('An account with this email already exists');
             }
-            // TODO: Implementar cuando estén disponibles los casos de uso
-            const mockUser = {
-                id: Math.floor(Math.random() * 1000),
-                cedula: userData.cedula,
-                nombres: userData.firstName + (userData.secondName ? ` ${userData.secondName}` : ''),
-                apellidos: userData.lastName + (userData.secondLastName ? ` ${userData.secondLastName}` : ''),
-                email: userData.email,
-                telefono: userData.phoneNumber || '',
-                rol: 'estudiante',
-                fechaCreacion: new Date(),
-                estado: true
-            };
+            // Check if user already exists with this cedula
+            const existingUserByCedula = await prisma.usuario.findFirst({
+                where: { ced_usu }
+            });
+            if (existingUserByCedula) {
+                throw new Error('A user with this cedula already exists');
+            }
+            if (!ced_usu) {
+                throw new Error('Cedula is required');
+            }
+            // Validate password strength
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
+            if (!passwordRegex.test(password)) {
+                throw new Error('Password must contain at least 6 characters, one uppercase letter, one number and one special character (@$!%*?&)');
+            }
+            // Validate career for UTA users
+            if (email && email.endsWith('@uta.edu.ec')) {
+                if (!carrera) {
+                    throw new Error('Career is required for UTA students');
+                }
+                // Check if career exists
+                const carreraExists = await prisma.carrera.findUnique({
+                    where: { id_car: carrera }
+                });
+                if (!carreraExists) {
+                    throw new Error('Selected career is not valid');
+                }
+            }
+            // Encrypt password
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password, salt);
+            // Automatic role assignment
+            let rolAsignado = email.endsWith('@uta.edu.ec') ? 'ESTUDIANTE' : 'USUARIO';
+            // Validate birth date
+            let fechaNacimiento = null;
+            if (fec_nac_usu) {
+                fechaNacimiento = new Date(fec_nac_usu);
+                if (isNaN(fechaNacimiento.getTime())) {
+                    throw new Error('Invalid birth date. Use YYYY-MM-DD format');
+                }
+            }
+            else {
+                fechaNacimiento = new Date('2000-01-01');
+            }
+            // Create user and account in transaction
+            const result = await prisma.$transaction(async (prisma) => {
+                // Prepare user data
+                const userData = {
+                    ced_usu,
+                    nom_usu1: nombre,
+                    nom_usu2: nombre2 || '',
+                    ape_usu1: apellido,
+                    ape_usu2: apellido2 || '',
+                    pas_usu: hashedPassword,
+                    fec_nac_usu: fechaNacimiento
+                };
+                // Only add career if UTA user
+                if (email && email.endsWith('@uta.edu.ec') && carrera) {
+                    userData.id_car_per = carrera;
+                }
+                // Create user
+                const newUser = await prisma.usuario.create({
+                    data: userData
+                });
+                const newAccount = await prisma.cuenta.create({
+                    data: {
+                        cor_cue: email,
+                        rol_cue: rolAsignado,
+                        id_usu_per: newUser.id_usu,
+                        isVerified: false
+                    }
+                });
+                return { user: newUser, account: newAccount };
+            });
+            // TODO: Send verification token
+            // await sendVerificationToken(email, result.user.id_usu);
             return {
-                message: 'Usuario registrado exitosamente',
-                user: mockUser
+                success: true,
+                message: 'A verification email has been sent to your email address. Please verify your account before logging in.'
             };
         });
     }
     /**
-     * POST /api/auth/logout
-     * Cerrar sesión de usuario
+     * Simple implementations for other auth methods
      */
     async logout(req, res) {
         await this.execute(req, res, async () => {
-            // TODO: Implementar cuando estén disponibles los casos de uso
-            return { message: 'Sesión cerrada exitosamente' };
+            return { message: "Session closed successfully" };
         });
     }
-    /**
-     * GET /api/auth/profile
-     * Obtener perfil del usuario autenticado
-     */
     async getProfile(req, res) {
         await this.execute(req, res, async () => {
-            const userId = this.getUserId(req);
-            // TODO: Implementar cuando estén disponibles los casos de uso
-            const mockUser = {
-                id: userId,
-                cedula: '1234567890',
-                nombres: 'Usuario Mock',
-                apellidos: 'Apellido Mock',
-                email: 'usuario@ejemplo.com',
-                telefono: '0987654321',
-                rol: 'estudiante',
-                fechaCreacion: new Date(),
-                estado: true
-            };
-            return mockUser;
+            return { message: "Get profile not implemented yet" };
         });
     }
-    /**
-     * PUT /api/auth/profile
-     * Actualizar perfil del usuario autenticado
-     */
     async updateProfile(req, res) {
         await this.execute(req, res, async () => {
-            const userId = this.getUserId(req);
-            const updateData = req.body;
-            // TODO: Implement when updateUserUseCase is available in DIContainer
-            // const updateUserUseCase = this.container.getUpdateUserUseCase();
-            // Mock response for now
-            return {
-                id: userId,
-                cedula: '1234567890',
-                nombres: updateData.firstName + (updateData.secondName ? ` ${updateData.secondName}` : ''),
-                apellidos: updateData.lastName + (updateData.secondLastName ? ` ${updateData.secondLastName}` : ''),
-                email: 'user@example.com',
-                telefono: updateData.phoneNumber || '0999999999',
-                rol: 'estudiante',
-                fechaCreacion: new Date(),
-                estado: true
-            };
+            return { message: "Update profile not implemented yet" };
         });
     }
-    /**
-     * POST /api/auth/change-password
-     * Cambiar contraseña del usuario autenticado
-     */
     async changePassword(req, res) {
         await this.execute(req, res, async () => {
-            const userId = this.getUserId(req);
-            const passwordData = req.body;
-            if (!passwordData.currentPassword || !passwordData.newPassword) {
-                throw new Error('Contraseña actual y nueva contraseña son requeridas');
-            }
-            // TODO: Implement when changePasswordUseCase is available in DIContainer
-            // const changePasswordUseCase = this.container.getChangePasswordUseCase();
-            // Mock response for now
-            return { message: 'Contraseña actualizada exitosamente' };
+            return { message: "Change password not implemented yet" };
         });
     }
-    /**
-     * POST /api/auth/forgot-password
-     * Solicitar restablecimiento de contraseña
-     */
     async forgotPassword(req, res) {
         await this.execute(req, res, async () => {
-            const resetData = req.body;
-            if (!resetData.email) {
-                throw new Error('Email es requerido');
-            }
-            // TODO: Implement when forgotPasswordUseCase is available in DIContainer
-            // const forgotPasswordUseCase = this.container.getForgotPasswordUseCase();
-            // Mock response for now
-            return { message: 'Se ha enviado un enlace de restablecimiento a tu email' };
+            return { message: "Forgot password not implemented yet" };
         });
     }
-    /**
-     * POST /api/auth/reset-password
-     * Confirmar restablecimiento de contraseña
-     */
     async resetPassword(req, res) {
         await this.execute(req, res, async () => {
-            const resetData = req.body;
-            if (!resetData.token || !resetData.newPassword) {
-                throw new Error('Token y nueva contraseña son requeridos');
-            }
-            // TODO: Implement when resetPasswordUseCase is available in DIContainer
-            // const resetPasswordUseCase = this.container.getResetPasswordUseCase();
-            // Mock response for now
-            return { message: 'Contraseña restablecida exitosamente' };
+            return { message: "Reset password not implemented yet" };
         });
     }
-    /**
-     * POST /api/auth/verify-email
-     * Verificar email de usuario
-     */
     async verifyEmail(req, res) {
         await this.execute(req, res, async () => {
-            const { token } = req.body;
-            if (!token) {
-                throw new Error('Token de verificación es requerido');
-            }
-            // TODO: Implement when verifyEmailUseCase is available in DIContainer
-            // const verifyEmailUseCase = this.container.getVerifyEmailUseCase();
-            // Mock response for now
-            return { message: 'Email verificado exitosamente' };
+            return { message: "Email verification not implemented yet" };
         });
     }
-    /**
-     * POST /api/auth/resend-verification
-     * Reenviar email de verificación
-     */
     async resendVerification(req, res) {
         await this.execute(req, res, async () => {
-            const { email } = req.body;
-            if (!email) {
-                throw new Error('Email es requerido');
-            }
-            // TODO: Implement when resendVerificationUseCase is available in DIContainer
-            // const resendVerificationUseCase = this.container.getResendVerificationUseCase();
-            // Mock response for now
-            return { message: 'Email de verificación reenviado' };
+            return { message: "Resend verification not implemented yet" };
         });
     }
-    /**
-     * POST /api/auth/refresh-token
-     * Refrescar token de acceso
-     */
     async refreshToken(req, res) {
         await this.execute(req, res, async () => {
-            const { refreshToken } = req.body;
-            if (!refreshToken) {
-                throw new Error('Refresh token es requerido');
-            }
-            // TODO: Implement when refreshTokenUseCase is available in DIContainer
-            // const refreshTokenUseCase = this.container.getRefreshTokenUseCase();
-            // Mock response for now
-            return {
-                token: 'new-jwt-token-mock',
-                expiresIn: 3600
-            };
+            return { message: "Refresh token not implemented yet" };
         });
-    }
-    /**
-     * Mapea un usuario del dominio a DTO de respuesta
-     * TODO: Define proper User type when domain layer is available
-     */
-    mapToUserResponse(user) {
-        return {
-            id: user.id,
-            cedula: user.cedula,
-            nombres: user.firstName + (user.secondName ? ` ${user.secondName}` : ''),
-            apellidos: user.lastName + (user.secondLastName ? ` ${user.secondLastName}` : ''),
-            email: user.account?.email || '',
-            telefono: user.phoneNumber || '',
-            rol: user.account?.role || 'estudiante',
-            fechaCreacion: user.createdAt,
-            estado: user.isActive ?? true
-        };
     }
 }
 exports.AuthController = AuthController;

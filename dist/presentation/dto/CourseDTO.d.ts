@@ -6,7 +6,7 @@ export interface CreateCourseRequestDTO {
     fechaFin: Date;
     precio: number;
     capacidadMaxima: number;
-    modalidad: 'presencial' | 'virtual' | 'hibrida';
+    modalidad: "presencial" | "virtual" | "hibrida";
     estado?: boolean;
 }
 export interface UpdateCourseRequestDTO {
@@ -17,7 +17,7 @@ export interface UpdateCourseRequestDTO {
     fechaFin?: Date;
     precio?: number;
     capacidadMaxima?: number;
-    modalidad?: 'presencial' | 'virtual' | 'hibrida';
+    modalidad?: "presencial" | "virtual" | "hibrida";
     estado?: boolean;
 }
 export interface CourseResponseDTO {
