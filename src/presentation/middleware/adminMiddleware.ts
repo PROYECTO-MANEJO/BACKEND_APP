@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 
-interface AuthenticatedRequest extends Request {
+export interface AuthenticatedRequest extends Request {
   usuario?: {
     id_usu: string;
   };

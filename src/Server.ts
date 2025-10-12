@@ -14,6 +14,9 @@ import { AdminController } from "./presentation/controllers/AdminController";
 import { CategoryController } from "./presentation/controllers/CategoryController";
 import { OrganizerController } from "./presentation/controllers/OrganizerController";
 import { CareerController } from "./presentation/controllers/CareerController";
+import { UserManagementController } from "./presentation/controllers/UserManagementController";
+import { DocumentVerificationController } from "./presentation/controllers/DocumentVerificationController";
+import { InscriptionManagementController } from "./presentation/controllers/InscriptionManagementController";
 
 // Importar rutas
 import { AuthRoutes } from "./presentation/routes/authRoutes";
@@ -49,6 +52,9 @@ export class Server {
   private categoryController: CategoryController;
   private organizerController: OrganizerController;
   private careerController: CareerController;
+  private userManagementController: UserManagementController;
+  private documentVerificationController: DocumentVerificationController;
+  private inscriptionManagementController: InscriptionManagementController;
 
   constructor(port: number = 3000) {
     this.port = port;
@@ -70,6 +76,9 @@ export class Server {
     this.categoryController = new CategoryController(this.container);
     this.organizerController = new OrganizerController(this.container);
     this.careerController = new CareerController(this.container);
+    this.userManagementController = new UserManagementController(this.container);
+    this.documentVerificationController = new DocumentVerificationController(this.container);
+    this.inscriptionManagementController = new InscriptionManagementController(this.container);
 
     this.setupMiddlewares();
     this.setupRoutes();
@@ -122,6 +131,8 @@ export class Server {
     this.setupHomepageRoutes();
     this.setupChangeRequestRoutes();
     this.setupAdminRoutes();
+    this.setupUserManagementRoutes();
+    this.setupInscriptionManagementRoutes();
 
     // Ruta raíz para verificar que el servidor está funcionando
     this.app.get("/", (req, res) => {
@@ -772,6 +783,178 @@ export class Server {
       "/api/admin/pending-approvals",
       validateJWT,
       this.adminController.getPendingApprovals.bind(this.adminController)
+    );
+  }
+
+  /**
+   * Configurar rutas de gestión de usuarios (Admin)
+   */
+  private setupUserManagementRoutes(): void {
+    // RUTAS DE GESTIÓN DE USUARIOS - Solo MASTER
+
+    // GET /api/admin/users - Listar todos los usuarios con filtros
+    this.app.get(
+      "/api/admin/users",
+      validateJWT,
+      this.userManagementController.getAllUsers.bind(this.userManagementController)
+    );
+
+    // GET /api/admin/users/stats - Estadísticas de usuarios
+    this.app.get(
+      "/api/admin/users/stats",
+      validateJWT,
+      this.userManagementController.getUserStats.bind(this.userManagementController)
+    );
+
+    // GET /api/admin/users/:cedula - Obtener usuario específico
+    this.app.get(
+      "/api/admin/users/:cedula",
+      validateJWT,
+      this.userManagementController.getUserByCedula.bind(this.userManagementController)
+    );
+
+    // POST /api/admin/users - Crear nuevo usuario (solo MASTER)
+    this.app.post(
+      "/api/admin/users",
+      validateJWT,
+      this.userManagementController.createUser.bind(this.userManagementController)
+    );
+
+    // PUT /api/admin/users/:cedula - Actualizar usuario (solo MASTER)
+    this.app.put(
+      "/api/admin/users/:cedula",
+      validateJWT,
+      this.userManagementController.updateUser.bind(this.userManagementController)
+    );
+
+    // DELETE /api/admin/users/:cedula - Eliminar usuario (solo MASTER)
+    this.app.delete(
+      "/api/admin/users/:cedula",
+      validateJWT,
+      this.userManagementController.deleteUser.bind(this.userManagementController)
+    );
+
+    // RUTAS DE VERIFICACIÓN DE DOCUMENTOS - Solo MASTER
+
+    // GET /api/admin/documents/pending - Usuarios con documentos pendientes
+    this.app.get(
+      "/api/admin/documents/pending",
+      validateJWT,
+      this.documentVerificationController.getPendingDocuments.bind(this.documentVerificationController)
+    );
+
+    // GET /api/admin/documents/stats - Estadísticas de documentos
+    this.app.get(
+      "/api/admin/documents/stats",
+      validateJWT,
+      this.documentVerificationController.getDocumentStats.bind(this.documentVerificationController)
+    );
+
+    // GET /api/admin/documents/download/:userId/:documentType - Descargar documento
+    this.app.get(
+      "/api/admin/documents/download/:userId/:documentType",
+      validateJWT,
+      this.documentVerificationController.downloadUserDocument.bind(this.documentVerificationController)
+    );
+
+    // PUT /api/admin/documents/approve/:userId/:documentType - Aprobar documento
+    this.app.put(
+      "/api/admin/documents/approve/:userId/:documentType",
+      validateJWT,
+      this.documentVerificationController.approveUserDocument.bind(this.documentVerificationController)
+    );
+
+    // PUT /api/admin/documents/reject/:userId - Rechazar documentos
+    this.app.put(
+      "/api/admin/documents/reject/:userId",
+      validateJWT,
+      this.documentVerificationController.rejectUserDocuments.bind(this.documentVerificationController)
+    );
+  }
+
+  /**
+   * Configurar rutas de gestión de inscripciones (Admin)
+   */
+  private setupInscriptionManagementRoutes(): void {
+    // RUTAS DE GESTIÓN DE INSCRIPCIONES - Requieren JWT y permisos admin
+
+    // GET /api/admin/inscriptions/events/pending - Inscripciones de eventos pendientes
+    this.app.get(
+      "/api/admin/inscriptions/events/pending",
+      validateJWT,
+      this.inscriptionManagementController.getPendingEventInscriptions.bind(this.inscriptionManagementController)
+    );
+
+    // GET /api/admin/inscriptions/courses/pending - Inscripciones de cursos pendientes
+    this.app.get(
+      "/api/admin/inscriptions/courses/pending",
+      validateJWT,
+      this.inscriptionManagementController.getPendingCourseInscriptions.bind(this.inscriptionManagementController)
+    );
+
+    // PUT /api/admin/inscriptions/events/:id/approve - Aprobar inscripción de evento
+    this.app.put(
+      "/api/admin/inscriptions/events/:id/approve",
+      validateJWT,
+      this.inscriptionManagementController.approveEventInscription.bind(this.inscriptionManagementController)
+    );
+
+    // PUT /api/admin/inscriptions/courses/:id/approve - Aprobar inscripción de curso
+    this.app.put(
+      "/api/admin/inscriptions/courses/:id/approve",
+      validateJWT,
+      this.inscriptionManagementController.approveCourseInscription.bind(this.inscriptionManagementController)
+    );
+
+    // PUT /api/admin/inscriptions/events/:id/reject - Rechazar inscripción de evento
+    this.app.put(
+      "/api/admin/inscriptions/events/:id/reject",
+      validateJWT,
+      this.inscriptionManagementController.rejectEventInscription.bind(this.inscriptionManagementController)
+    );
+
+    // PUT /api/admin/inscriptions/courses/:id/reject - Rechazar inscripción de curso
+    this.app.put(
+      "/api/admin/inscriptions/courses/:id/reject",
+      validateJWT,
+      this.inscriptionManagementController.rejectCourseInscription.bind(this.inscriptionManagementController)
+    );
+
+    // GET /api/admin/inscriptions/events/:id/receipt - Descargar comprobante de evento
+    this.app.get(
+      "/api/admin/inscriptions/events/:id/receipt",
+      validateJWT,
+      this.inscriptionManagementController.downloadEventReceipt.bind(this.inscriptionManagementController)
+    );
+
+    // GET /api/admin/inscriptions/courses/:id/receipt - Descargar comprobante de curso
+    this.app.get(
+      "/api/admin/inscriptions/courses/:id/receipt",
+      validateJWT,
+      this.inscriptionManagementController.downloadCourseReceipt.bind(this.inscriptionManagementController)
+    );
+
+    // GET /api/admin/inscriptions/stats - Estadísticas de inscripciones
+    this.app.get(
+      "/api/admin/inscriptions/stats",
+      validateJWT,
+      this.inscriptionManagementController.getInscriptionStats.bind(this.inscriptionManagementController)
+    );
+
+    // RUTAS LEGACY PARA COMPATIBILIDAD
+
+    // PUT /inscripciones/evento/aprobar-inscripcion/:id - Legacy route
+    this.app.put(
+      "/api/inscripciones/evento/aprobar-inscripcion/:id",
+      validateJWT,
+      this.inscriptionManagementController.approveEventInscription.bind(this.inscriptionManagementController)
+    );
+
+    // PUT /inscripciones-cursos/aprobar-inscripcion/:id - Legacy route
+    this.app.put(
+      "/api/inscripciones-cursos/aprobar-inscripcion/:id",
+      validateJWT,
+      this.inscriptionManagementController.approveCourseInscription.bind(this.inscriptionManagementController)
     );
   }
 
