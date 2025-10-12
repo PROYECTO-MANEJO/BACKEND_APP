@@ -1,19 +1,15 @@
-import { Request, Response } from 'express';
-import { BaseController } from './BaseController';
-import { DIContainer } from '../../infrastructure/config/DIContainer';
+import { Request, Response } from "express";
+import { BaseController } from "./BaseController";
 import {
   CreateUserRequestDTO,
   UpdateUserRequestDTO,
   UserResponseDTO,
-  UserListResponseDTO
-} from '../dto/UserDTO';
+  UserListResponseDTO,
+} from "../dto/UserDTO";
 
 export class UserController extends BaseController {
-  private container: DIContainer;
-
-  constructor(container: DIContainer) {
+  constructor() {
     super();
-    this.container = container;
   }
 
   /**
@@ -23,29 +19,29 @@ export class UserController extends BaseController {
   public async getUsers(req: Request, res: Response): Promise<void> {
     await this.execute(req, res, async () => {
       const { page, pageSize } = this.getPaginationParams(req);
-      
+
       // TODO: Implementar cuando estén disponibles los casos de uso
       const mockUsers: UserResponseDTO[] = [
         {
           id: 1,
-          cedula: '1234567890',
-          nombres: 'Usuario Ejemplo',
-          apellidos: 'Apellido Ejemplo',
-          email: 'usuario@ejemplo.com',
-          telefono: '0987654321',
-          rol: 'estudiante',
+          cedula: "1234567890",
+          nombres: "Usuario Ejemplo",
+          apellidos: "Apellido Ejemplo",
+          email: "usuario@ejemplo.com",
+          telefono: "0987654321",
+          rol: "estudiante",
           fechaCreacion: new Date(),
-          estado: true
-        }
+          estado: true,
+        },
       ];
-      
+
       const response: UserListResponseDTO = {
         users: mockUsers,
         total: mockUsers.length,
         page,
-        pageSize
+        pageSize,
       };
-      
+
       return response;
     });
   }
@@ -58,22 +54,22 @@ export class UserController extends BaseController {
     await this.execute(req, res, async () => {
       const userId = parseInt(req.params.id!);
       if (isNaN(userId)) {
-        throw new Error('ID de usuario inválido');
+        throw new Error("ID de usuario inválido");
       }
 
       // TODO: Implementar cuando estén disponibles los casos de uso
       const mockUser: UserResponseDTO = {
         id: userId,
-        cedula: '1234567890',
-        nombres: 'Usuario Ejemplo',
-        apellidos: 'Apellido Ejemplo',
-        email: 'usuario@ejemplo.com',
-        telefono: '0987654321',
-        rol: 'estudiante',
+        cedula: "1234567890",
+        nombres: "Usuario Ejemplo",
+        apellidos: "Apellido Ejemplo",
+        email: "usuario@ejemplo.com",
+        telefono: "0987654321",
+        rol: "estudiante",
         fechaCreacion: new Date(),
-        estado: true
+        estado: true,
       };
-      
+
       return mockUser;
     });
   }
@@ -85,10 +81,18 @@ export class UserController extends BaseController {
   public async createUser(req: Request, res: Response): Promise<void> {
     await this.execute(req, res, async () => {
       const userData: CreateUserRequestDTO = req.body;
-      
+
       // Validación básica
-      if (!userData.cedula || !userData.nombres || !userData.apellidos || !userData.email || !userData.password) {
-        throw new Error('Faltan campos obligatorios: cedula, nombres, apellidos, email, password');
+      if (
+        !userData.cedula ||
+        !userData.nombres ||
+        !userData.apellidos ||
+        !userData.email ||
+        !userData.password
+      ) {
+        throw new Error(
+          "Faltan campos obligatorios: cedula, nombres, apellidos, email, password"
+        );
       }
 
       // TODO: Implementar cuando estén disponibles los casos de uso
@@ -98,12 +102,12 @@ export class UserController extends BaseController {
         nombres: userData.nombres,
         apellidos: userData.apellidos,
         email: userData.email,
-        telefono: userData.telefono || '',
-        rol: userData.rol || 'estudiante',
+        telefono: userData.telefono || "",
+        rol: userData.rol || "estudiante",
         fechaCreacion: new Date(),
-        estado: true
+        estado: true,
       };
-      
+
       return mockUser;
     });
   }
@@ -116,24 +120,24 @@ export class UserController extends BaseController {
     await this.execute(req, res, async () => {
       const userId = parseInt(req.params.id!);
       if (isNaN(userId)) {
-        throw new Error('ID de usuario inválido');
+        throw new Error("ID de usuario inválido");
       }
 
       const userData: UpdateUserRequestDTO = req.body;
-      
+
       // TODO: Implementar cuando estén disponibles los casos de uso
       const mockUser: UserResponseDTO = {
         id: userId,
-        cedula: '1234567890',
-        nombres: userData.nombres || 'Usuario Ejemplo',
-        apellidos: userData.apellidos || 'Apellido Ejemplo',
-        email: userData.email || 'usuario@ejemplo.com',
-        telefono: userData.telefono || '',
-        rol: userData.rol || 'estudiante',
+        cedula: "1234567890",
+        nombres: userData.nombres || "Usuario Ejemplo",
+        apellidos: userData.apellidos || "Apellido Ejemplo",
+        email: userData.email || "usuario@ejemplo.com",
+        telefono: userData.telefono || "",
+        rol: userData.rol || "estudiante",
         fechaCreacion: new Date(),
-        estado: true
+        estado: true,
       };
-      
+
       return mockUser;
     });
   }
@@ -146,11 +150,11 @@ export class UserController extends BaseController {
     await this.execute(req, res, async () => {
       const userId = parseInt(req.params.id!);
       if (isNaN(userId)) {
-        throw new Error('ID de usuario inválido');
+        throw new Error("ID de usuario inválido");
       }
 
       // TODO: Implementar cuando estén disponibles los casos de uso
-      return { message: 'Usuario eliminado correctamente' };
+      return { message: "Usuario eliminado correctamente" };
     });
   }
 }

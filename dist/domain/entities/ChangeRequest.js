@@ -43,14 +43,14 @@ class ChangeRequest {
             throw new Error("Solo se pueden enviar solicitudes en borrador");
         }
         this.validateRequiredFieldsForSubmission();
-        this.data.status = "ENVIADA";
+        this.data.status = "PENDIENTE";
         this.data.updatedAt = new Date();
     }
     /**
      * Poner solicitud en revisión
      */
     startReview(reviewerId, reviewerName) {
-        if (this.data.status !== "ENVIADA") {
+        if (this.data.status !== "PENDIENTE") {
             throw new Error("Solo se pueden revisar solicitudes enviadas");
         }
         this.data.status = "EN_REVISION";
@@ -112,7 +112,7 @@ class ChangeRequest {
         if (this.data.status !== "EN_DESARROLLO") {
             throw new Error("Solo se pueden enviar a pruebas solicitudes en desarrollo");
         }
-        this.data.status = "EN_PRUEBAS";
+        this.data.status = "EN_TESTING";
         if (implementationNotes) {
             this.data.implementationNotes = implementationNotes;
         }
@@ -122,10 +122,10 @@ class ChangeRequest {
      * Marcar como implementada
      */
     markAsImplemented(actualHours) {
-        if (this.data.status !== "EN_PRUEBAS") {
+        if (this.data.status !== "EN_TESTING") {
             throw new Error("Solo se pueden implementar solicitudes que han pasado pruebas");
         }
-        this.data.status = "IMPLEMENTADA";
+        this.data.status = "COMPLETADA";
         this.data.completionDate = new Date();
         if (actualHours !== undefined) {
             this.data.actualHours = actualHours;
@@ -136,7 +136,7 @@ class ChangeRequest {
      * Cerrar solicitud
      */
     close(customerSatisfactionScore) {
-        if (this.data.status !== "IMPLEMENTADA") {
+        if (this.data.status !== "COMPLETADA") {
             throw new Error("Solo se pueden cerrar solicitudes implementadas");
         }
         this.data.status = "CERRADA";
@@ -152,7 +152,7 @@ class ChangeRequest {
     cancel(reason) {
         const cancellableStatuses = [
             "BORRADOR",
-            "ENVIADA",
+            "PENDIENTE",
             "EN_REVISION",
             "APROBADA",
             "EN_DESARROLLO",
@@ -221,8 +221,8 @@ class ChangeRequest {
      * Actualizar criterios de aceptación
      */
     updateAcceptanceCriteria(criteria) {
-        if (this.data.status === "IMPLEMENTADA" || this.data.status === "CERRADA") {
-            throw new Error("No se pueden modificar criterios de aceptación en solicitudes implementadas");
+        if (this.data.status === "COMPLETADA" || this.data.status === "CERRADA") {
+            throw new Error("No se pueden modificar criterios de aceptación en solicitudes completadas");
         }
         this.data.acceptanceCriteria = criteria
             .filter((c) => c.trim())
@@ -233,8 +233,8 @@ class ChangeRequest {
      * Actualizar detalles técnicos
      */
     updateTechnicalDetails(technicalDetails) {
-        if (this.data.status === "IMPLEMENTADA" || this.data.status === "CERRADA") {
-            throw new Error("No se pueden modificar detalles técnicos en solicitudes implementadas");
+        if (this.data.status === "COMPLETADA" || this.data.status === "CERRADA") {
+            throw new Error("No se pueden modificar detalles técnicos en solicitudes completadas");
         }
         this.data.technicalDetails = technicalDetails.trim();
         this.data.updatedAt = new Date();
@@ -318,7 +318,7 @@ class ChangeRequest {
         return this.data.status === "BORRADOR";
     }
     isSubmitted() {
-        return this.data.status === "ENVIADA";
+        return this.data.status === "PENDIENTE";
     }
     isUnderReview() {
         return this.data.status === "EN_REVISION";
@@ -333,10 +333,10 @@ class ChangeRequest {
         return this.data.status === "EN_DESARROLLO";
     }
     isInTesting() {
-        return this.data.status === "EN_PRUEBAS";
+        return this.data.status === "EN_TESTING";
     }
     isImplemented() {
-        return this.data.status === "IMPLEMENTADA";
+        return this.data.status === "COMPLETADA";
     }
     isClosed() {
         return this.data.status === "CERRADA";
@@ -378,12 +378,14 @@ class ChangeRequest {
     getProgressPercentage() {
         const statusWeights = {
             BORRADOR: 0,
-            ENVIADA: 10,
+            PENDIENTE: 10,
             EN_REVISION: 20,
+            ESPERANDO_INFORMACION: 15,
             APROBADA: 30,
             EN_DESARROLLO: 60,
-            EN_PRUEBAS: 80,
-            IMPLEMENTADA: 90,
+            EN_TESTING: 80,
+            EN_PAUSA: 50,
+            COMPLETADA: 90,
             CERRADA: 100,
             CANCELADA: 0,
             RECHAZADA: 0,

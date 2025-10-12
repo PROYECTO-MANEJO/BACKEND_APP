@@ -1,20 +1,19 @@
-import { Router } from 'express';
-import { DIContainer } from '../../infrastructure/config/DIContainer';
-import { AuthController } from '../controllers/AuthController';
+import { Router } from "express";
+import { AuthController } from "../controllers/AuthController";
 import {
   handleValidationErrors,
   validateLogin,
-  validateChangePassword
-} from '../middleware/validationMiddleware';
-import { authenticateToken } from '../middleware/authMiddleware';
+  validateChangePassword,
+} from "../middleware/validationMiddleware";
+import { authenticateToken } from "../middleware/authMiddleware";
 
 export class AuthRoutes {
   private router: Router;
   private authController: AuthController;
 
-  constructor(container: DIContainer) {
+  constructor() {
     this.router = Router();
-    this.authController = new AuthController(container);
+    this.authController = new AuthController();
     this.setupRoutes();
   }
 
@@ -24,7 +23,7 @@ export class AuthRoutes {
      * Iniciar sesión
      */
     this.router.post(
-      '/login',
+      "/login",
       validateLogin,
       handleValidationErrors,
       this.authController.login.bind(this.authController)
@@ -35,7 +34,7 @@ export class AuthRoutes {
      * Registrar nuevo usuario
      */
     this.router.post(
-      '/register',
+      "/register",
       // TODO: Agregar validación cuando esté implementada
       this.authController.register.bind(this.authController)
     );
@@ -45,7 +44,7 @@ export class AuthRoutes {
      * Cerrar sesión
      */
     this.router.post(
-      '/logout',
+      "/logout",
       authenticateToken,
       this.authController.logout.bind(this.authController)
     );
@@ -55,7 +54,7 @@ export class AuthRoutes {
      * Obtener perfil del usuario autenticado
      */
     this.router.get(
-      '/profile',
+      "/profile",
       authenticateToken,
       this.authController.getProfile.bind(this.authController)
     );
@@ -65,7 +64,7 @@ export class AuthRoutes {
      * Cambiar contraseña
      */
     this.router.post(
-      '/change-password',
+      "/change-password",
       authenticateToken,
       validateChangePassword,
       handleValidationErrors,
@@ -77,7 +76,7 @@ export class AuthRoutes {
      * Solicitar restablecimiento de contraseña
      */
     this.router.post(
-      '/forgot-password',
+      "/forgot-password",
       // TODO: Agregar validación
       this.authController.forgotPassword.bind(this.authController)
     );
@@ -87,7 +86,7 @@ export class AuthRoutes {
      * Confirmar restablecimiento de contraseña
      */
     this.router.post(
-      '/reset-password',
+      "/reset-password",
       // TODO: Agregar validación
       this.authController.resetPassword.bind(this.authController)
     );

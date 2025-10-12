@@ -20,41 +20,27 @@ class VerifyCertificateUseCase {
                     message: "Código de verificación es requerido",
                 };
             }
-            const certificate = await this.certificateManagementService.verifyCertificate(request.verificationCode);
-            if (!certificate) {
+            const verificationResult = await this.certificateManagementService.verifyCertificateByCode(request.verificationCode);
+            if (!verificationResult.isValid) {
                 return {
                     success: true,
                     isValid: false,
-                    message: "Certificado no encontrado o código inválido",
+                    message: verificationResult.message,
                 };
             }
-            // Verificar si el certificado está revocado
-            if (certificate.status === "REVOKED") {
-                return {
-                    success: true,
-                    isValid: false,
-                    certificate,
-                    message: "Certificado revocado",
-                    verificationDetails: {
-                        issuedDate: certificate.issuedAt,
-                        recipientName: certificate.recipientName,
-                        eventOrCourseName: certificate.eventOrCourseName,
-                        organizationName: certificate.organizationName,
-                        isRevoked: true,
-                    },
-                };
-            }
+            const certificate = verificationResult.certificate;
+            const pdfInfo = certificate.getPDFInfo();
             return {
                 success: true,
                 isValid: true,
                 certificate,
-                message: "Certificado válido",
+                message: verificationResult.message,
                 verificationDetails: {
-                    issuedDate: certificate.issuedAt,
+                    issuedDate: certificate.issuedDate || new Date(),
                     recipientName: certificate.recipientName,
-                    eventOrCourseName: certificate.eventOrCourseName,
-                    organizationName: certificate.organizationName,
-                    isRevoked: false,
+                    eventOrCourseName: certificate.programName,
+                    organizationName: pdfInfo.organizerName || "No especificado",
+                    isRevoked: certificate.isRevoked(),
                 },
             };
         }

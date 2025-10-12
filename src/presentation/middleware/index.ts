@@ -1,12 +1,12 @@
 // Exportar middlewares principales
 
-export { 
+export {
   authenticateToken,
   authorize,
   optionalAuth,
   authorizeOwnerOrAdmin,
-  type JWTPayload
-} from './authMiddleware';
+  type JWTPayload,
+} from "./authMiddleware";
 
 export {
   handleValidationErrors,
@@ -17,12 +17,12 @@ export {
   validateCourseCreation,
   validateEventCreation,
   validatePagination,
-  validateIdParam
-} from './validationMiddleware';
+  validateIdParam,
+} from "./validationMiddleware";
 
 export {
   requestLogger,
   globalErrorHandler,
   notFoundHandler,
-  healthCheck
-} from './securityMiddleware';
+  healthCheck,
+} from "./securityMiddleware";

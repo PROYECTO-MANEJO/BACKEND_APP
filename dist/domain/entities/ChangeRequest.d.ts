@@ -4,10 +4,10 @@
  * Entidad de dominio que representa una solicitud de cambio en el sistema.
  * Maneja el flujo completo desde creación hasta implementación y cierre.
  */
-export type ChangeRequestType = "FEATURE" | "BUG_FIX" | "ENHANCEMENT" | "MAINTENANCE" | "DOCUMENTATION" | "SECURITY" | "PERFORMANCE";
+export type ChangeRequestType = "FUNCIONALIDAD" | "CORRECCION" | "MEJORA" | "CONFIGURACION" | "SEGURIDAD" | "RENDIMIENTO" | "DOCUMENTACION";
 export type Priority = "BAJA" | "MEDIA" | "ALTA" | "CRITICA";
-export type Urgency = "NORMAL" | "URGENTE" | "CRITICA";
-export type ChangeRequestStatus = "BORRADOR" | "ENVIADA" | "EN_REVISION" | "APROBADA" | "RECHAZADA" | "EN_DESARROLLO" | "EN_PRUEBAS" | "IMPLEMENTADA" | "CERRADA" | "CANCELADA";
+export type Urgency = "NORMAL" | "URGENTE" | "INMEDIATA";
+export type ChangeRequestStatus = "BORRADOR" | "PENDIENTE" | "EN_REVISION" | "APROBADA" | "RECHAZADA" | "ESPERANDO_INFORMACION" | "EN_DESARROLLO" | "EN_TESTING" | "EN_PAUSA" | "COMPLETADA" | "CERRADA" | "CANCELADA";
 export interface GitHubIntegration {
     issueNumber?: number;
     issueUrl?: string;

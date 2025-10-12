@@ -5,7 +5,14 @@ import { IEmailService } from "@domain/repositories/IEmailService";
 import { IEventRepository, ICategoryRepository } from "@domain/services/EventManagementService";
 import { ICourseRepository } from "@domain/repositories/ICourseRepository";
 import { IInscriptionRepository } from "@domain/repositories/IInscriptionRepository";
-import { CertificateRepository } from "@domain/repositories/CertificateRepository";
+import { ChangeRequestRepository } from "@domain/repositories/IChangeRequestRepository";
+import { DeveloperRepository } from "@domain/repositories/IDeveloperRepository";
+import { PrismaCertificateRepository } from "../repositories/PrismaCertificateRepository";
+import { PrismaUserRepository } from "../repositories/PrismaUserRepository";
+import { PrismaCourseRepository } from "../repositories/PrismaCourseRepository";
+import { PrismaEventRepository } from "../repositories/PrismaEventRepository";
+import { PrismaEnrollmentRepository } from "../repositories/PrismaEnrollmentRepository";
+import { PrismaAuthenticationRepository } from "../repositories/PrismaAuthenticationRepository";
 import { AuthenticationService } from "@domain/services/AuthenticationService";
 import { VerificationService } from "@domain/services/VerificationService";
 import { PasswordRecoveryService } from "@domain/services/PasswordRecoveryService";
@@ -15,6 +22,12 @@ import { EventManagementService } from "@domain/services/EventManagementService"
 import { CourseManagementService } from "@domain/services/CourseManagementService";
 import { InscriptionManagementService } from "@domain/services/InscriptionManagementService";
 import { CertificateManagementService } from "@domain/services/CertificateManagementService";
+import { ChangeRequestWorkflowService } from "@domain/services/ChangeRequestWorkflowService";
+import { CreateChangeRequestUseCase } from "@application/change-request-management/CreateChangeRequestUseCase";
+import { GetChangeRequestByIdUseCase } from "@application/change-request-management/GetChangeRequestByIdUseCase";
+import { GetMyChangeRequestsUseCase } from "@application/change-request-management/GetMyChangeRequestsUseCase";
+import { UpdateChangeRequestStatusUseCase } from "@application/change-request-management/UpdateChangeRequestStatusUseCase";
+import { AssignDeveloperUseCase } from "@application/change-request-management/AssignDeveloperUseCase";
 /**
  * Container de Inyección de Dependencias
  * Implementa DIP (Dependency Inversion Principle)
@@ -34,9 +47,22 @@ export declare class DIContainer {
     private _certificateRepository;
     private _reportRepository?;
     private _changeRequestRepository?;
+    private _newUserRepository;
+    private _newCourseRepository;
+    private _newEventRepository;
+    private _newEnrollmentRepository;
+    private _newAuthenticationRepository;
     private _pdfGenerationService?;
     private _githubIntegrationService?;
     private _notificationService?;
+    private _newChangeRequestRepository?;
+    private _developerRepository?;
+    private _changeRequestWorkflowService?;
+    private _createChangeRequestUseCase?;
+    private _getChangeRequestByIdUseCase?;
+    private _getMyChangeRequestsUseCase?;
+    private _updateChangeRequestStatusUseCase?;
+    private _assignDeveloperUseCase?;
     private _authenticationService;
     private _verificationService;
     private _passwordRecoveryService;
@@ -67,8 +93,21 @@ export declare class DIContainer {
     get courseManagementService(): CourseManagementService;
     get inscriptionRepository(): IInscriptionRepository;
     get inscriptionManagementService(): InscriptionManagementService;
-    get certificateRepository(): CertificateRepository;
+    get certificateRepository(): PrismaCertificateRepository;
+    get newUserRepository(): PrismaUserRepository;
+    get newCourseRepository(): PrismaCourseRepository;
+    get newEventRepository(): PrismaEventRepository;
+    get newEnrollmentRepository(): PrismaEnrollmentRepository;
+    get newAuthenticationRepository(): PrismaAuthenticationRepository;
     get certificateManagementService(): CertificateManagementService;
+    get newChangeRequestRepository(): ChangeRequestRepository;
+    get developerRepository(): DeveloperRepository;
+    get changeRequestWorkflowService(): ChangeRequestWorkflowService;
+    get createChangeRequestUseCase(): CreateChangeRequestUseCase;
+    get getChangeRequestByIdUseCase(): GetChangeRequestByIdUseCase;
+    get getMyChangeRequestsUseCase(): GetMyChangeRequestsUseCase;
+    get updateChangeRequestStatusUseCase(): UpdateChangeRequestStatusUseCase;
+    get assignDeveloperUseCase(): AssignDeveloperUseCase;
     dispose(): Promise<void>;
 }
 //# sourceMappingURL=DIContainer.d.ts.map

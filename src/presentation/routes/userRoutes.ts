@@ -1,26 +1,25 @@
-import { Router } from 'express';
-import { DIContainer } from '../../infrastructure/config/DIContainer';
-import { UserController } from '../controllers/UserController';
+import { Router } from "express";
+import { UserController } from "../controllers/UserController";
 import {
   authenticateToken,
   authorize,
-  authorizeOwnerOrAdmin
-} from '../middleware/authMiddleware';
+  authorizeOwnerOrAdmin,
+} from "../middleware/authMiddleware";
 import {
   handleValidationErrors,
   validateUserCreation,
   validateUserUpdate,
   validatePagination,
-  validateIdParam
-} from '../middleware/validationMiddleware';
+  validateIdParam,
+} from "../middleware/validationMiddleware";
 
 export class UserRoutes {
   private router: Router;
   private userController: UserController;
 
-  constructor(container: DIContainer) {
+  constructor() {
     this.router = Router();
-    this.userController = new UserController(container);
+    this.userController = new UserController();
     this.setupRoutes();
   }
 
@@ -30,9 +29,9 @@ export class UserRoutes {
      * Obtener lista de usuarios (solo administradores)
      */
     this.router.get(
-      '/',
+      "/",
       authenticateToken,
-      authorize('administrador', 'admin'),
+      authorize("administrador", "admin"),
       validatePagination,
       handleValidationErrors,
       this.userController.getUsers.bind(this.userController)
@@ -43,7 +42,7 @@ export class UserRoutes {
      * Obtener usuario por ID (solo el mismo usuario o administradores)
      */
     this.router.get(
-      '/:id',
+      "/:id",
       authenticateToken,
       validateIdParam,
       handleValidationErrors,
@@ -56,9 +55,9 @@ export class UserRoutes {
      * Crear nuevo usuario (solo administradores)
      */
     this.router.post(
-      '/',
+      "/",
       authenticateToken,
-      authorize('administrador', 'admin'),
+      authorize("administrador", "admin"),
       validateUserCreation,
       handleValidationErrors,
       this.userController.createUser.bind(this.userController)
@@ -69,7 +68,7 @@ export class UserRoutes {
      * Actualizar usuario (solo el mismo usuario o administradores)
      */
     this.router.put(
-      '/:id',
+      "/:id",
       authenticateToken,
       validateIdParam,
       validateUserUpdate,
@@ -83,9 +82,9 @@ export class UserRoutes {
      * Eliminar usuario (solo administradores)
      */
     this.router.delete(
-      '/:id',
+      "/:id",
       authenticateToken,
-      authorize('administrador', 'admin'),
+      authorize("administrador", "admin"),
       validateIdParam,
       handleValidationErrors,
       this.userController.deleteUser.bind(this.userController)

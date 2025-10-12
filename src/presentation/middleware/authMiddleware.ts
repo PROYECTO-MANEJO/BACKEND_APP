@@ -1,5 +1,5 @@
-import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
 
 interface AuthenticatedRequest extends Request {
   userId: number;
@@ -25,18 +25,18 @@ export const authenticateToken = (
   next: NextFunction
 ): void => {
   try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1]; // Bearer TOKEN
 
     if (!token) {
       res.status(401).json({
         success: false,
-        error: 'Token de acceso requerido'
+        error: "Token de acceso requerido",
       });
       return;
     }
 
-    const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
+    const jwtSecret = process.env.JWT_SECRET || "your-secret-key";
     const decoded = jwt.verify(token, jwtSecret) as JWTPayload;
 
     // Agregar información del usuario al request
@@ -49,7 +49,7 @@ export const authenticateToken = (
     if (error instanceof jwt.TokenExpiredError) {
       res.status(401).json({
         success: false,
-        error: 'Token expirado'
+        error: "Token expirado",
       });
       return;
     }
@@ -57,14 +57,14 @@ export const authenticateToken = (
     if (error instanceof jwt.JsonWebTokenError) {
       res.status(401).json({
         success: false,
-        error: 'Token inválido'
+        error: "Token inválido",
       });
       return;
     }
 
     res.status(500).json({
       success: false,
-      error: 'Error interno del servidor'
+      error: "Error interno del servidor",
     });
   }
 };
@@ -81,7 +81,7 @@ export const authorize = (...allowedRoles: string[]) => {
       if (!userRole) {
         res.status(401).json({
           success: false,
-          error: 'Usuario no autenticado'
+          error: "Usuario no autenticado",
         });
         return;
       }
@@ -89,7 +89,7 @@ export const authorize = (...allowedRoles: string[]) => {
       if (!allowedRoles.includes(userRole)) {
         res.status(403).json({
           success: false,
-          error: 'No tienes permisos para acceder a este recurso'
+          error: "No tienes permisos para acceder a este recurso",
         });
         return;
       }
@@ -98,7 +98,7 @@ export const authorize = (...allowedRoles: string[]) => {
     } catch (error) {
       res.status(500).json({
         success: false,
-        error: 'Error interno del servidor'
+        error: "Error interno del servidor",
       });
     }
   };
@@ -114,11 +114,11 @@ export const optionalAuth = (
   next: NextFunction
 ): void => {
   try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
 
     if (token) {
-      const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
+      const jwtSecret = process.env.JWT_SECRET || "your-secret-key";
       const decoded = jwt.verify(token, jwtSecret) as JWTPayload;
 
       (req as AuthenticatedRequest).userId = decoded.userId;
@@ -148,7 +148,7 @@ export const authorizeOwnerOrAdmin = (
     const requestedUserId = parseInt(req.params.userId || req.params.id!);
 
     // Los administradores pueden acceder a cualquier recurso
-    if (userRole === 'administrador' || userRole === 'admin') {
+    if (userRole === "administrador" || userRole === "admin") {
       next();
       return;
     }
@@ -161,12 +161,12 @@ export const authorizeOwnerOrAdmin = (
 
     res.status(403).json({
       success: false,
-      error: 'No tienes permisos para acceder a este recurso'
+      error: "No tienes permisos para acceder a este recurso",
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: 'Error interno del servidor'
+      error: "Error interno del servidor",
     });
   }
 };

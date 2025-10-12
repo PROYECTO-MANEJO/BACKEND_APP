@@ -1,23 +1,19 @@
-import { Router } from 'express';
-import { DIContainer } from '../../infrastructure/config/DIContainer';
-import { CertificateController } from '../controllers/CertificateController';
-import {
-  authenticateToken,
-  authorize
-} from '../middleware/authMiddleware';
+import { Router } from "express";
+import { CertificateController } from "../controllers/CertificateController";
+import { authenticateToken, authorize } from "../middleware/authMiddleware";
 import {
   handleValidationErrors,
   validatePagination,
-  validateIdParam
-} from '../middleware/validationMiddleware';
+  validateIdParam,
+} from "../middleware/validationMiddleware";
 
 export class CertificateRoutes {
   private router: Router;
   private certificateController: CertificateController;
 
-  constructor(container: DIContainer) {
+  constructor() {
     this.router = Router();
-    this.certificateController = new CertificateController(container);
+    this.certificateController = new CertificateController();
     this.setupRoutes();
   }
 
@@ -27,12 +23,14 @@ export class CertificateRoutes {
      * Obtener lista de certificados (solo administradores)
      */
     this.router.get(
-      '/',
+      "/",
       authenticateToken,
-      authorize('administrador'),
+      authorize("administrador"),
       validatePagination,
       handleValidationErrors,
-      this.certificateController.getCertificates.bind(this.certificateController)
+      this.certificateController.getCertificates.bind(
+        this.certificateController
+      )
     );
 
     /**
@@ -40,11 +38,13 @@ export class CertificateRoutes {
      * Obtener mis certificados
      */
     this.router.get(
-      '/my-certificates',
+      "/my-certificates",
       authenticateToken,
       validatePagination,
       handleValidationErrors,
-      this.certificateController.getMyCertificates.bind(this.certificateController)
+      this.certificateController.getUserCertificates.bind(
+        this.certificateController
+      )
     );
 
     /**
@@ -52,10 +52,12 @@ export class CertificateRoutes {
      * Obtener estadísticas de certificados (solo administradores)
      */
     this.router.get(
-      '/statistics',
+      "/statistics",
       authenticateToken,
-      authorize('administrador'),
-      this.certificateController.getCertificateStatistics.bind(this.certificateController)
+      authorize("administrador"),
+      this.certificateController.getCertificateStatistics.bind(
+        this.certificateController
+      )
     );
 
     /**
@@ -63,12 +65,14 @@ export class CertificateRoutes {
      * Obtener certificados pendientes (solo administradores y organizadores)
      */
     this.router.get(
-      '/pending',
+      "/pending",
       authenticateToken,
-      authorize('administrador', 'organizador'),
+      authorize("administrador", "organizador"),
       validatePagination,
       handleValidationErrors,
-      this.certificateController.getPendingCertificates.bind(this.certificateController)
+      this.certificateController.getPendingCertificates.bind(
+        this.certificateController
+      )
     );
 
     /**
@@ -76,11 +80,13 @@ export class CertificateRoutes {
      * Obtener certificado por ID
      */
     this.router.get(
-      '/:id',
+      "/:id",
       authenticateToken,
       validateIdParam,
       handleValidationErrors,
-      this.certificateController.getCertificateById.bind(this.certificateController)
+      this.certificateController.getCertificateById.bind(
+        this.certificateController
+      )
     );
 
     /**
@@ -88,10 +94,12 @@ export class CertificateRoutes {
      * Generar nuevo certificado
      */
     this.router.post(
-      '/generate',
+      "/generate",
       authenticateToken,
       // TODO: Agregar validación específica
-      this.certificateController.generateCertificate.bind(this.certificateController)
+      this.certificateController.generateCertificate.bind(
+        this.certificateController
+      )
     );
 
     /**
@@ -99,12 +107,14 @@ export class CertificateRoutes {
      * Aprobar o rechazar certificado (solo administradores y organizadores)
      */
     this.router.put(
-      '/:id/approve',
+      "/:id/approve",
       authenticateToken,
-      authorize('administrador', 'organizador'),
+      authorize("administrador", "organizador"),
       validateIdParam,
       handleValidationErrors,
-      this.certificateController.approveCertificate.bind(this.certificateController)
+      this.certificateController.approveCertificate.bind(
+        this.certificateController
+      )
     );
 
     /**
@@ -112,11 +122,13 @@ export class CertificateRoutes {
      * Descargar certificado en PDF
      */
     this.router.get(
-      '/:id/download',
+      "/:id/download",
       authenticateToken,
       validateIdParam,
       handleValidationErrors,
-      this.certificateController.downloadCertificate.bind(this.certificateController)
+      this.certificateController.downloadCertificate.bind(
+        this.certificateController
+      )
     );
 
     /**
@@ -124,11 +136,13 @@ export class CertificateRoutes {
      * Aprobar múltiples certificados (solo administradores)
      */
     this.router.post(
-      '/bulk-approve',
+      "/bulk-approve",
       authenticateToken,
-      authorize('administrador'),
+      authorize("administrador"),
       // TODO: Agregar validación específica
-      this.certificateController.bulkApproveCertificates.bind(this.certificateController)
+      this.certificateController.bulkApproveCertificates.bind(
+        this.certificateController
+      )
     );
   }
 

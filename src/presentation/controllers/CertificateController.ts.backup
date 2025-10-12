@@ -1,0 +1,295 @@
+import { Request, Response } from 'express';
+import { BaseController } from './BaseController';
+import { DIContainer } from '../../infrastructure/config/DIContainer';
+import {
+  GenerateCertificateRequestDTO,
+  CertificateResponseDTO,
+  CertificateListResponseDTO,
+  ApproveCertificateRequestDTO,
+  CertificateStatisticsDTO,
+  DownloadCertificateRequestDTO
+} from '../dto/CertificateDTO';
+
+export class CertificateController extends BaseController {
+  private container: DIContainer;
+
+  constructor(container: DIContainer) {
+    super();
+    this.container = container;
+  }
+
+  /**
+   * GET /api/certificates
+   * Obtener lista de certificados con paginación
+   */
+  public async getCertificates(req: Request, res: Response): Promise<void> {
+    await this.execute(req, res, async () => {
+      const { page, pageSize } = this.getPaginationParams(req);
+      const { usuarioId, tipo, aprobado } = req.query;
+      
+      const getCertificatesUseCase = this.container.getGetCertificatesUseCase();
+      const result = await getCertificatesUseCase.execute({
+        page,
+        pageSize,
+        usuarioId: usuarioId ? parseInt(usuarioId as string) : undefined,
+        tipo: tipo as string,
+        aprobado: aprobado ? aprobado === 'true' : undefined
+      });
+      
+      const response: CertificateListResponseDTO = {
+        certificates: result.certificates.map((cert: any) => this.mapToCertificateResponse(cert)),
+        total: result.total,
+        page: result.page,
+        pageSize: result.pageSize
+      };
+      
+      return response;
+    });
+  }
+
+  /**
+   * GET /api/certificates/:id
+   * Obtener certificado por ID
+   */
+  public async getCertificateById(req: Request, res: Response): Promise<void> {
+    await this.execute(req, res, async () => {
+      const certificateId = parseInt(req.params.id!);
+      if (isNaN(certificateId)) {
+        throw new Error('ID de certificado inválido');
+      }
+
+      const getCertificateByIdUseCase = this.container.getGetCertificateByIdUseCase();
+      const certificate = await getCertificateByIdUseCase.execute(certificateId);
+      
+      return this.mapToCertificateResponse(certificate);
+    });
+  }
+
+  /**
+   * POST /api/certificates/generate
+   * Generar nuevo certificado
+   */
+  public async generateCertificate(req: Request, res: Response): Promise<void> {
+    await this.execute(req, res, async () => {
+      const certData: GenerateCertificateRequestDTO = req.body;
+      
+      // Validación básica
+      if (!certData.usuarioId || !certData.tipo) {
+        throw new Error('usuarioId y tipo son requeridos');
+      }
+
+      if (certData.tipo === 'evento' && !certData.eventoId) {
+        throw new Error('eventoId es requerido para certificados de evento');
+      }
+
+      if (certData.tipo === 'curso' && !certData.cursoId) {
+        throw new Error('cursoId es requerido para certificados de curso');
+      }
+
+      const generateCertificateUseCase = this.container.getGenerateCertificateUseCase();
+      const certificate = await generateCertificateUseCase.execute({
+        usuarioId: certData.usuarioId,
+        eventoId: certData.eventoId,
+        cursoId: certData.cursoId,
+        tipo: certData.tipo
+      });
+      
+      return this.mapToCertificateResponse(certificate);
+    });
+  }
+
+  /**
+   * PUT /api/certificates/:id/approve
+   * Aprobar o rechazar certificado
+   */
+  public async approveCertificate(req: Request, res: Response): Promise<void> {
+    await this.execute(req, res, async () => {
+      const certificateId = parseInt(req.params.id!);
+      if (isNaN(certificateId)) {
+        throw new Error('ID de certificado inválido');
+      }
+
+      const approvalData: ApproveCertificateRequestDTO = req.body;
+      
+      if (typeof approvalData.aprobado !== 'boolean') {
+        throw new Error('aprobado debe ser un booleano');
+      }
+
+      const approveCertificateUseCase = this.container.getApproveCertificateUseCase();
+      const certificate = await approveCertificateUseCase.execute({
+        certificadoId: approvalData.certificadoId || certificateId,
+        aprobado: approvalData.aprobado,
+        observaciones: approvalData.observaciones
+      });
+      
+      return this.mapToCertificateResponse(certificate);
+    });
+  }
+
+  /**
+   * GET /api/certificates/:id/download
+   * Descargar PDF del certificado
+   */
+  public async downloadCertificate(req: Request, res: Response): Promise<void> {
+    await this.execute(req, res, async () => {
+      const certificateId = parseInt(req.params.id!);
+      if (isNaN(certificateId)) {
+        throw new Error('ID de certificado inválido');
+      }
+
+      const userId = this.getUserId(req);
+      
+      const downloadCertificateUseCase = this.container.getDownloadCertificateUseCase();
+      const pdfBuffer = await downloadCertificateUseCase.execute({
+        usuarioId: userId,
+        certificadoId: certificateId
+      });
+      
+      // Configurar headers para descarga de PDF
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="certificado-${certificateId}.pdf"`);
+      res.send(pdfBuffer);
+    });
+  }
+
+  /**
+   * GET /api/certificates/my-certificates
+   * Obtener certificados del usuario autenticado
+   */
+  public async getMyCertificates(req: Request, res: Response): Promise<void> {
+    await this.execute(req, res, async () => {
+      const userId = this.getUserId(req);
+      const { page, pageSize } = this.getPaginationParams(req);
+      const { tipo } = req.query;
+      
+      const getUserCertificatesUseCase = this.container.getGetUserCertificatesUseCase();
+      const result = await getUserCertificatesUseCase.execute({
+        userId,
+        page,
+        pageSize,
+        tipo: tipo as string
+      });
+      
+      const response: CertificateListResponseDTO = {
+        certificates: result.certificates.map((cert: any) => this.mapToCertificateResponse(cert)),
+        total: result.total,
+        page: result.page,
+        pageSize: result.pageSize
+      };
+      
+      return response;
+    });
+  }
+
+  /**
+   * GET /api/certificates/statistics
+   * Obtener estadísticas de certificados
+   */
+  public async getCertificateStatistics(req: Request, res: Response): Promise<void> {
+    await this.execute(req, res, async () => {
+      const getCertificateStatisticsUseCase = this.container.getGetCertificateStatisticsUseCase();
+      const statistics = await getCertificateStatisticsUseCase.execute();
+      
+      const response: CertificateStatisticsDTO = {
+        totalGenerados: statistics.totalGenerados,
+        totalAprobados: statistics.totalAprobados,
+        totalPendientes: statistics.totalPendientes,
+        porEvento: statistics.porEvento.map((item: any) => ({
+          eventoId: item.eventoId,
+          eventoNombre: item.eventoNombre,
+          cantidad: item.cantidad
+        })),
+        porCurso: statistics.porCurso.map((item: any) => ({
+          cursoId: item.cursoId,
+          cursoNombre: item.cursoNombre,
+          cantidad: item.cantidad
+        }))
+      };
+      
+      return response;
+    });
+  }
+
+  /**
+   * GET /api/certificates/pending
+   * Obtener certificados pendientes de aprobación
+   */
+  public async getPendingCertificates(req: Request, res: Response): Promise<void> {
+    await this.execute(req, res, async () => {
+      const { page, pageSize } = this.getPaginationParams(req);
+      
+      const getPendingCertificatesUseCase = this.container.getGetPendingCertificatesUseCase();
+      const result = await getPendingCertificatesUseCase.execute({
+        page,
+        pageSize
+      });
+      
+      const response: CertificateListResponseDTO = {
+        certificates: result.certificates.map((cert: any) => this.mapToCertificateResponse(cert)),
+        total: result.total,
+        page: result.page,
+        pageSize: result.pageSize
+      };
+      
+      return response;
+    });
+  }
+
+  /**
+   * POST /api/certificates/bulk-approve
+   * Aprobar múltiples certificados
+   */
+  public async bulkApproveCertificates(req: Request, res: Response): Promise<void> {
+    await this.execute(req, res, async () => {
+      const { certificateIds, aprobado, observaciones } = req.body;
+      
+      if (!Array.isArray(certificateIds) || certificateIds.length === 0) {
+        throw new Error('certificateIds debe ser un array no vacío');
+      }
+
+      if (typeof aprobado !== 'boolean') {
+        throw new Error('aprobado debe ser un booleano');
+      }
+
+      const bulkApproveCertificatesUseCase = this.container.getBulkApproveCertificatesUseCase();
+      const results = await bulkApproveCertificatesUseCase.execute({
+        certificateIds,
+        aprobado,
+        observaciones
+      });
+      
+      return {
+        message: `${results.length} certificados procesados correctamente`,
+        processed: results.length,
+        certificates: results.map((cert: any) => this.mapToCertificateResponse(cert))
+      };
+    });
+  }
+
+  /**
+   * Mapea un certificado del dominio a DTO de respuesta
+   */
+  private mapToCertificateResponse(certificate: any): CertificateResponseDTO {
+    return {
+      id: certificate.id,
+      usuario: {
+        id: certificate.user?.id || certificate.usuario?.id,
+        nombres: certificate.user?.firstName || certificate.usuario?.nombres || '',
+        apellidos: certificate.user?.lastName || certificate.usuario?.apellidos || '',
+        cedula: certificate.user?.cedula || certificate.usuario?.cedula || ''
+      },
+      evento: certificate.event ? {
+        id: certificate.event.id || certificate.evento?.id,
+        nombre: certificate.event.nom_eve || certificate.evento?.nombre
+      } : undefined,
+      curso: certificate.course ? {
+        id: certificate.course.id || certificate.curso?.id,
+        nombre: certificate.course.nom_cur || certificate.curso?.nombre
+      } : undefined,
+      tipo: certificate.type || certificate.tipo || 'evento',
+      fechaGeneracion: certificate.createdAt || certificate.fechaGeneracion || new Date(),
+      aprobado: certificate.approved || certificate.aprobado || false,
+      pdfUrl: certificate.pdfUrl || certificate.pdf_url
+    };
+  }
+}

@@ -1,124 +1,134 @@
 "use strict";
 /**
- * PrismaCertificateRepository - Infrastructure Layer
+ * Certificate Repository Implementation - Infrastructure Layer
  *
- * Implementación simplificada del repositorio de certificados.
- * Nota: Esta es una implementación de ejemplo para demostrar la estructura.
- * En producción requiere el esquema de Prisma apropiado.
+ * Implementación para certificados tanto de eventos como de cursos
+ * Maneja operaciones básicas según el esquema Prisma real
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrismaCertificateRepository = void 0;
 class PrismaCertificateRepository {
-    constructor() {
-        this.certificates = new Map();
+    constructor(prisma) {
+        this.prisma = prisma;
     }
-    async save(certificate) {
-        // Implementación de ejemplo con almacenamiento en memoria
-        // En producción esto sería una operación de Prisma
-        const id = certificate.id || this.generateId();
-        this.certificates.set(id, certificate);
-        return certificate;
-    }
-    async findById(id) {
-        return this.certificates.get(id) || null;
-    }
-    async findByVerificationCode(verificationCode) {
-        for (const certificate of this.certificates.values()) {
-            if (certificate.verificationCode === verificationCode) {
-                return certificate;
-            }
+    // ===== CERTIFICADOS DE EVENTOS (PARTICIPACIÓN) =====
+    async createEventCertificate(certificateData) {
+        if (certificateData.type !== 'event') {
+            throw new Error('Invalid certificate type for event certificate');
         }
-        return null;
-    }
-    async findByParticipationId(participationId) {
-        // Implementación simplificada - en producción buscaría por participationId en BD
-        return Array.from(this.certificates.values());
-    }
-    async findByCompletionId(completionId) {
-        // Implementación simplificada - en producción buscaría por completionId en BD
-        return Array.from(this.certificates.values());
-    }
-    async findByRecipientId(recipientId) {
-        return Array.from(this.certificates.values()).filter((cert) => cert.recipientId === recipientId);
-    }
-    async findByStatus(status) {
-        return Array.from(this.certificates.values()).filter((cert) => cert.status === status);
-    }
-    async findByType(type) {
-        // Implementación simplificada - mapearía certificateType a EVENT/COURSE
-        return Array.from(this.certificates.values());
-    }
-    async findByDateRange(startDate, endDate) {
-        return Array.from(this.certificates.values()).filter((cert) => {
-            const certDate = cert.participationDate;
-            return certDate >= startDate && certDate <= endDate;
+        const participacion = await this.prisma.participacion.create({
+            data: {
+                asi_par: certificateData.attendancePercentage || 0,
+                aprobado: certificateData.approved,
+                certificado_pdf: certificateData.certificatePdf || null,
+                certificado_filename: certificateData.certificateFilename || null,
+                certificado_size: certificateData.certificateSize || null,
+                fec_cer_par: certificateData.issuedDate || null,
+                fec_evaluacion: certificateData.evaluationDate || null,
+                id_ins_per: certificateData.enrollmentId
+            },
+            include: {
+                inscripcion: {
+                    include: {
+                        usuario: true,
+                        evento: true
+                    }
+                }
+            }
         });
+        return this.mapToCertificateData(participacion, 'event');
     }
-    async findWithFilters(filters) {
-        let results = Array.from(this.certificates.values());
-        if (filters.recipientId) {
-            results = results.filter((cert) => cert.recipientId === filters.recipientId);
+    // ===== CERTIFICADOS DE CURSOS (PARTICIPACIÓN) =====
+    async createCourseCertificate(certificateData) {
+        if (certificateData.type !== 'course') {
+            throw new Error('Invalid certificate type for course certificate');
         }
-        if (filters.status) {
-            results = results.filter((cert) => cert.status === filters.status);
-        }
-        if (filters.startDate && filters.endDate) {
-            results = results.filter((cert) => {
-                const certDate = cert.participationDate;
-                return certDate >= filters.startDate && certDate <= filters.endDate;
-            });
-        }
-        return results;
-    }
-    async countByStatus(status) {
-        return Array.from(this.certificates.values()).filter((cert) => cert.status === status).length;
-    }
-    async countByType(type) {
-        // Implementación simplificada
-        return this.certificates.size;
-    }
-    async getStatistics() {
-        const total = this.certificates.size;
-        const byStatus = {};
-        const byType = {};
-        // Contar por estado
-        for (const cert of this.certificates.values()) {
-            byStatus[cert.status] = (byStatus[cert.status] || 0) + 1;
-            byType[cert.certificateType] = (byType[cert.certificateType] || 0) + 1;
-        }
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const startOfYear = new Date(now.getFullYear(), 0, 1);
-        const issuedThisMonth = Array.from(this.certificates.values()).filter((cert) => cert.issuedDate && cert.issuedDate >= startOfMonth).length;
-        const issuedThisYear = Array.from(this.certificates.values()).filter((cert) => cert.issuedDate && cert.issuedDate >= startOfYear).length;
-        return { total, byStatus, byType, issuedThisMonth, issuedThisYear };
-    }
-    async update(certificate) {
-        return await this.save(certificate);
-    }
-    async deleteById(id) {
-        return this.certificates.delete(id);
-    }
-    async existsByVerificationCode(verificationCode) {
-        for (const certificate of this.certificates.values()) {
-            if (certificate.verificationCode === verificationCode) {
-                return true;
+        const participacion = await this.prisma.participacionCurso.create({
+            data: {
+                nota_final: certificateData.finalGrade || 0,
+                asistencia_porcentaje: certificateData.attendancePercentage || 0,
+                aprobado: certificateData.approved,
+                fecha_evaluacion: certificateData.evaluationDate || null,
+                certificado_pdf: certificateData.certificatePdf || null,
+                certificado_filename: certificateData.certificateFilename || null,
+                certificado_size: certificateData.certificateSize || null,
+                fec_cer_par_cur: certificateData.issuedDate || null,
+                id_ins_cur_per: certificateData.enrollmentId
+            },
+            include: {
+                inscripcionCurso: {
+                    include: {
+                        usuario: true,
+                        curso: true
+                    }
+                }
             }
+        });
+        return this.mapToCertificateData(participacion, 'course');
+    }
+    // ===== BÚSQUEDAS =====
+    async findEventCertificateById(id) {
+        const participacion = await this.prisma.participacion.findUnique({
+            where: { id_par: id },
+            include: {
+                inscripcion: {
+                    include: {
+                        usuario: true,
+                        evento: true
+                    }
+                }
+            }
+        });
+        if (!participacion)
+            return null;
+        return this.mapToCertificateData(participacion, 'event');
+    }
+    async findCourseCertificateById(id) {
+        const participacion = await this.prisma.participacionCurso.findUnique({
+            where: { id_par_cur: id },
+            include: {
+                inscripcionCurso: {
+                    include: {
+                        usuario: true,
+                        curso: true
+                    }
+                }
+            }
+        });
+        if (!participacion)
+            return null;
+        return this.mapToCertificateData(participacion, 'course');
+    }
+    mapToCertificateData(participacion, type) {
+        if (type === 'event') {
+            return {
+                id: participacion.id_par,
+                certificatePdf: participacion.certificado_pdf || undefined,
+                certificateFilename: participacion.certificado_filename || undefined,
+                certificateSize: participacion.certificado_size || undefined,
+                issuedDate: participacion.fec_cer_par || undefined,
+                evaluationDate: participacion.fec_evaluacion || undefined,
+                approved: participacion.aprobado,
+                attendancePercentage: participacion.asi_par,
+                enrollmentId: participacion.id_ins_per,
+                type: 'event'
+            };
         }
-        return false;
-    }
-    async findExpiringInDateRange(startDate, endDate) {
-        // Implementación simplificada - en producción buscaría por expirationDate
-        return Array.from(this.certificates.values());
-    }
-    async findPendingGeneration() {
-        return Array.from(this.certificates.values()).filter((cert) => cert.status === "DRAFT");
-    }
-    async findPotentialDuplicates(recipientId, eventOrCourseId, type) {
-        return Array.from(this.certificates.values()).filter((cert) => cert.recipientId === recipientId && cert.programId === eventOrCourseId);
-    }
-    generateId() {
-        return `cert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        else {
+            return {
+                id: participacion.id_par_cur,
+                certificatePdf: participacion.certificado_pdf || undefined,
+                certificateFilename: participacion.certificado_filename || undefined,
+                certificateSize: participacion.certificado_size || undefined,
+                issuedDate: participacion.fec_cer_par_cur || undefined,
+                evaluationDate: participacion.fecha_evaluacion || undefined,
+                approved: participacion.aprobado,
+                attendancePercentage: participacion.asistencia_porcentaje ? parseFloat(participacion.asistencia_porcentaje.toString()) : undefined,
+                finalGrade: participacion.nota_final ? parseFloat(participacion.nota_final.toString()) : undefined,
+                enrollmentId: participacion.id_ins_cur_per,
+                type: 'course'
+            };
+        }
     }
 }
 exports.PrismaCertificateRepository = PrismaCertificateRepository;

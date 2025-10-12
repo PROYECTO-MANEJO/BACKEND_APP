@@ -1,11 +1,11 @@
 /**
  * Event Repository Implementation - Infrastructure Layer
- * 
+ *
  * Implementación simplificada que funciona con el esquema Prisma real
  * Maneja operaciones básicas de eventos según la estructura existente
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 
 export interface EventData {
   id?: string;
@@ -51,23 +51,24 @@ export class PrismaEventRepository {
         tipo_audiencia_eve: eventData.audienceType as any,
         es_gratuito: eventData.isFree,
         precio: eventData.price || null,
-        porcentaje_asistencia_aprobacion: eventData.attendanceApprovalPercentage,
-        estado: eventData.status || 'ACTIVO',
-        requiere_carta_motivacion: eventData.requiresMotivationLetter || false
+        porcentaje_asistencia_aprobacion:
+          eventData.attendanceApprovalPercentage,
+        estado: eventData.status || "ACTIVO",
+        requiere_carta_motivacion: eventData.requiresMotivationLetter || false,
       },
       include: {
         categoria: true,
-        organizador: true
-      }
+        organizador: true,
+      },
     });
 
     // Crear asociaciones con carreras si existen
     if (eventData.associatedCareers && eventData.associatedCareers.length > 0) {
       await this.prisma.eventoPorCarrera.createMany({
-        data: eventData.associatedCareers.map(carreraId => ({
+        data: eventData.associatedCareers.map((carreraId) => ({
           id_eve_per: evento.id_eve,
-          id_car_per: carreraId
-        }))
+          id_car_per: carreraId,
+        })),
       });
     }
 
@@ -82,10 +83,10 @@ export class PrismaEventRepository {
         organizador: true,
         eventosPorCarrera: {
           include: {
-            carrera: true
-          }
-        }
-      }
+            carrera: true,
+          },
+        },
+      },
     });
 
     if (!evento) return null;
@@ -99,16 +100,16 @@ export class PrismaEventRepository {
         organizador: true,
         eventosPorCarrera: {
           include: {
-            carrera: true
-          }
-        }
+            carrera: true,
+          },
+        },
       },
       orderBy: {
-        fec_ini_eve: 'desc'
-      }
+        fec_ini_eve: "desc",
+      },
     });
 
-    return eventos.map(evento => this.mapToEventData(evento));
+    return eventos.map((evento) => this.mapToEventData(evento));
   }
 
   async update(id: string, eventData: Partial<EventData>): Promise<EventData> {
@@ -127,33 +128,34 @@ export class PrismaEventRepository {
         capacidad_max_eve: eventData.maxCapacity,
         es_gratuito: eventData.isFree,
         precio: eventData.price,
-        porcentaje_asistencia_aprobacion: eventData.attendanceApprovalPercentage,
+        porcentaje_asistencia_aprobacion:
+          eventData.attendanceApprovalPercentage,
         estado: eventData.status,
-        requiere_carta_motivacion: eventData.requiresMotivationLetter
+        requiere_carta_motivacion: eventData.requiresMotivationLetter,
       },
       include: {
         categoria: true,
         organizador: true,
         eventosPorCarrera: {
           include: {
-            carrera: true
-          }
-        }
-      }
+            carrera: true,
+          },
+        },
+      },
     });
 
     // Actualizar asociaciones con carreras si se especifican
     if (eventData.associatedCareers !== undefined) {
       await this.prisma.eventoPorCarrera.deleteMany({
-        where: { id_eve_per: id }
+        where: { id_eve_per: id },
       });
 
       if (eventData.associatedCareers.length > 0) {
         await this.prisma.eventoPorCarrera.createMany({
-          data: eventData.associatedCareers.map(carreraId => ({
+          data: eventData.associatedCareers.map((carreraId) => ({
             id_eve_per: id,
-            id_car_per: carreraId
-          }))
+            id_car_per: carreraId,
+          })),
         });
       }
     }
@@ -164,11 +166,11 @@ export class PrismaEventRepository {
   async delete(id: string): Promise<void> {
     // Eliminar asociaciones con carreras primero
     await this.prisma.eventoPorCarrera.deleteMany({
-      where: { id_eve_per: id }
+      where: { id_eve_per: id },
     });
 
     await this.prisma.evento.delete({
-      where: { id_eve: id }
+      where: { id_eve: id },
     });
   }
 
@@ -180,13 +182,13 @@ export class PrismaEventRepository {
         organizador: true,
         eventosPorCarrera: {
           include: {
-            carrera: true
-          }
-        }
-      }
+            carrera: true,
+          },
+        },
+      },
     });
 
-    return eventos.map(evento => this.mapToEventData(evento));
+    return eventos.map((evento) => this.mapToEventData(evento));
   }
 
   async findByOrganizer(organizerId: string): Promise<EventData[]> {
@@ -197,13 +199,13 @@ export class PrismaEventRepository {
         organizador: true,
         eventosPorCarrera: {
           include: {
-            carrera: true
-          }
-        }
-      }
+            carrera: true,
+          },
+        },
+      },
     });
 
-    return eventos.map(evento => this.mapToEventData(evento));
+    return eventos.map((evento) => this.mapToEventData(evento));
   }
 
   async findByStatus(status: string): Promise<EventData[]> {
@@ -214,23 +216,25 @@ export class PrismaEventRepository {
         organizador: true,
         eventosPorCarrera: {
           include: {
-            carrera: true
-          }
-        }
-      }
+            carrera: true,
+          },
+        },
+      },
     });
 
-    return eventos.map(evento => this.mapToEventData(evento));
+    return eventos.map((evento) => this.mapToEventData(evento));
   }
 
   async findUpcoming(days?: number): Promise<EventData[]> {
     const now = new Date();
-    const futureDate = days ? new Date(now.getTime() + days * 24 * 60 * 60 * 1000) : null;
+    const futureDate = days
+      ? new Date(now.getTime() + days * 24 * 60 * 60 * 1000)
+      : null;
 
     const whereClause: any = {
       fec_ini_eve: {
-        gte: now
-      }
+        gte: now,
+      },
     };
 
     if (futureDate) {
@@ -244,23 +248,23 @@ export class PrismaEventRepository {
         organizador: true,
         eventosPorCarrera: {
           include: {
-            carrera: true
-          }
-        }
+            carrera: true,
+          },
+        },
       },
       orderBy: {
-        fec_ini_eve: 'asc'
-      }
+        fec_ini_eve: "asc",
+      },
     });
 
-    return eventos.map(evento => this.mapToEventData(evento));
+    return eventos.map((evento) => this.mapToEventData(evento));
   }
 
   async getEnrollmentCount(eventId: string): Promise<number> {
     return await this.prisma.inscripcion.count({
-      where: { 
-        id_eve_ins: eventId
-      }
+      where: {
+        id_eve_ins: eventId,
+      },
     });
   }
 
@@ -272,13 +276,13 @@ export class PrismaEventRepository {
         organizador: true,
         eventosPorCarrera: {
           include: {
-            carrera: true
-          }
-        }
-      }
+            carrera: true,
+          },
+        },
+      },
     });
 
-    return eventos.map(evento => this.mapToEventData(evento));
+    return eventos.map((evento) => this.mapToEventData(evento));
   }
 
   private mapToEventData(evento: any): EventData {
@@ -302,7 +306,8 @@ export class PrismaEventRepository {
       attendanceApprovalPercentage: evento.porcentaje_asistencia_aprobacion,
       status: evento.estado,
       requiresMotivationLetter: evento.requiere_carta_motivacion,
-      associatedCareers: evento.eventosPorCarrera?.map((epc: any) => epc.id_car_per) || []
+      associatedCareers:
+        evento.eventosPorCarrera?.map((epc: any) => epc.id_car_per) || [],
     };
   }
 }

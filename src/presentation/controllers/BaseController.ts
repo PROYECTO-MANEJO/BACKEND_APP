@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Request, Response } from "express";
 
 export abstract class BaseController {
   /**
@@ -24,11 +24,11 @@ export abstract class BaseController {
     if (data) {
       res.status(200).json({
         success: true,
-        data
+        data,
       });
     } else {
       res.status(200).json({
-        success: true
+        success: true,
       });
     }
   }
@@ -40,11 +40,11 @@ export abstract class BaseController {
     if (data) {
       res.status(201).json({
         success: true,
-        data
+        data,
       });
     } else {
       res.status(201).json({
-        success: true
+        success: true,
       });
     }
   }
@@ -62,37 +62,40 @@ export abstract class BaseController {
   protected badRequest(res: Response, message: string): void {
     res.status(400).json({
       success: false,
-      error: message
+      error: message,
     });
   }
 
   /**
    * Respuesta de no autorizado (401)
    */
-  protected unauthorized(res: Response, message: string = 'No autorizado'): void {
+  protected unauthorized(
+    res: Response,
+    message: string = "No autorizado"
+  ): void {
     res.status(401).json({
       success: false,
-      error: message
+      error: message,
     });
   }
 
   /**
    * Respuesta de prohibido (403)
    */
-  protected forbidden(res: Response, message: string = 'Prohibido'): void {
+  protected forbidden(res: Response, message: string = "Prohibido"): void {
     res.status(403).json({
       success: false,
-      error: message
+      error: message,
     });
   }
 
   /**
    * Respuesta de no encontrado (404)
    */
-  protected notFound(res: Response, message: string = 'No encontrado'): void {
+  protected notFound(res: Response, message: string = "No encontrado"): void {
     res.status(404).json({
       success: false,
-      error: message
+      error: message,
     });
   }
 
@@ -102,17 +105,20 @@ export abstract class BaseController {
   protected conflict(res: Response, message: string): void {
     res.status(409).json({
       success: false,
-      error: message
+      error: message,
     });
   }
 
   /**
    * Respuesta de error interno del servidor (500)
    */
-  protected internalError(res: Response, message: string = 'Error interno del servidor'): void {
+  protected internalError(
+    res: Response,
+    message: string = "Error interno del servidor"
+  ): void {
     res.status(500).json({
       success: false,
-      error: message
+      error: message,
     });
   }
 
@@ -120,55 +126,61 @@ export abstract class BaseController {
    * Manejo centralizado de errores
    */
   private handleError(res: Response, error: any): void {
-    console.error('Controller Error:', error);
+    console.error("Controller Error:", error);
 
     // Errores de dominio (reglas de negocio)
-    if (error.name === 'DomainError') {
+    if (error.name === "DomainError") {
       this.badRequest(res, error.message);
       return;
     }
 
     // Errores de validación
-    if (error.name === 'ValidationError') {
+    if (error.name === "ValidationError") {
       this.badRequest(res, error.message);
       return;
     }
 
     // Errores de no encontrado
-    if (error.name === 'NotFoundError') {
+    if (error.name === "NotFoundError") {
       this.notFound(res, error.message);
       return;
     }
 
     // Errores de conflicto
-    if (error.name === 'ConflictError') {
+    if (error.name === "ConflictError") {
       this.conflict(res, error.message);
       return;
     }
 
     // Errores de autorización
-    if (error.name === 'UnauthorizedError') {
+    if (error.name === "UnauthorizedError") {
       this.unauthorized(res, error.message);
       return;
     }
 
     // Errores de permisos
-    if (error.name === 'ForbiddenError') {
+    if (error.name === "ForbiddenError") {
       this.forbidden(res, error.message);
       return;
     }
 
     // Error genérico del servidor
-    this.internalError(res, 'Ha ocurrido un error interno en el servidor');
+    this.internalError(res, "Ha ocurrido un error interno en el servidor");
   }
 
   /**
    * Extrae parámetros de paginación de la query string
    */
-  protected getPaginationParams(req: Request): { page: number; pageSize: number } {
+  protected getPaginationParams(req: Request): {
+    page: number;
+    pageSize: number;
+  } {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
-    const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize as string) || 10));
-    
+    const pageSize = Math.min(
+      100,
+      Math.max(1, parseInt(req.query.pageSize as string) || 10)
+    );
+
     return { page, pageSize };
   }
 

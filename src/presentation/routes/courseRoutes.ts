@@ -1,25 +1,24 @@
-import { Router } from 'express';
-import { DIContainer } from '../../infrastructure/config/DIContainer';
-import { CourseController } from '../controllers/CourseController';
+import { Router } from "express";
+import { CourseController } from "../controllers/CourseController";
 import {
   authenticateToken,
   authorize,
-  optionalAuth
-} from '../middleware/authMiddleware';
+  optionalAuth,
+} from "../middleware/authMiddleware";
 import {
   handleValidationErrors,
   validateCourseCreation,
   validatePagination,
-  validateIdParam
-} from '../middleware/validationMiddleware';
+  validateIdParam,
+} from "../middleware/validationMiddleware";
 
 export class CourseRoutes {
   private router: Router;
   private courseController: CourseController;
 
-  constructor(container: DIContainer) {
+  constructor() {
     this.router = Router();
-    this.courseController = new CourseController(container);
+    this.courseController = new CourseController();
     this.setupRoutes();
   }
 
@@ -29,7 +28,7 @@ export class CourseRoutes {
      * Obtener lista de cursos (público con paginación)
      */
     this.router.get(
-      '/',
+      "/",
       optionalAuth,
       validatePagination,
       handleValidationErrors,
@@ -41,7 +40,7 @@ export class CourseRoutes {
      * Obtener cursos disponibles para inscripción
      */
     this.router.get(
-      '/available',
+      "/available",
       authenticateToken,
       validatePagination,
       handleValidationErrors,
@@ -53,11 +52,11 @@ export class CourseRoutes {
      * Obtener mis cursos inscritos
      */
     this.router.get(
-      '/my-courses',
+      "/my-courses",
       authenticateToken,
       validatePagination,
       handleValidationErrors,
-      this.courseController.getMyCourses.bind(this.courseController)
+      this.courseController.getUserCourses.bind(this.courseController)
     );
 
     /**
@@ -65,7 +64,7 @@ export class CourseRoutes {
      * Obtener curso por ID (público)
      */
     this.router.get(
-      '/:id',
+      "/:id",
       validateIdParam,
       handleValidationErrors,
       this.courseController.getCourseById.bind(this.courseController)
@@ -76,9 +75,9 @@ export class CourseRoutes {
      * Crear nuevo curso (solo organizadores y administradores)
      */
     this.router.post(
-      '/',
+      "/",
       authenticateToken,
-      authorize('organizador', 'administrador'),
+      authorize("organizador", "administrador"),
       validateCourseCreation,
       handleValidationErrors,
       this.courseController.createCourse.bind(this.courseController)
@@ -89,9 +88,9 @@ export class CourseRoutes {
      * Actualizar curso (solo organizadores y administradores)
      */
     this.router.put(
-      '/:id',
+      "/:id",
       authenticateToken,
-      authorize('organizador', 'administrador'),
+      authorize("organizador", "administrador"),
       validateIdParam,
       handleValidationErrors,
       this.courseController.updateCourse.bind(this.courseController)
@@ -102,9 +101,9 @@ export class CourseRoutes {
      * Eliminar curso (solo administradores)
      */
     this.router.delete(
-      '/:id',
+      "/:id",
       authenticateToken,
-      authorize('administrador'),
+      authorize("administrador"),
       validateIdParam,
       handleValidationErrors,
       this.courseController.deleteCourse.bind(this.courseController)
@@ -115,7 +114,7 @@ export class CourseRoutes {
      * Inscribirse a un curso
      */
     this.router.post(
-      '/:id/enroll',
+      "/:id/enroll",
       authenticateToken,
       validateIdParam,
       handleValidationErrors,
@@ -127,9 +126,9 @@ export class CourseRoutes {
      * Obtener inscripciones de un curso (solo organizadores y administradores)
      */
     this.router.get(
-      '/:id/enrollments',
+      "/:id/enrollments",
       authenticateToken,
-      authorize('organizador', 'administrador'),
+      authorize("organizador", "administrador"),
       validateIdParam,
       validatePagination,
       handleValidationErrors,

@@ -12,6 +12,15 @@ const CourseRepository_1 = require("../repositories/CourseRepository");
 const InscriptionRepository_1 = require("../repositories/InscriptionRepository");
 // Phase 7 - Infrastructure Implementations
 const PrismaCertificateRepository_1 = require("../repositories/PrismaCertificateRepository");
+// Infrastructure Layer - New Repositories
+const PrismaUserRepository_1 = require("../repositories/PrismaUserRepository");
+const PrismaCourseRepository_1 = require("../repositories/PrismaCourseRepository");
+const PrismaEventRepository_1 = require("../repositories/PrismaEventRepository");
+const PrismaEnrollmentRepository_1 = require("../repositories/PrismaEnrollmentRepository");
+const PrismaAuthenticationRepository_1 = require("../repositories/PrismaAuthenticationRepository");
+// Phase 8 - Change Request System Infrastructure
+const PrismaChangeRequestRepository_1 = require("../repositories/PrismaChangeRequestRepository");
+const PrismaDeveloperRepository_1 = require("../repositories/PrismaDeveloperRepository");
 // External Services
 const EmailService_1 = require("../external/email/EmailService");
 // Domain Services
@@ -25,6 +34,14 @@ const CourseManagementService_1 = require("@domain/services/CourseManagementServ
 const InscriptionManagementService_1 = require("@domain/services/InscriptionManagementService");
 // Phase 7 - Advanced Features Domain Services
 const CertificateManagementService_1 = require("@domain/services/CertificateManagementService");
+// Phase 8 - Change Request System Domain Services
+const ChangeRequestWorkflowService_1 = require("@domain/services/ChangeRequestWorkflowService");
+// Phase 8 - Change Request System Use Cases
+const CreateChangeRequestUseCase_1 = require("@application/change-request-management/CreateChangeRequestUseCase");
+const GetChangeRequestByIdUseCase_1 = require("@application/change-request-management/GetChangeRequestByIdUseCase");
+const GetMyChangeRequestsUseCase_1 = require("@application/change-request-management/GetMyChangeRequestsUseCase");
+const UpdateChangeRequestStatusUseCase_1 = require("@application/change-request-management/UpdateChangeRequestStatusUseCase");
+const AssignDeveloperUseCase_1 = require("@application/change-request-management/AssignDeveloperUseCase");
 /**
  * Container de Inyección de Dependencias
  * Implementa DIP (Dependency Inversion Principle)
@@ -143,7 +160,13 @@ class DIContainer {
         this._inscriptionManagementService = new InscriptionManagementService_1.InscriptionManagementService(this._inscriptionRepository, inscriptionEventRepository, inscriptionCourseRepository, inscriptionUserRepository);
         // Phase 7 - Initialize Advanced Features
         // Initialize repositories
-        this._certificateRepository = new PrismaCertificateRepository_1.PrismaCertificateRepository();
+        this._certificateRepository = new PrismaCertificateRepository_1.PrismaCertificateRepository(this._prisma);
+        // Initialize Infrastructure Layer - New Repositories
+        this._newUserRepository = new PrismaUserRepository_1.PrismaUserRepository(this._prisma);
+        this._newCourseRepository = new PrismaCourseRepository_1.PrismaCourseRepository(this._prisma);
+        this._newEventRepository = new PrismaEventRepository_1.PrismaEventRepository(this._prisma);
+        this._newEnrollmentRepository = new PrismaEnrollmentRepository_1.PrismaEnrollmentRepository(this._prisma);
+        this._newAuthenticationRepository = new PrismaAuthenticationRepository_1.PrismaAuthenticationRepository(this._prisma);
         // TODO: Implement these repositories and services for complete Phase 7
         // this._reportRepository = new PrismaReportRepository();
         // this._changeRequestRepository = new PrismaChangeRequestRepository();
@@ -231,6 +254,22 @@ class DIContainer {
     get certificateRepository() {
         return this._certificateRepository;
     }
+    // Infrastructure Layer - New Repositories Getters
+    get newUserRepository() {
+        return this._newUserRepository;
+    }
+    get newCourseRepository() {
+        return this._newCourseRepository;
+    }
+    get newEventRepository() {
+        return this._newEventRepository;
+    }
+    get newEnrollmentRepository() {
+        return this._newEnrollmentRepository;
+    }
+    get newAuthenticationRepository() {
+        return this._newAuthenticationRepository;
+    }
     get certificateManagementService() {
         return this._certificateManagementService;
     }
@@ -247,6 +286,56 @@ class DIContainer {
     // public get changeRequestManagementService(): ChangeRequestManagementService {
     //   return this._changeRequestManagementService;
     // }
+    // Phase 8 - Change Request System Getters
+    get newChangeRequestRepository() {
+        if (!this._newChangeRequestRepository) {
+            this._newChangeRequestRepository = new PrismaChangeRequestRepository_1.PrismaChangeRequestRepository(this._prisma);
+        }
+        return this._newChangeRequestRepository;
+    }
+    get developerRepository() {
+        if (!this._developerRepository) {
+            this._developerRepository = new PrismaDeveloperRepository_1.PrismaDeveloperRepository(this._prisma);
+        }
+        return this._developerRepository;
+    }
+    get changeRequestWorkflowService() {
+        if (!this._changeRequestWorkflowService) {
+            this._changeRequestWorkflowService = new ChangeRequestWorkflowService_1.ChangeRequestWorkflowService();
+        }
+        return this._changeRequestWorkflowService;
+    }
+    get createChangeRequestUseCase() {
+        if (!this._createChangeRequestUseCase) {
+            this._createChangeRequestUseCase = new CreateChangeRequestUseCase_1.CreateChangeRequestUseCase(this.newChangeRequestRepository);
+        }
+        return this._createChangeRequestUseCase;
+    }
+    get getChangeRequestByIdUseCase() {
+        if (!this._getChangeRequestByIdUseCase) {
+            this._getChangeRequestByIdUseCase = new GetChangeRequestByIdUseCase_1.GetChangeRequestByIdUseCase(this.newChangeRequestRepository);
+        }
+        return this._getChangeRequestByIdUseCase;
+    }
+    get getMyChangeRequestsUseCase() {
+        if (!this._getMyChangeRequestsUseCase) {
+            this._getMyChangeRequestsUseCase = new GetMyChangeRequestsUseCase_1.GetMyChangeRequestsUseCase(this.newChangeRequestRepository);
+        }
+        return this._getMyChangeRequestsUseCase;
+    }
+    get updateChangeRequestStatusUseCase() {
+        if (!this._updateChangeRequestStatusUseCase) {
+            this._updateChangeRequestStatusUseCase =
+                new UpdateChangeRequestStatusUseCase_1.UpdateChangeRequestStatusUseCase(this.newChangeRequestRepository, this.changeRequestWorkflowService);
+        }
+        return this._updateChangeRequestStatusUseCase;
+    }
+    get assignDeveloperUseCase() {
+        if (!this._assignDeveloperUseCase) {
+            this._assignDeveloperUseCase = new AssignDeveloperUseCase_1.AssignDeveloperUseCase(this.newChangeRequestRepository, this.developerRepository, this.changeRequestWorkflowService);
+        }
+        return this._assignDeveloperUseCase;
+    }
     async dispose() {
         await this._prisma.$disconnect();
     }

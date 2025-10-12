@@ -1,11 +1,11 @@
 /**
  * Authentication Repository Implementation - Infrastructure Layer
- * 
+ *
  * Implementación para manejo de autenticación y cuentas de usuario
  * Maneja operaciones básicas según el esquema Prisma real
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 
 export interface AccountData {
   id?: string;
@@ -41,11 +41,11 @@ export class PrismaAuthenticationRepository {
         isVerified: accountData.isVerified,
         id_usu_per: accountData.userId,
         emailVerificationToken: accountData.emailVerificationToken || null,
-        emailVerificationExpiry: accountData.emailVerificationExpiry || null
+        emailVerificationExpiry: accountData.emailVerificationExpiry || null,
       },
       include: {
-        usuario: true
-      }
+        usuario: true,
+      },
     });
 
     return this.mapToAccountData(cuenta);
@@ -59,10 +59,10 @@ export class PrismaAuthenticationRepository {
       include: {
         usuario: {
           include: {
-            carrera: true
-          }
-        }
-      }
+            carrera: true,
+          },
+        },
+      },
     });
 
     if (!cuenta) return null;
@@ -73,9 +73,9 @@ export class PrismaAuthenticationRepository {
         cedula: cuenta.usuario.ced_usu,
         firstName: cuenta.usuario.nom_usu1,
         lastName: cuenta.usuario.ape_usu1,
-        password: cuenta.usuario.pas_usu || undefined
+        password: cuenta.usuario.pas_usu || undefined,
       },
-      account: this.mapToAccountData(cuenta)
+      account: this.mapToAccountData(cuenta),
     };
   }
 
@@ -84,11 +84,12 @@ export class PrismaAuthenticationRepository {
       where: { ced_usu: cedula },
       include: {
         cuentas: true,
-        carrera: true
-      }
+        carrera: true,
+      },
     });
 
-    if (!usuario || !usuario.cuentas || usuario.cuentas.length === 0) return null;
+    if (!usuario || !usuario.cuentas || usuario.cuentas.length === 0)
+      return null;
 
     const cuenta = usuario.cuentas[0]; // Tomar la primera cuenta
 
@@ -98,22 +99,24 @@ export class PrismaAuthenticationRepository {
         cedula: usuario.ced_usu,
         firstName: usuario.nom_usu1,
         lastName: usuario.ape_usu1,
-        password: usuario.pas_usu || undefined
+        password: usuario.pas_usu || undefined,
       },
-      account: this.mapToAccountData(cuenta)
+      account: this.mapToAccountData(cuenta),
     };
   }
 
-  async findByVerificationToken(token: string): Promise<AuthenticationData | null> {
+  async findByVerificationToken(
+    token: string
+  ): Promise<AuthenticationData | null> {
     const cuenta = await this.prisma.cuenta.findFirst({
       where: { emailVerificationToken: token },
       include: {
         usuario: {
           include: {
-            carrera: true
-          }
-        }
-      }
+            carrera: true,
+          },
+        },
+      },
     });
 
     if (!cuenta) return null;
@@ -124,27 +127,28 @@ export class PrismaAuthenticationRepository {
         cedula: cuenta.usuario.ced_usu,
         firstName: cuenta.usuario.nom_usu1,
         lastName: cuenta.usuario.ape_usu1,
-        password: cuenta.usuario.pas_usu || undefined
+        password: cuenta.usuario.pas_usu || undefined,
       },
-      account: this.mapToAccountData(cuenta)
+      account: this.mapToAccountData(cuenta),
     };
   }
 
   async findByResetToken(token: string): Promise<AuthenticationData | null> {
     const usuario = await this.prisma.usuario.findFirst({
-      where: { 
+      where: {
         resetToken: token,
         resetTokenExpiry: {
-          gt: new Date() // Token no expirado
-        }
+          gt: new Date(), // Token no expirado
+        },
       },
       include: {
         cuentas: true,
-        carrera: true
-      }
+        carrera: true,
+      },
     });
 
-    if (!usuario || !usuario.cuentas || usuario.cuentas.length === 0) return null;
+    if (!usuario || !usuario.cuentas || usuario.cuentas.length === 0)
+      return null;
 
     const cuenta = usuario.cuentas[0];
 
@@ -154,9 +158,9 @@ export class PrismaAuthenticationRepository {
         cedula: usuario.ced_usu,
         firstName: usuario.nom_usu1,
         lastName: usuario.ape_usu1,
-        password: usuario.pas_usu || undefined
+        password: usuario.pas_usu || undefined,
       },
-      account: this.mapToAccountData(cuenta)
+      account: this.mapToAccountData(cuenta),
     };
   }
 
@@ -165,42 +169,50 @@ export class PrismaAuthenticationRepository {
   async updatePassword(userId: string, hashedPassword: string): Promise<void> {
     await this.prisma.usuario.update({
       where: { id_usu: userId },
-      data: { 
+      data: {
         pas_usu: hashedPassword,
         resetToken: null, // Limpiar token si existe
-        resetTokenExpiry: null
-      }
+        resetTokenExpiry: null,
+      },
     });
   }
 
   async verifyAccount(accountId: string): Promise<void> {
     await this.prisma.cuenta.update({
       where: { id_cue: accountId },
-      data: { 
+      data: {
         isVerified: true,
         emailVerificationToken: null,
-        emailVerificationExpiry: null
-      }
+        emailVerificationExpiry: null,
+      },
     });
   }
 
-  async setResetToken(userId: string, token: string, expiry: Date): Promise<void> {
+  async setResetToken(
+    userId: string,
+    token: string,
+    expiry: Date
+  ): Promise<void> {
     await this.prisma.usuario.update({
       where: { id_usu: userId },
-      data: { 
+      data: {
         resetToken: token,
-        resetTokenExpiry: expiry
-      }
+        resetTokenExpiry: expiry,
+      },
     });
   }
 
-  async setVerificationToken(accountId: string, token: string, expiry: Date): Promise<void> {
+  async setVerificationToken(
+    accountId: string,
+    token: string,
+    expiry: Date
+  ): Promise<void> {
     await this.prisma.cuenta.update({
       where: { id_cue: accountId },
-      data: { 
+      data: {
         emailVerificationToken: token,
-        emailVerificationExpiry: expiry
-      }
+        emailVerificationExpiry: expiry,
+      },
     });
   }
 
@@ -208,14 +220,14 @@ export class PrismaAuthenticationRepository {
 
   async isEmailTaken(email: string): Promise<boolean> {
     const count = await this.prisma.cuenta.count({
-      where: { cor_cue: email }
+      where: { cor_cue: email },
     });
     return count > 0;
   }
 
   async isCedulaTaken(cedula: string): Promise<boolean> {
     const count = await this.prisma.usuario.count({
-      where: { ced_usu: cedula }
+      where: { ced_usu: cedula },
     });
     return count > 0;
   }
@@ -227,8 +239,8 @@ export class PrismaAuthenticationRepository {
       where: { id_cue: accountId },
       data: { rol_cue: role as any },
       include: {
-        usuario: true
-      }
+        usuario: true,
+      },
     });
 
     return this.mapToAccountData(cuenta);
@@ -240,46 +252,46 @@ export class PrismaAuthenticationRepository {
       include: {
         usuario: {
           include: {
-            carrera: true
-          }
-        }
-      }
+            carrera: true,
+          },
+        },
+      },
     });
 
-    return cuentas.map(cuenta => ({
+    return cuentas.map((cuenta) => ({
       user: {
         id: cuenta.usuario.id_usu,
         cedula: cuenta.usuario.ced_usu,
         firstName: cuenta.usuario.nom_usu1,
         lastName: cuenta.usuario.ape_usu1,
-        password: cuenta.usuario.pas_usu || undefined
+        password: cuenta.usuario.pas_usu || undefined,
       },
-      account: this.mapToAccountData(cuenta)
+      account: this.mapToAccountData(cuenta),
     }));
   }
 
   // ===== ESTADÍSTICAS =====
 
-  async getUserStats(): Promise<{ 
-    total: number; 
-    verified: number; 
-    byRole: Record<string, number> 
+  async getUserStats(): Promise<{
+    total: number;
+    verified: number;
+    byRole: Record<string, number>;
   }> {
     const total = await this.prisma.cuenta.count();
     const verified = await this.prisma.cuenta.count({
-      where: { isVerified: true }
+      where: { isVerified: true },
     });
 
     // Contar por roles
     const roleStats = await this.prisma.cuenta.groupBy({
-      by: ['rol_cue'],
+      by: ["rol_cue"],
       _count: {
-        _all: true
-      }
+        _all: true,
+      },
     });
 
     const byRole: Record<string, number> = {};
-    roleStats.forEach(stat => {
+    roleStats.forEach((stat) => {
       byRole[stat.rol_cue] = stat._count._all;
     });
 
@@ -290,7 +302,7 @@ export class PrismaAuthenticationRepository {
 
   async deleteAccount(accountId: string): Promise<void> {
     await this.prisma.cuenta.delete({
-      where: { id_cue: accountId }
+      where: { id_cue: accountId },
     });
   }
 
@@ -304,7 +316,7 @@ export class PrismaAuthenticationRepository {
       isVerified: cuenta.isVerified,
       userId: cuenta.id_usu_per,
       emailVerificationToken: cuenta.emailVerificationToken || undefined,
-      emailVerificationExpiry: cuenta.emailVerificationExpiry || undefined
+      emailVerificationExpiry: cuenta.emailVerificationExpiry || undefined,
     };
   }
 }

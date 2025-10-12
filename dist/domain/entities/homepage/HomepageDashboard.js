@@ -1,0 +1,494 @@
+"use strict";
+/**
+ * Homepage Dashboard Entity - Domain Layer
+ *
+ * Representa las estadísticas y métricas del dashboard de la página principal
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.HomepageDashboard = void 0;
+class HomepageDashboard {
+    constructor(data) {
+        this.data = data;
+        this.validateData();
+    }
+    static create(userStats, activityStats, financialStats, generatedBy) {
+        const now = new Date();
+        const refreshInterval = 15; // 15 minutes
+        const dashboardData = {
+            id: `dashboard-${Date.now()}`,
+            userStats,
+            activityStats,
+            financialStats,
+            recentActivities: [],
+            upcomingActivities: [],
+            popularActivities: [],
+            systemAlerts: [],
+            performanceMetrics: {
+                avgResponseTime: 0,
+                systemUptime: 99.9,
+                databaseHealth: "GOOD",
+                activeConnections: 0,
+            },
+            generatedAt: now,
+            generatedBy,
+            refreshInterval,
+            nextRefreshAt: new Date(now.getTime() + refreshInterval * 60000),
+            cacheExpiry: new Date(now.getTime() + refreshInterval * 60000),
+        };
+        return new HomepageDashboard(dashboardData);
+    }
+    static fromCalculatedData(userData, eventData, courseData, inscriptionData, paymentData, generatedBy) {
+        // Calculate user statistics
+        const userStats = HomepageDashboard.calculateUserStatistics(userData);
+        // Calculate activity statistics
+        const activityStats = HomepageDashboard.calculateActivityStatistics(eventData, courseData, inscriptionData);
+        // Calculate financial statistics
+        const financialStats = HomepageDashboard.calculateFinancialStatistics(paymentData, eventData, courseData);
+        const dashboard = HomepageDashboard.create(userStats, activityStats, financialStats, generatedBy);
+        // Add recent activities
+        const recentActivities = HomepageDashboard.generateRecentActivities(inscriptionData, paymentData, userData);
+        // Add upcoming activities
+        const upcomingActivities = HomepageDashboard.generateUpcomingActivities(eventData, courseData);
+        // Add popular activities
+        const popularActivities = HomepageDashboard.generatePopularActivities(eventData, courseData, inscriptionData);
+        return dashboard.updateRecentData(recentActivities, upcomingActivities, popularActivities);
+    }
+    static calculateUserStatistics(userData) {
+        const now = new Date();
+        const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const totalUsers = userData.length;
+        const activeUsers = userData.filter((u) => u.estado_usu === "ACTIVO").length;
+        const newUsersThisMonth = userData.filter((u) => new Date(u.fec_cre_usu) >= thisMonth).length;
+        // Count by roles
+        const usersByRole = userData.reduce((acc, user) => {
+            const role = user.id_tip_usu;
+            switch (role) {
+                case 1:
+                    acc.students++;
+                    break;
+                case 2:
+                    acc.teachers++;
+                    break;
+                case 3:
+                    acc.administrators++;
+                    break;
+                default:
+                    acc.externals++;
+                    break;
+            }
+            return acc;
+        }, { students: 0, teachers: 0, administrators: 0, externals: 0 });
+        // Generate registration trend (last 6 months)
+        const registrationTrend = [];
+        for (let i = 5; i >= 0; i--) {
+            const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+            const monthCount = userData.filter((u) => {
+                const createdDate = new Date(u.fec_cre_usu);
+                return createdDate >= monthStart && createdDate <= monthEnd;
+            }).length;
+            registrationTrend.push({
+                month: monthStart.toLocaleDateString("es-ES", {
+                    month: "short",
+                    year: "numeric",
+                }),
+                count: monthCount,
+            });
+        }
+        return {
+            totalUsers,
+            activeUsers,
+            newUsersThisMonth,
+            usersByRole,
+            registrationTrend,
+        };
+    }
+    static calculateActivityStatistics(eventData, courseData, inscriptionData) {
+        const now = new Date();
+        const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const totalEvents = eventData.length;
+        const totalCourses = courseData.length;
+        const activeEvents = eventData.filter((e) => e.estado === "ACTIVO").length;
+        const activeCourses = courseData.filter((c) => c.estado === "ACTIVO").length;
+        const upcomingActivities = [
+            ...eventData.filter((e) => new Date(e.fec_ini_eve) > now),
+            ...courseData.filter((c) => new Date(c.fec_ini_cur) > now),
+        ].length;
+        const completedActivitiesThisMonth = [
+            ...eventData.filter((e) => e.estado === "COMPLETADO" && new Date(e.fec_fin_eve) >= thisMonth),
+            ...courseData.filter((c) => c.estado === "COMPLETADO" && new Date(c.fec_fin_cur) >= thisMonth),
+        ].length;
+        const totalInscriptions = inscriptionData.length;
+        const pendingInscriptions = inscriptionData.filter((i) => i.estado_pago === "PENDIENTE" || i.estado_pago_cur === "PENDIENTE").length;
+        // Calculate capacity utilization
+        const activitiesWithCapacity = [...eventData, ...courseData].filter((a) => (a.capacidad_max_eve || a.capacidad_max_cur) > 0);
+        const averageCapacityUtilization = activitiesWithCapacity.length > 0
+            ? activitiesWithCapacity.reduce((acc, activity) => {
+                const capacity = activity.capacidad_max_eve || activity.capacidad_max_cur;
+                const inscriptions = inscriptionData.filter((i) => i.id_eve === activity.id_eve || i.id_cur === activity.id_cur).length;
+                return acc + (inscriptions / capacity) * 100;
+            }, 0) / activitiesWithCapacity.length
+            : 0;
+        // Generate popular categories
+        const categoryCounts = new Map();
+        [...eventData, ...courseData].forEach((activity) => {
+            const categoryName = activity.categoria?.nom_cat || "Sin categoría";
+            categoryCounts.set(categoryName, (categoryCounts.get(categoryName) || 0) + 1);
+        });
+        const popularCategories = Array.from(categoryCounts.entries())
+            .map(([categoryName, count]) => ({ categoryName, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+        return {
+            totalEvents,
+            totalCourses,
+            activeEvents,
+            activeCourses,
+            upcomingActivities,
+            completedActivitiesThisMonth,
+            totalInscriptions,
+            pendingInscriptions,
+            averageCapacityUtilization,
+            popularCategories,
+        };
+    }
+    static calculateFinancialStatistics(paymentData, eventData, courseData) {
+        const now = new Date();
+        const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        // Calculate total revenue from approved payments
+        const approvedPayments = paymentData.filter((p) => p.estado_pago === "APROBADO" || p.estado_pago_cur === "APROBADO");
+        const totalRevenue = approvedPayments.reduce((sum, payment) => sum + (payment.precio || 0), 0);
+        const revenueThisMonth = approvedPayments
+            .filter((p) => new Date(p.fec_ins || p.fec_ins_cur) >= thisMonth)
+            .reduce((sum, payment) => sum + (payment.precio || 0), 0);
+        const pendingPayments = paymentData
+            .filter((p) => p.estado_pago === "PENDIENTE" || p.estado_pago_cur === "PENDIENTE")
+            .reduce((sum, payment) => sum + (payment.precio || 0), 0);
+        // Calculate average activity price
+        const activitiesWithPrice = [...eventData, ...courseData].filter((a) => !a.es_gratuito && (a.precio || 0) > 0);
+        const averageActivityPrice = activitiesWithPrice.length > 0
+            ? activitiesWithPrice.reduce((sum, a) => sum + (a.precio || 0), 0) /
+                activitiesWithPrice.length
+            : 0;
+        // Revenue by category
+        const categoryRevenue = new Map();
+        approvedPayments.forEach((payment) => {
+            const activity = eventData.find((e) => e.id_eve === payment.id_eve) ||
+                courseData.find((c) => c.id_cur === payment.id_cur);
+            if (activity) {
+                const categoryName = activity.categoria?.nom_cat || "Sin categoría";
+                categoryRevenue.set(categoryName, (categoryRevenue.get(categoryName) || 0) + (payment.precio || 0));
+            }
+        });
+        const revenueByCategory = Array.from(categoryRevenue.entries())
+            .map(([categoryName, amount]) => ({ categoryName, amount }))
+            .sort((a, b) => b.amount - a.amount)
+            .slice(0, 5);
+        // Monthly revenue trend (last 6 months)
+        const monthlyRevenueTrend = [];
+        for (let i = 5; i >= 0; i--) {
+            const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+            const monthRevenue = approvedPayments
+                .filter((p) => {
+                const paymentDate = new Date(p.fec_ins || p.fec_ins_cur);
+                return paymentDate >= monthStart && paymentDate <= monthEnd;
+            })
+                .reduce((sum, p) => sum + (p.precio || 0), 0);
+            monthlyRevenueTrend.push({
+                month: monthStart.toLocaleDateString("es-ES", {
+                    month: "short",
+                    year: "numeric",
+                }),
+                amount: monthRevenue,
+            });
+        }
+        return {
+            totalRevenue,
+            revenueThisMonth,
+            pendingPayments,
+            averageActivityPrice,
+            revenueByCategory,
+            monthlyRevenueTrend,
+        };
+    }
+    static generateRecentActivities(inscriptionData, paymentData, userData) {
+        const recentActivities = [];
+        // Recent inscriptions
+        inscriptionData.slice(-10).forEach((inscription) => {
+            const user = userData.find((u) => u.id_usu === inscription.id_usu);
+            recentActivities.push({
+                id: `inscription-${inscription.id_ins || inscription.id_ins_cur}`,
+                type: "INSCRIPTION",
+                title: "Nueva inscripción",
+                description: `${user?.nombre_completo_usu || "Usuario"} se inscribió en una actividad`,
+                userId: inscription.id_usu?.toString(),
+                userName: user?.nombre_completo_usu,
+                activityId: inscription.id_eve?.toString() || inscription.id_cur?.toString(),
+                timestamp: new Date(inscription.fec_ins || inscription.fec_ins_cur),
+                status: inscription.estado_pago === "APROBADO" ||
+                    inscription.estado_pago_cur === "APROBADO"
+                    ? "SUCCESS"
+                    : "PENDING",
+            });
+        });
+        return recentActivities
+            .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+            .slice(0, 10);
+    }
+    static generateUpcomingActivities(eventData, courseData) {
+        const now = new Date();
+        const upcoming = [];
+        // Upcoming events
+        eventData
+            .filter((e) => new Date(e.fec_ini_eve) > now && e.estado === "ACTIVO")
+            .forEach((event) => {
+            upcoming.push({
+                id: event.id_eve.toString(),
+                type: "EVENT",
+                title: event.nom_eve,
+                category: event.categoria?.nom_cat || "Sin categoría",
+                startDate: new Date(event.fec_ini_eve),
+                endDate: new Date(event.fec_fin_eve),
+                isActive: event.estado === "ACTIVO",
+                inscriptionsCount: 0, // Would need inscription count
+                capacity: event.capacidad_max_eve || 0,
+                utilizationPercentage: 0,
+            });
+        });
+        // Upcoming courses
+        courseData
+            .filter((c) => new Date(c.fec_ini_cur) > now && c.estado === "ACTIVO")
+            .forEach((course) => {
+            upcoming.push({
+                id: course.id_cur.toString(),
+                type: "COURSE",
+                title: course.nom_cur,
+                category: course.categoria?.nom_cat || "Sin categoría",
+                startDate: new Date(course.fec_ini_cur),
+                endDate: new Date(course.fec_fin_cur),
+                isActive: course.estado === "ACTIVO",
+                inscriptionsCount: 0, // Would need inscription count
+                capacity: course.capacidad_max_cur || 0,
+                utilizationPercentage: 0,
+            });
+        });
+        return upcoming
+            .sort((a, b) => a.startDate.getTime() - b.startDate.getTime())
+            .slice(0, 5);
+    }
+    static generatePopularActivities(eventData, courseData, inscriptionData) {
+        const activities = [];
+        // Process events
+        eventData.forEach((event) => {
+            const inscriptionsCount = inscriptionData.filter((i) => i.id_eve === event.id_eve).length;
+            const capacity = event.capacidad_max_eve || 1;
+            activities.push({
+                id: event.id_eve.toString(),
+                type: "EVENT",
+                title: event.nom_eve,
+                category: event.categoria?.nom_cat || "Sin categoría",
+                startDate: new Date(event.fec_ini_eve),
+                endDate: new Date(event.fec_fin_eve),
+                isActive: event.estado === "ACTIVO",
+                inscriptionsCount,
+                capacity,
+                utilizationPercentage: (inscriptionsCount / capacity) * 100,
+            });
+        });
+        // Process courses
+        courseData.forEach((course) => {
+            const inscriptionsCount = inscriptionData.filter((i) => i.id_cur === course.id_cur).length;
+            const capacity = course.capacidad_max_cur || 1;
+            activities.push({
+                id: course.id_cur.toString(),
+                type: "COURSE",
+                title: course.nom_cur,
+                category: course.categoria?.nom_cat || "Sin categoría",
+                startDate: new Date(course.fec_ini_cur),
+                endDate: new Date(course.fec_fin_cur),
+                isActive: course.estado === "ACTIVO",
+                inscriptionsCount,
+                capacity,
+                utilizationPercentage: (inscriptionsCount / capacity) * 100,
+            });
+        });
+        return activities
+            .sort((a, b) => b.inscriptionsCount - a.inscriptionsCount)
+            .slice(0, 8);
+    }
+    validateData() {
+        if (!this.data.userStats) {
+            throw new Error("User statistics are required");
+        }
+        if (!this.data.activityStats) {
+            throw new Error("Activity statistics are required");
+        }
+        if (!this.data.financialStats) {
+            throw new Error("Financial statistics are required");
+        }
+        if (this.data.refreshInterval < 1 || this.data.refreshInterval > 60) {
+            throw new Error("Refresh interval must be between 1 and 60 minutes");
+        }
+        if (this.data.generatedAt > new Date()) {
+            throw new Error("Generated date cannot be in the future");
+        }
+    }
+    // Getters
+    getId() {
+        return this.data.id;
+    }
+    getUserStatistics() {
+        return { ...this.data.userStats };
+    }
+    getActivityStatistics() {
+        return { ...this.data.activityStats };
+    }
+    getFinancialStatistics() {
+        return { ...this.data.financialStats };
+    }
+    getRecentActivities() {
+        return [...this.data.recentActivities];
+    }
+    getUpcomingActivities() {
+        return [...this.data.upcomingActivities];
+    }
+    getPopularActivities() {
+        return [...this.data.popularActivities];
+    }
+    getSystemAlerts() {
+        return [...this.data.systemAlerts];
+    }
+    getPerformanceMetrics() {
+        return { ...this.data.performanceMetrics };
+    }
+    getGeneratedAt() {
+        return this.data.generatedAt;
+    }
+    getGeneratedBy() {
+        return this.data.generatedBy;
+    }
+    getRefreshInterval() {
+        return this.data.refreshInterval;
+    }
+    getNextRefreshAt() {
+        return this.data.nextRefreshAt;
+    }
+    getCacheExpiry() {
+        return this.data.cacheExpiry;
+    }
+    // Status checks
+    isExpired() {
+        return new Date() > this.data.cacheExpiry;
+    }
+    needsRefresh() {
+        return new Date() > this.data.nextRefreshAt;
+    }
+    hasAlerts() {
+        return this.data.systemAlerts.length > 0;
+    }
+    hasCriticalAlerts() {
+        return this.data.systemAlerts.some((alert) => alert.priority === "CRITICAL");
+    }
+    getAlertsByPriority(priority) {
+        return this.data.systemAlerts.filter((alert) => alert.priority === priority);
+    }
+    // Actions
+    updateRecentData(recentActivities, upcomingActivities, popularActivities) {
+        const updatedData = {
+            ...this.data,
+            recentActivities: recentActivities.slice(0, 20),
+            upcomingActivities: upcomingActivities.slice(0, 10),
+            popularActivities: popularActivities.slice(0, 10),
+            generatedAt: new Date(),
+        };
+        return new HomepageDashboard(updatedData);
+    }
+    addSystemAlert(alert) {
+        const newAlert = {
+            ...alert,
+            createdAt: new Date(),
+        };
+        const updatedAlerts = [newAlert, ...this.data.systemAlerts].slice(0, 50);
+        const updatedData = {
+            ...this.data,
+            systemAlerts: updatedAlerts,
+        };
+        return new HomepageDashboard(updatedData);
+    }
+    clearAlert(alertTitle) {
+        const updatedAlerts = this.data.systemAlerts.filter((alert) => alert.title !== alertTitle);
+        const updatedData = {
+            ...this.data,
+            systemAlerts: updatedAlerts,
+        };
+        return new HomepageDashboard(updatedData);
+    }
+    updatePerformanceMetrics(metrics) {
+        const updatedData = {
+            ...this.data,
+            performanceMetrics: {
+                ...this.data.performanceMetrics,
+                ...metrics,
+            },
+        };
+        return new HomepageDashboard(updatedData);
+    }
+    refresh(refreshInterval) {
+        const now = new Date();
+        const interval = refreshInterval || this.data.refreshInterval;
+        const updatedData = {
+            ...this.data,
+            refreshInterval: interval,
+            nextRefreshAt: new Date(now.getTime() + interval * 60000),
+            cacheExpiry: new Date(now.getTime() + interval * 60000),
+            generatedAt: now,
+        };
+        return new HomepageDashboard(updatedData);
+    }
+    // Analysis methods
+    getOverallHealthScore() {
+        let score = 100;
+        // Performance metrics impact
+        const perfMetrics = this.data.performanceMetrics;
+        if (perfMetrics.databaseHealth === "POOR")
+            score -= 20;
+        else if (perfMetrics.databaseHealth === "FAIR")
+            score -= 10;
+        else if (perfMetrics.databaseHealth === "GOOD")
+            score -= 5;
+        if (perfMetrics.systemUptime < 99)
+            score -= 15;
+        else if (perfMetrics.systemUptime < 99.5)
+            score -= 10;
+        if (perfMetrics.avgResponseTime > 2000)
+            score -= 15;
+        else if (perfMetrics.avgResponseTime > 1000)
+            score -= 10;
+        else if (perfMetrics.avgResponseTime > 500)
+            score -= 5;
+        // System alerts impact
+        const criticalAlerts = this.getAlertsByPriority("CRITICAL").length;
+        const highAlerts = this.getAlertsByPriority("HIGH").length;
+        score -= criticalAlerts * 10;
+        score -= highAlerts * 5;
+        return Math.max(0, Math.min(100, score));
+    }
+    getSummary() {
+        return {
+            totalUsers: this.data.userStats.totalUsers,
+            activeUsers: this.data.userStats.activeUsers,
+            totalActivities: this.data.activityStats.totalEvents +
+                this.data.activityStats.totalCourses,
+            totalRevenue: this.data.financialStats.totalRevenue,
+            pendingInscriptions: this.data.activityStats.pendingInscriptions,
+            systemHealth: this.getOverallHealthScore(),
+            alertsCount: this.data.systemAlerts.length,
+            criticalAlertsCount: this.getAlertsByPriority("CRITICAL").length,
+            lastUpdate: this.data.generatedAt,
+            needsRefresh: this.needsRefresh(),
+        };
+    }
+}
+exports.HomepageDashboard = HomepageDashboard;
+//# sourceMappingURL=HomepageDashboard.js.map

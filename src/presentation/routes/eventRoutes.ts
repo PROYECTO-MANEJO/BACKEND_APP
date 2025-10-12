@@ -1,25 +1,24 @@
-import { Router } from 'express';
-import { DIContainer } from '../../infrastructure/config/DIContainer';
-import { EventController } from '../controllers/EventController';
+import { Router } from "express";
+import { EventController } from "../controllers/EventController";
 import {
   authenticateToken,
   authorize,
-  optionalAuth
-} from '../middleware/authMiddleware';
+  optionalAuth,
+} from "../middleware/authMiddleware";
 import {
   handleValidationErrors,
   validateEventCreation,
   validatePagination,
-  validateIdParam
-} from '../middleware/validationMiddleware';
+  validateIdParam,
+} from "../middleware/validationMiddleware";
 
 export class EventRoutes {
   private router: Router;
   private eventController: EventController;
 
-  constructor(container: DIContainer) {
+  constructor() {
     this.router = Router();
-    this.eventController = new EventController(container);
+    this.eventController = new EventController();
     this.setupRoutes();
   }
 
@@ -29,7 +28,7 @@ export class EventRoutes {
      * Obtener lista de eventos (público con paginación)
      */
     this.router.get(
-      '/',
+      "/",
       optionalAuth,
       validatePagination,
       handleValidationErrors,
@@ -41,7 +40,7 @@ export class EventRoutes {
      * Obtener eventos próximos (público)
      */
     this.router.get(
-      '/upcoming',
+      "/upcoming",
       optionalAuth,
       validatePagination,
       handleValidationErrors,
@@ -53,11 +52,11 @@ export class EventRoutes {
      * Obtener mis eventos inscritos
      */
     this.router.get(
-      '/my-events',
+      "/my-events",
       authenticateToken,
       validatePagination,
       handleValidationErrors,
-      this.eventController.getMyEvents.bind(this.eventController)
+      this.eventController.getUserEvents.bind(this.eventController)
     );
 
     /**
@@ -65,7 +64,7 @@ export class EventRoutes {
      * Obtener eventos por área (público)
      */
     this.router.get(
-      '/by-area/:area',
+      "/by-area/:area",
       optionalAuth,
       validatePagination,
       handleValidationErrors,
@@ -77,7 +76,7 @@ export class EventRoutes {
      * Obtener evento por ID (público)
      */
     this.router.get(
-      '/:id',
+      "/:id",
       validateIdParam,
       handleValidationErrors,
       this.eventController.getEventById.bind(this.eventController)
@@ -88,9 +87,9 @@ export class EventRoutes {
      * Crear nuevo evento (solo organizadores y administradores)
      */
     this.router.post(
-      '/',
+      "/",
       authenticateToken,
-      authorize('organizador', 'administrador'),
+      authorize("organizador", "administrador"),
       validateEventCreation,
       handleValidationErrors,
       this.eventController.createEvent.bind(this.eventController)
@@ -101,9 +100,9 @@ export class EventRoutes {
      * Actualizar evento (solo organizadores y administradores)
      */
     this.router.put(
-      '/:id',
+      "/:id",
       authenticateToken,
-      authorize('organizador', 'administrador'),
+      authorize("organizador", "administrador"),
       validateIdParam,
       handleValidationErrors,
       this.eventController.updateEvent.bind(this.eventController)
@@ -114,9 +113,9 @@ export class EventRoutes {
      * Eliminar evento (solo administradores)
      */
     this.router.delete(
-      '/:id',
+      "/:id",
       authenticateToken,
-      authorize('administrador'),
+      authorize("administrador"),
       validateIdParam,
       handleValidationErrors,
       this.eventController.deleteEvent.bind(this.eventController)
@@ -127,7 +126,7 @@ export class EventRoutes {
      * Inscribirse a un evento
      */
     this.router.post(
-      '/:id/enroll',
+      "/:id/enroll",
       authenticateToken,
       validateIdParam,
       handleValidationErrors,
@@ -139,9 +138,9 @@ export class EventRoutes {
      * Obtener inscripciones de un evento (solo organizadores y administradores)
      */
     this.router.get(
-      '/:id/enrollments',
+      "/:id/enrollments",
       authenticateToken,
-      authorize('organizador', 'administrador'),
+      authorize("organizador", "administrador"),
       validateIdParam,
       validatePagination,
       handleValidationErrors,
