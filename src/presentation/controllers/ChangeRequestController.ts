@@ -8,6 +8,7 @@ export interface AuthenticatedRequest extends Request {
     rol: string;
     ced_usu: string;
   };
+  uid?: string;  // ID del usuario desde JWT middleware
 }
 
 export class ChangeRequestController extends BaseController {
@@ -33,7 +34,7 @@ export class ChangeRequestController extends BaseController {
         urgencia_sol = 'NORMAL'
       } = req.body;
 
-      const usuario_id = req.usuario?.id_usu;
+      const usuario_id = req.usuario?.id_usu || req.uid;
       if (!usuario_id) {
         res.status(401).json({
           success: false,
@@ -80,14 +81,17 @@ export class ChangeRequestController extends BaseController {
       res.status(201).json({
         success: true,
         message: 'Solicitud de cambio creada exitosamente',
-        solicitud: {
+        data: {
           id_sol: nuevaSolicitud.id_sol,
           titulo_sol: nuevaSolicitud.titulo_sol,
           descripcion_sol: nuevaSolicitud.descripcion_sol,
-          estado_sol: nuevaSolicitud.estado_sol,
+          justificacion_sol: nuevaSolicitud.justificacion_sol,
+          tipo_cambio_sol: nuevaSolicitud.tipo_cambio_sol,
           prioridad_sol: nuevaSolicitud.prioridad_sol,
+          urgencia_sol: nuevaSolicitud.urgencia_sol,
+          estado_sol: nuevaSolicitud.estado_sol,
           fec_creacion_sol: nuevaSolicitud.fec_creacion_sol,
-          usuario: nuevaSolicitud.usuario
+          usuarioSolicitante: nuevaSolicitud.usuario
         }
       });
     } catch (error: any) {
@@ -105,7 +109,7 @@ export class ChangeRequestController extends BaseController {
    */
   public async getMyChangeRequests(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const usuario_id = req.usuario?.id_usu;
+      const usuario_id = req.usuario?.id_usu || req.uid;
       if (!usuario_id) {
         res.status(401).json({
           success: false,
@@ -147,21 +151,29 @@ export class ChangeRequestController extends BaseController {
 
       res.json({
         success: true,
-        solicitudes: solicitudes.map(sol => ({
-          id_sol: sol.id_sol,
-          titulo_sol: sol.titulo_sol,
-          descripcion_sol: sol.descripcion_sol,
-          estado_sol: sol.estado_sol,
-          prioridad_sol: sol.prioridad_sol,
-          urgencia_sol: sol.urgencia_sol,
-          tipo_cambio_sol: sol.tipo_cambio_sol,
-          fec_creacion_sol: sol.fec_creacion_sol,
-          fec_ultima_actualizacion: sol.fec_ultima_actualizacion,
-          usuario: sol.usuario,
-          adminResponsable: sol.adminResponsable,
-          desarrolladorAsignado: sol.desarrolladorAsignado
-        })),
-        total: solicitudes.length
+        data: {
+          solicitudes: solicitudes.map(sol => ({
+            id_sol: sol.id_sol,
+            titulo_sol: sol.titulo_sol,
+            descripcion_sol: sol.descripcion_sol,
+            justificacion_sol: sol.justificacion_sol,
+            tipo_cambio_sol: sol.tipo_cambio_sol,
+            prioridad_sol: sol.prioridad_sol,
+            urgencia_sol: sol.urgencia_sol,
+            estado_sol: sol.estado_sol,
+            fec_creacion_sol: sol.fec_creacion_sol,
+            fec_ultima_actualizacion: sol.fec_ultima_actualizacion,
+            comentarios_admin_sol: sol.comentarios_admin_sol,
+            usuarioSolicitante: sol.usuario,
+            adminResponsable: sol.adminResponsable,
+            desarrolladorAsignado: sol.desarrolladorAsignado,
+            // Indicar si puede editar (solo en BORRADOR)
+            puede_editar: sol.estado_sol === 'BORRADOR',
+            puede_cancelar: sol.estado_sol === 'BORRADOR',
+            puede_enviar: sol.estado_sol === 'BORRADOR'
+          })),
+          total: solicitudes.length
+        }
       });
     } catch (error: any) {
       console.error('[getMyChangeRequests] Error:', error);
@@ -179,7 +191,7 @@ export class ChangeRequestController extends BaseController {
   public async getChangeRequestById(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const usuario_id = req.usuario?.id_usu;
+      const usuario_id = req.usuario?.id_usu || req.uid;
       const usuario_rol = req.usuario?.rol;
 
       if (!usuario_id) {
@@ -368,7 +380,7 @@ export class ChangeRequestController extends BaseController {
     try {
       const { id } = req.params;
       const { estado_sol, obs_admin_sol } = req.body;
-      const usuario_id = req.usuario?.id_usu;
+      const usuario_id = req.usuario?.id_usu || req.uid;
       const usuario_rol = req.usuario?.rol;
 
       if (usuario_rol !== 'ADMINISTRADOR' && usuario_rol !== 'MASTER') {
@@ -443,6 +455,358 @@ export class ChangeRequestController extends BaseController {
       });
     } catch (error: any) {
       console.error('[updateChangeRequestStatus] Error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+    }
+  }
+
+  /**
+   * PUT /api/solicitudes-cambio/:id/editar
+   * Actualizar solicitud (solo BORRADOR)
+   */
+  public async updateChangeRequest(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const usuario_id = req.usuario?.id_usu || req.uid;
+      const {
+        titulo_sol,
+        descripcion_sol,
+        justificacion_sol,
+        tipo_cambio_sol,
+        prioridad_sol,
+        urgencia_sol
+      } = req.body;
+
+      if (!usuario_id) {
+        res.status(401).json({
+          success: false,
+          message: 'Usuario no autenticado'
+        });
+        return;
+      }
+
+      const prisma = this.container.getPrismaClient();
+
+      // Verificar que la solicitud existe y es del usuario
+      const solicitudExistente = await prisma.solicitudCambio.findFirst({
+        where: {
+          id_sol: id,
+          id_usuario_sol: usuario_id
+        }
+      });
+
+      if (!solicitudExistente) {
+        res.status(404).json({
+          success: false,
+          message: 'Solicitud no encontrada'
+        });
+        return;
+      }
+
+      // Solo se puede editar si está en BORRADOR
+      if (solicitudExistente.estado_sol !== 'BORRADOR') {
+        res.status(400).json({
+          success: false,
+          message: 'Solo se pueden editar solicitudes en estado BORRADOR'
+        });
+        return;
+      }
+
+      // Actualizar la solicitud
+      const solicitudActualizada = await prisma.solicitudCambio.update({
+        where: { id_sol: id },
+        data: {
+          titulo_sol,
+          descripcion_sol,
+          justificacion_sol,
+          tipo_cambio_sol,
+          prioridad_sol: prioridad_sol as any,
+          urgencia_sol: urgencia_sol as any,
+          fec_ultima_actualizacion: new Date()
+        },
+        include: {
+          usuario: {
+            select: {
+              id_usu: true,
+              nom_usu1: true,
+              ape_usu1: true,
+              ced_usu: true
+            }
+          }
+        }
+      });
+
+      res.json({
+        success: true,
+        message: 'Solicitud actualizada exitosamente',
+        data: {
+          id_sol: solicitudActualizada.id_sol,
+          titulo_sol: solicitudActualizada.titulo_sol,
+          descripcion_sol: solicitudActualizada.descripcion_sol,
+          justificacion_sol: solicitudActualizada.justificacion_sol,
+          tipo_cambio_sol: solicitudActualizada.tipo_cambio_sol,
+          prioridad_sol: solicitudActualizada.prioridad_sol,
+          urgencia_sol: solicitudActualizada.urgencia_sol,
+          estado_sol: solicitudActualizada.estado_sol,
+          fec_ultima_actualizacion: solicitudActualizada.fec_ultima_actualizacion,
+          usuarioSolicitante: solicitudActualizada.usuario
+        }
+      });
+    } catch (error: any) {
+      console.error('[updateChangeRequest] Error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+    }
+  }
+
+  /**
+   * PUT /api/solicitudes-cambio/:id/enviar
+   * Enviar solicitud (BORRADOR → PENDIENTE)
+   */
+  public async submitChangeRequest(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const usuario_id = req.usuario?.id_usu || req.uid;
+
+      if (!usuario_id) {
+        res.status(401).json({
+          success: false,
+          message: 'Usuario no autenticado'
+        });
+        return;
+      }
+
+      const prisma = this.container.getPrismaClient();
+
+      // Verificar que la solicitud existe y es del usuario
+      const solicitudExistente = await prisma.solicitudCambio.findFirst({
+        where: {
+          id_sol: id,
+          id_usuario_sol: usuario_id
+        }
+      });
+
+      if (!solicitudExistente) {
+        res.status(404).json({
+          success: false,
+          message: 'Solicitud no encontrada'
+        });
+        return;
+      }
+
+      // Solo se puede enviar si está en BORRADOR
+      if (solicitudExistente.estado_sol !== 'BORRADOR') {
+        res.status(400).json({
+          success: false,
+          message: 'Solo se pueden enviar solicitudes en estado BORRADOR'
+        });
+        return;
+      }
+
+      // Cambiar estado a PENDIENTE
+      const solicitudActualizada = await prisma.solicitudCambio.update({
+        where: { id_sol: id },
+        data: {
+          estado_sol: 'PENDIENTE',
+          fec_ultima_actualizacion: new Date()
+        },
+        include: {
+          usuario: {
+            select: {
+              id_usu: true,
+              nom_usu1: true,
+              ape_usu1: true,
+              ced_usu: true
+            }
+          }
+        }
+      });
+
+      res.json({
+        success: true,
+        message: 'Solicitud enviada exitosamente',
+        data: {
+          id_sol: solicitudActualizada.id_sol,
+          estado_sol: solicitudActualizada.estado_sol,
+          fec_ultima_actualizacion: solicitudActualizada.fec_ultima_actualizacion,
+          usuarioSolicitante: solicitudActualizada.usuario
+        }
+      });
+    } catch (error: any) {
+      console.error('[submitChangeRequest] Error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+    }
+  }
+
+  /**
+   * PUT /api/solicitudes-cambio/:id/cancelar
+   * Cancelar solicitud (solo BORRADOR)
+   */
+  public async cancelChangeRequest(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const usuario_id = req.usuario?.id_usu || req.uid;
+
+      if (!usuario_id) {
+        res.status(401).json({
+          success: false,
+          message: 'Usuario no autenticado'
+        });
+        return;
+      }
+
+      const prisma = this.container.getPrismaClient();
+
+      // Verificar que la solicitud existe y es del usuario
+      const solicitudExistente = await prisma.solicitudCambio.findFirst({
+        where: {
+          id_sol: id,
+          id_usuario_sol: usuario_id
+        }
+      });
+
+      if (!solicitudExistente) {
+        res.status(404).json({
+          success: false,
+          message: 'Solicitud no encontrada'
+        });
+        return;
+      }
+
+      // Solo se puede cancelar si está en BORRADOR
+      if (solicitudExistente.estado_sol !== 'BORRADOR') {
+        res.status(400).json({
+          success: false,
+          message: 'Solo se pueden cancelar solicitudes en estado BORRADOR'
+        });
+        return;
+      }
+
+      // Cambiar estado a CANCELADA
+      const solicitudActualizada = await prisma.solicitudCambio.update({
+        where: { id_sol: id },
+        data: {
+          estado_sol: 'CANCELADA',
+          fec_ultima_actualizacion: new Date()
+        },
+        include: {
+          usuario: {
+            select: {
+              id_usu: true,
+              nom_usu1: true,
+              ape_usu1: true,
+              ced_usu: true
+            }
+          }
+        }
+      });
+
+      res.json({
+        success: true,
+        message: 'Solicitud cancelada exitosamente',
+        data: {
+          id_sol: solicitudActualizada.id_sol,
+          estado_sol: solicitudActualizada.estado_sol,
+          fec_ultima_actualizacion: solicitudActualizada.fec_ultima_actualizacion,
+          usuarioSolicitante: solicitudActualizada.usuario
+        }
+      });
+    } catch (error: any) {
+      console.error('[cancelChangeRequest] Error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+    }
+  }
+
+  /**
+   * GET /api/solicitudes-cambio/mis-estadisticas
+   * Obtener estadísticas del usuario
+   */
+  public async getMyStatistics(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const usuario_id = req.usuario?.id_usu || req.uid;
+
+      if (!usuario_id) {
+        res.status(401).json({
+          success: false,
+          message: 'Usuario no autenticado'
+        });
+        return;
+      }
+
+      const prisma = this.container.getPrismaClient();
+
+      // Obtener estadísticas por estado
+      const estadisticas = await prisma.solicitudCambio.groupBy({
+        by: ['estado_sol'],
+        where: {
+          id_usuario_sol: usuario_id
+        },
+        _count: {
+          estado_sol: true
+        }
+      });
+
+      // Formatear estadísticas
+      const estadisticasFormateadas = {
+        total: 0,
+        borrador: 0,
+        pendiente: 0,
+        en_revision: 0,
+        aprobada: 0,
+        rechazada: 0,
+        cancelada: 0,
+        en_desarrollo: 0,
+        completada: 0
+      };
+
+      estadisticas.forEach(stat => {
+        const count = stat._count.estado_sol;
+        estadisticasFormateadas.total += count;
+        
+        switch (stat.estado_sol) {
+          case 'BORRADOR':
+            estadisticasFormateadas.borrador = count;
+            break;
+          case 'PENDIENTE':
+            estadisticasFormateadas.pendiente = count;
+            break;
+          case 'EN_REVISION':
+            estadisticasFormateadas.en_revision = count;
+            break;
+          case 'APROBADA':
+            estadisticasFormateadas.aprobada = count;
+            break;
+          case 'RECHAZADA':
+            estadisticasFormateadas.rechazada = count;
+            break;
+          case 'CANCELADA':
+            estadisticasFormateadas.cancelada = count;
+            break;
+          case 'EN_DESARROLLO':
+            estadisticasFormateadas.en_desarrollo = count;
+            break;
+          case 'COMPLETADA':
+            estadisticasFormateadas.completada = count;
+            break;
+        }
+      });
+
+      res.json({
+        success: true,
+        data: estadisticasFormateadas
+      });
+    } catch (error: any) {
+      console.error('[getMyStatistics] Error:', error);
       res.status(500).json({
         success: false,
         message: 'Error interno del servidor'

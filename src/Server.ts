@@ -8,6 +8,7 @@ import { CourseController } from "./presentation/controllers/CourseController";
 import { EventController } from "./presentation/controllers/EventController";
 import { CertificateController } from "./presentation/controllers/CertificateController";
 import { HomepageController } from "./presentation/controllers/HomepageController";
+import { ChangeRequestController } from "./presentation/controllers/ChangeRequestController";
 
 // Importar rutas
 import { AuthRoutes } from "./presentation/routes/authRoutes";
@@ -37,6 +38,7 @@ export class Server {
   private eventController: EventController;
   private certificateController: CertificateController;
   private homepageController: HomepageController;
+  private changeRequestController: ChangeRequestController;
 
   constructor(port: number = 3000) {
     this.port = port;
@@ -52,6 +54,7 @@ export class Server {
     this.eventController = new EventController(this.container);
     this.certificateController = new CertificateController(this.container);
     this.homepageController = new HomepageController(this.container);
+    this.changeRequestController = new ChangeRequestController(this.container);
 
     this.setupMiddlewares();
     this.setupRoutes();
@@ -101,6 +104,7 @@ export class Server {
     this.setupEventRoutes();
     this.setupCertificateRoutes();
     this.setupHomepageRoutes();
+    this.setupChangeRequestRoutes();
 
     // Ruta raíz para verificar que el servidor está funcionando
     this.app.get("/", (req, res) => {
@@ -372,6 +376,83 @@ export class Server {
       "/api/pagina-principal/eventos-cursos-carrera",
       validateJWT,
       this.homepageController.getStudentContent.bind(this.homepageController)
+    );
+  }
+
+  /**
+   * Configurar rutas de solicitudes de cambio
+   */
+  private setupChangeRequestRoutes(): void {
+    // RUTAS REFACTORIZADAS (NUEVAS)
+    // POST /api/change-requests - Crear solicitud
+    this.app.post(
+      "/api/change-requests",
+      validateJWT,
+      this.changeRequestController.createChangeRequest.bind(this.changeRequestController)
+    );
+
+    // GET /api/change-requests/my-requests - Mis solicitudes
+    this.app.get(
+      "/api/change-requests/my-requests",
+      validateJWT,
+      this.changeRequestController.getMyChangeRequests.bind(this.changeRequestController)
+    );
+
+    // GET /api/change-requests/:id - Obtener solicitud por ID
+    this.app.get(
+      "/api/change-requests/:id",
+      validateJWT,
+      this.changeRequestController.getChangeRequestById.bind(this.changeRequestController)
+    );
+
+    // RUTAS LEGACY (COMPATIBILIDAD CON FRONTEND)
+    // POST /api/solicitudes-cambio/solicitud-nueva
+    this.app.post(
+      "/api/solicitudes-cambio/solicitud-nueva",
+      validateJWT,
+      this.changeRequestController.createChangeRequest.bind(this.changeRequestController)
+    );
+
+    // GET /api/solicitudes-cambio/mis-solicitudes
+    this.app.get(
+      "/api/solicitudes-cambio/mis-solicitudes",
+      validateJWT,
+      this.changeRequestController.getMyChangeRequests.bind(this.changeRequestController)
+    );
+
+    // GET /api/solicitudes-cambio/mis-solicitudes/:id
+    this.app.get(
+      "/api/solicitudes-cambio/mis-solicitudes/:id",
+      validateJWT,
+      this.changeRequestController.getChangeRequestById.bind(this.changeRequestController)
+    );
+
+    // PUT /api/solicitudes-cambio/:id/editar
+    this.app.put(
+      "/api/solicitudes-cambio/:id/editar",
+      validateJWT,
+      this.changeRequestController.updateChangeRequest.bind(this.changeRequestController)
+    );
+
+    // PUT /api/solicitudes-cambio/:id/enviar
+    this.app.put(
+      "/api/solicitudes-cambio/:id/enviar",
+      validateJWT,
+      this.changeRequestController.submitChangeRequest.bind(this.changeRequestController)
+    );
+
+    // PUT /api/solicitudes-cambio/:id/cancelar
+    this.app.put(
+      "/api/solicitudes-cambio/:id/cancelar",
+      validateJWT,
+      this.changeRequestController.cancelChangeRequest.bind(this.changeRequestController)
+    );
+
+    // GET /api/solicitudes-cambio/mis-estadisticas
+    this.app.get(
+      "/api/solicitudes-cambio/mis-estadisticas",
+      validateJWT,
+      this.changeRequestController.getMyStatistics.bind(this.changeRequestController)
     );
   }
 
