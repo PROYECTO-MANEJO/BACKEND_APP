@@ -5,4 +5,8 @@ export { UserRoutes } from "./userRoutes";
 export { AuthRoutes } from "./authRoutes";
 export { PasswordRecoveryRoutes } from "./passwordRecoveryRoutes";
 export { VerificationRoutes } from "./verificationRoutes";
+export { ChangeRequestRoutes } from "./changeRequestRoutes";
+export { DeveloperRoutes } from "./developerRoutes";
+export { InscriptionRoutes } from "./inscriptionRoutes";
+export { ParticipationRoutes } from "./participationRoutes";
 //# sourceMappingURL=index.d.ts.map

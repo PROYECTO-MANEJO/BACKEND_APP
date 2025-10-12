@@ -6,6 +6,10 @@ const userRoutes_1 = require("./userRoutes");
 const authRoutes_1 = require("./authRoutes");
 const passwordRecoveryRoutes_1 = require("./passwordRecoveryRoutes");
 const verificationRoutes_1 = require("./verificationRoutes");
+const changeRequestRoutes_1 = require("./changeRequestRoutes");
+const developerRoutes_1 = require("./developerRoutes");
+const inscriptionRoutes_1 = require("./inscriptionRoutes");
+const participationRoutes_1 = require("./participationRoutes");
 class AppRoutes {
     constructor() {
         this.router = (0, express_1.Router)();
@@ -24,6 +28,18 @@ class AppRoutes {
         // Rutas de verificación de email
         const verificationRoutes = new verificationRoutes_1.VerificationRoutes();
         this.router.use("/verification", verificationRoutes.getRouter());
+        // Rutas de solicitudes de cambio
+        const changeRequestRoutes = new changeRequestRoutes_1.ChangeRequestRoutes();
+        this.router.use("/change-requests", changeRequestRoutes.getRouter());
+        // Rutas de desarrolladores
+        const developerRoutes = new developerRoutes_1.DeveloperRoutes();
+        this.router.use("/developers", developerRoutes.getRouter());
+        // Rutas de inscripciones
+        const inscriptionRoutes = new inscriptionRoutes_1.InscriptionRoutes();
+        this.router.use("/inscriptions", inscriptionRoutes.getRouter());
+        // Rutas de participaciones
+        const participationRoutes = new participationRoutes_1.ParticipationRoutes();
+        this.router.use("/participations", participationRoutes.getRouter());
     }
     getRouter() {
         return this.router;

@@ -3,6 +3,10 @@ import { UserRoutes } from "./userRoutes";
 import { AuthRoutes } from "./authRoutes";
 import { PasswordRecoveryRoutes } from "./passwordRecoveryRoutes";
 import { VerificationRoutes } from "./verificationRoutes";
+import { ChangeRequestRoutes } from "./changeRequestRoutes";
+import { DeveloperRoutes } from "./developerRoutes";
+import { InscriptionRoutes } from "./inscriptionRoutes";
+import { ParticipationRoutes } from "./participationRoutes";
 
 export class AppRoutes {
   private router: Router;
@@ -28,6 +32,22 @@ export class AppRoutes {
     // Rutas de verificación de email
     const verificationRoutes = new VerificationRoutes();
     this.router.use("/verification", verificationRoutes.getRouter());
+
+    // Rutas de solicitudes de cambio
+    const changeRequestRoutes = new ChangeRequestRoutes();
+    this.router.use("/change-requests", changeRequestRoutes.getRouter());
+
+    // Rutas de desarrolladores
+    const developerRoutes = new DeveloperRoutes();
+    this.router.use("/developers", developerRoutes.getRouter());
+
+    // Rutas de inscripciones
+    const inscriptionRoutes = new InscriptionRoutes();
+    this.router.use("/inscriptions", inscriptionRoutes.getRouter());
+
+    // Rutas de participaciones
+    const participationRoutes = new ParticipationRoutes();
+    this.router.use("/participations", participationRoutes.getRouter());
   }
 
   public getRouter(): Router {

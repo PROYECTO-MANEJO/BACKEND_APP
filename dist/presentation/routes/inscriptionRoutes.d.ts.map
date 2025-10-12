@@ -1,0 +1,1 @@
+{"version":3,"file":"inscriptionRoutes.d.ts","sourceRoot":"","sources":["../../../src/presentation/routes/inscriptionRoutes.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,MAAM,EAAE,MAAM,SAAS,CAAC;AAKjC,qBAAa,iBAAiB;IAC5B,OAAO,CAAC,MAAM,CAAS;IACvB,OAAO,CAAC,qBAAqB,CAAwB;;IASrD,OAAO,CAAC,WAAW;IA8CZ,SAAS,IAAI,MAAM;CAG3B"}
