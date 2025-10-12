@@ -17,6 +17,9 @@ import { CareerController } from "./presentation/controllers/CareerController";
 import { UserManagementController } from "./presentation/controllers/UserManagementController";
 import { DocumentVerificationController } from "./presentation/controllers/DocumentVerificationController";
 import { InscriptionManagementController } from "./presentation/controllers/InscriptionManagementController";
+import { ParticipationManagementController } from "./presentation/controllers/ParticipationManagementController";
+import { CertificateManagementController } from "./presentation/controllers/CertificateManagementController";
+import { ReportsController } from "./presentation/controllers/ReportsController";
 
 // Importar rutas
 import { AuthRoutes } from "./presentation/routes/authRoutes";
@@ -55,6 +58,9 @@ export class Server {
   private userManagementController: UserManagementController;
   private documentVerificationController: DocumentVerificationController;
   private inscriptionManagementController: InscriptionManagementController;
+  private participationManagementController: ParticipationManagementController;
+  private certificateManagementController: CertificateManagementController;
+  private reportsController: ReportsController;
 
   constructor(port: number = 3000) {
     this.port = port;
@@ -79,6 +85,9 @@ export class Server {
     this.userManagementController = new UserManagementController(this.container);
     this.documentVerificationController = new DocumentVerificationController(this.container);
     this.inscriptionManagementController = new InscriptionManagementController(this.container);
+    this.participationManagementController = new ParticipationManagementController(this.container);
+    this.certificateManagementController = new CertificateManagementController(this.container);
+    this.reportsController = new ReportsController(this.container);
 
     this.setupMiddlewares();
     this.setupRoutes();
@@ -133,6 +142,9 @@ export class Server {
     this.setupAdminRoutes();
     this.setupUserManagementRoutes();
     this.setupInscriptionManagementRoutes();
+    this.setupParticipationManagementRoutes();
+    this.setupCertificateManagementRoutes();
+    this.setupReportsRoutes();
 
     // Ruta raíz para verificar que el servidor está funcionando
     this.app.get("/", (req, res) => {
@@ -959,6 +971,143 @@ export class Server {
   }
 
   /**
+   * Configurar rutas de gestión de participaciones (Admin)
+   */
+  private setupParticipationManagementRoutes(): void {
+    // RUTAS DE GESTIÓN DE PARTICIPACIONES - Requieren JWT y permisos admin
+
+    // GET /api/admin/participations/events/:eventId/inscriptions - Inscripciones para participación
+    this.app.get(
+      "/api/admin/participations/events/:eventId/inscriptions",
+      validateJWT,
+      this.participationManagementController.getEventInscriptionsForParticipation.bind(this.participationManagementController)
+    );
+
+    // GET /api/admin/participations/courses/:courseId/inscriptions - Inscripciones para participación
+    this.app.get(
+      "/api/admin/participations/courses/:courseId/inscriptions",
+      validateJWT,
+      this.participationManagementController.getCourseInscriptionsForParticipation.bind(this.participationManagementController)
+    );
+
+    // POST /api/admin/participations/events/:eventId/register - Registrar participación en evento
+    this.app.post(
+      "/api/admin/participations/events/:eventId/register",
+      validateJWT,
+      this.participationManagementController.registerEventParticipation.bind(this.participationManagementController)
+    );
+
+    // POST /api/admin/participations/courses/:courseId/register - Registrar participación en curso
+    this.app.post(
+      "/api/admin/participations/courses/:courseId/register",
+      validateJWT,
+      this.participationManagementController.registerCourseParticipation.bind(this.participationManagementController)
+    );
+
+    // PUT /api/admin/participations/events/:participationId - Actualizar participación de evento
+    this.app.put(
+      "/api/admin/participations/events/:participationId",
+      validateJWT,
+      this.participationManagementController.updateEventParticipation.bind(this.participationManagementController)
+    );
+
+    // GET /api/admin/participations/events/:eventId/stats - Estadísticas de evento
+    this.app.get(
+      "/api/admin/participations/events/:eventId/stats",
+      validateJWT,
+      this.participationManagementController.getEventParticipationStats.bind(this.participationManagementController)
+    );
+
+    // GET /api/admin/participations/courses/:courseId/stats - Estadísticas de curso
+    this.app.get(
+      "/api/admin/participations/courses/:courseId/stats",
+      validateJWT,
+      this.participationManagementController.getCourseParticipationStats.bind(this.participationManagementController)
+    );
+
+    // GET /api/admin/participations/general-stats - Estadísticas generales
+    this.app.get(
+      "/api/admin/participations/general-stats",
+      validateJWT,
+      this.participationManagementController.getGeneralParticipationStats.bind(this.participationManagementController)
+    );
+
+    // RUTAS LEGACY PARA COMPATIBILIDAD
+
+    // POST /administracion/registrar-participacion-evento/:eventId - Legacy route
+    this.app.post(
+      "/api/administracion/registrar-participacion-evento/:eventId",
+      validateJWT,
+      this.participationManagementController.registerEventParticipation.bind(this.participationManagementController)
+    );
+
+    // POST /administracion/registrar-participacion-curso/:courseId - Legacy route
+    this.app.post(
+      "/api/administracion/registrar-participacion-curso/:courseId",
+      validateJWT,
+      this.participationManagementController.registerCourseParticipation.bind(this.participationManagementController)
+    );
+  }
+
+  /**
+   * Configurar rutas de gestión de certificados (Admin)
+   */
+  private setupCertificateManagementRoutes(): void {
+    // RUTAS DE GESTIÓN DE CERTIFICADOS - Requieren JWT y permisos admin
+
+    // GET /api/admin/certificates/events/:eventId/participants - Participantes aprobados de evento
+    this.app.get(
+      "/api/admin/certificates/events/:eventId/participants",
+      validateJWT,
+      this.certificateManagementController.getEventApprovedParticipants.bind(this.certificateManagementController)
+    );
+
+    // GET /api/admin/certificates/courses/:courseId/participants - Participantes aprobados de curso
+    this.app.get(
+      "/api/admin/certificates/courses/:courseId/participants",
+      validateJWT,
+      this.certificateManagementController.getCourseApprovedParticipants.bind(this.certificateManagementController)
+    );
+
+    // POST /api/admin/certificates/events/generate-massive - Generación masiva eventos
+    this.app.post(
+      "/api/admin/certificates/events/generate-massive",
+      validateJWT,
+      this.certificateManagementController.generateMassiveEventCertificates.bind(this.certificateManagementController)
+    );
+
+    // POST /api/admin/certificates/courses/generate-massive - Generación masiva cursos
+    this.app.post(
+      "/api/admin/certificates/courses/generate-massive",
+      validateJWT,
+      this.certificateManagementController.generateMassiveCourseCertificates.bind(this.certificateManagementController)
+    );
+
+    // PUT /api/admin/certificates/regenerate/:type/:participationId - Regenerar certificado
+    this.app.put(
+      "/api/admin/certificates/regenerate/:type/:participationId",
+      validateJWT,
+      this.certificateManagementController.regenerateCertificate.bind(this.certificateManagementController)
+    );
+
+    // GET /api/admin/certificates/stats - Estadísticas de certificados
+    this.app.get(
+      "/api/admin/certificates/stats",
+      validateJWT,
+      this.certificateManagementController.getCertificateStats.bind(this.certificateManagementController)
+    );
+
+    // RUTAS LEGACY PARA COMPATIBILIDAD
+
+    // PUT /certificados/regenerar/:tipo/:idParticipacion - Legacy route
+    this.app.put(
+      "/api/certificados/regenerar/:tipo/:idParticipacion",
+      validateJWT,
+      this.certificateManagementController.regenerateCertificate.bind(this.certificateManagementController)
+    );
+  }
+
+  /**
    * Obtener la aplicación Express (útil para testing)
    */
   public getApp(): Application {
@@ -977,6 +1126,148 @@ export class Server {
       certificate: this.certificateController,
       admin: this.adminController,
     };
+  }
+
+  /**
+   * Configurar rutas de reportes y estadísticas (Admin)
+   */
+  private setupReportsRoutes(): void {
+    // RUTAS DE GENERACIÓN DE REPORTES - Requieren JWT y permisos admin
+
+    // POST /api/admin/reports/financial/generate - Generar reporte financiero
+    this.app.post(
+      "/api/admin/reports/financial/generate",
+      validateJWT,
+      this.reportsController.generateFinancialReport.bind(this.reportsController)
+    );
+
+    // POST /api/admin/reports/users/generate - Generar reporte de usuarios
+    this.app.post(
+      "/api/admin/reports/users/generate",
+      validateJWT,
+      this.reportsController.generateUsersReport.bind(this.reportsController)
+    );
+
+    // POST /api/admin/reports/events/generate - Generar reporte de eventos
+    this.app.post(
+      "/api/admin/reports/events/generate",
+      validateJWT,
+      this.reportsController.generateEventsReport.bind(this.reportsController)
+    );
+
+    // POST /api/admin/reports/courses/generate - Generar reporte de cursos
+    this.app.post(
+      "/api/admin/reports/courses/generate",
+      validateJWT,
+      this.reportsController.generateCoursesReport.bind(this.reportsController)
+    );
+
+    // POST /api/admin/reports/change-requests/status/generate - Reporte solicitudes por estado (MASTER only)
+    this.app.post(
+      "/api/admin/reports/change-requests/status/generate",
+      validateJWT,
+      this.reportsController.generateChangeRequestsStatusReport.bind(this.reportsController)
+    );
+
+    // POST /api/admin/reports/change-requests/developers/generate - Reporte solicitudes por desarrollador (MASTER only)
+    this.app.post(
+      "/api/admin/reports/change-requests/developers/generate",
+      validateJWT,
+      this.reportsController.generateChangeRequestsDevelopersReport.bind(this.reportsController)
+    );
+
+    // POST /api/admin/reports/change-requests/summary/generate - Reporte ejecutivo solicitudes (MASTER only)
+    this.app.post(
+      "/api/admin/reports/change-requests/summary/generate",
+      validateJWT,
+      this.reportsController.generateChangeRequestsSummaryReport.bind(this.reportsController)
+    );
+
+    // GET /api/admin/reports - Listar reportes por tipo
+    this.app.get(
+      "/api/admin/reports",
+      validateJWT,
+      this.reportsController.getReports.bind(this.reportsController)
+    );
+
+    // GET /api/admin/reports/:id/download - Descargar reporte por ID
+    this.app.get(
+      "/api/admin/reports/:id/download",
+      validateJWT,
+      this.reportsController.downloadReport.bind(this.reportsController)
+    );
+
+    // GET /api/admin/reports/stats - Estadísticas de reportes
+    this.app.get(
+      "/api/admin/reports/stats",
+      validateJWT,
+      this.reportsController.getReportStats.bind(this.reportsController)
+    );
+
+    // RUTAS LEGACY PARA COMPATIBILIDAD
+
+    // POST /api/reportes/finanzas/pdf - Legacy route
+    this.app.post(
+      "/api/reportes/finanzas/pdf",
+      validateJWT,
+      this.reportsController.generateFinancialReport.bind(this.reportsController)
+    );
+
+    // POST /api/reportes/usuarios/pdf - Legacy route
+    this.app.post(
+      "/api/reportes/usuarios/pdf",
+      validateJWT,
+      this.reportsController.generateUsersReport.bind(this.reportsController)
+    );
+
+    // POST /api/reportes/eventos/pdf - Legacy route
+    this.app.post(
+      "/api/reportes/eventos/pdf",
+      validateJWT,
+      this.reportsController.generateEventsReport.bind(this.reportsController)
+    );
+
+    // POST /api/reportes/cursos/pdf - Legacy route
+    this.app.post(
+      "/api/reportes/cursos/pdf",
+      validateJWT,
+      this.reportsController.generateCoursesReport.bind(this.reportsController)
+    );
+
+    // POST /api/reportes/solicitudes/estado/pdf - Legacy route (MASTER only)
+    this.app.post(
+      "/api/reportes/solicitudes/estado/pdf",
+      validateJWT,
+      this.reportsController.generateChangeRequestsStatusReport.bind(this.reportsController)
+    );
+
+    // POST /api/reportes/solicitudes/desarrollador/pdf - Legacy route (MASTER only)
+    this.app.post(
+      "/api/reportes/solicitudes/desarrollador/pdf",
+      validateJWT,
+      this.reportsController.generateChangeRequestsDevelopersReport.bind(this.reportsController)
+    );
+
+    // POST /api/reportes/solicitudes/resumen/pdf - Legacy route (MASTER only)
+    this.app.post(
+      "/api/reportes/solicitudes/resumen/pdf",
+      validateJWT,
+      this.reportsController.generateChangeRequestsSummaryReport.bind(this.reportsController)
+    );
+
+    // GET /api/reportes - Legacy route para listar reportes
+    this.app.get(
+      "/api/reportes",
+      validateJWT,
+      this.reportsController.getReports.bind(this.reportsController)
+    );
+
+    // GET /api/reportes/download/:id - Legacy route para descargar
+    this.app.get(
+      "/api/reportes/download/:id",
+      validateJWT,
+      this.reportsController.downloadReport.bind(this.reportsController)
+    );
   }
 }
 
