@@ -49,7 +49,7 @@ export class Server {
     this.authController = new AuthController(this.container);
     this.userController = new UserController(this.container);
     this.courseController = new CourseController(this.container);
-    this.eventController = new EventController(); // TODO: Add DI later
+    this.eventController = new EventController(this.container);
     this.certificateController = new CertificateController(); // TODO: Add DI later
 
     this.setupMiddlewares();
@@ -248,34 +248,6 @@ export class Server {
     this.app.post(
       "/api/events",
       this.eventController.createEvent.bind(this.eventController)
-    );
-    this.app.put(
-      "/api/events/:id",
-      this.eventController.updateEvent.bind(this.eventController)
-    );
-    this.app.delete(
-      "/api/events/:id",
-      this.eventController.deleteEvent.bind(this.eventController)
-    );
-    this.app.post(
-      "/api/events/:id/enroll",
-      this.eventController.enrollToEvent.bind(this.eventController)
-    );
-    this.app.get(
-      "/api/events/:id/enrollments",
-      this.eventController.getEventEnrollments.bind(this.eventController)
-    );
-    this.app.get(
-      "/api/events/upcoming",
-      this.eventController.getUpcomingEvents.bind(this.eventController)
-    );
-    this.app.get(
-      "/api/events/my-events",
-      this.eventController.getUserEvents.bind(this.eventController)
-    );
-    this.app.get(
-      "/api/events/by-area/:area",
-      this.eventController.getEventsByArea.bind(this.eventController)
     );
   }
 
