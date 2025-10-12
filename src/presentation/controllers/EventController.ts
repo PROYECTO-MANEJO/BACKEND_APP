@@ -1,3 +1,12 @@
+export interface AuthenticatedRequest extends Request {
+  usuario?: {
+    id_usu: string;
+    rol: string;
+    ced_usu: string;
+  };
+  uid?: string;  // ID del usuario desde JWT middleware
+}
+
 import { Request, Response } from "express";
 import { BaseController } from "./BaseController";
 import { DIContainer } from "../../infrastructure/DIContainer";

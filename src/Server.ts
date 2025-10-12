@@ -9,6 +9,7 @@ import { EventController } from "./presentation/controllers/EventController";
 import { CertificateController } from "./presentation/controllers/CertificateController";
 import { HomepageController } from "./presentation/controllers/HomepageController";
 import { ChangeRequestController } from "./presentation/controllers/ChangeRequestController";
+import { InscriptionController } from "./presentation/controllers/InscriptionController";
 
 // Importar rutas
 import { AuthRoutes } from "./presentation/routes/authRoutes";
@@ -39,6 +40,7 @@ export class Server {
   private certificateController: CertificateController;
   private homepageController: HomepageController;
   private changeRequestController: ChangeRequestController;
+  private inscriptionController: InscriptionController;
 
   constructor(port: number = 3000) {
     this.port = port;
@@ -55,6 +57,7 @@ export class Server {
     this.certificateController = new CertificateController(this.container);
     this.homepageController = new HomepageController(this.container);
     this.changeRequestController = new ChangeRequestController(this.container);
+    this.inscriptionController = new InscriptionController(this.container);
 
     this.setupMiddlewares();
     this.setupRoutes();
@@ -103,6 +106,7 @@ export class Server {
     this.setupCourseRoutes();
     this.setupEventRoutes();
     this.setupCertificateRoutes();
+    this.setupInscriptionRoutes();
     this.setupHomepageRoutes();
     this.setupChangeRequestRoutes();
 
@@ -273,6 +277,129 @@ export class Server {
       "/api/certificates/download/:tipo/:idParticipacion",
       validateJWT, // Requiere autenticación
       this.certificateController.downloadCertificate.bind(this.certificateController)
+    );
+
+    // GET /api/certificates/participaciones-terminadas - Obtener participaciones terminadas
+    this.app.get(
+      "/api/certificates/participaciones-terminadas",
+      validateJWT,
+      this.certificateController.getCompletedParticipations.bind(this.certificateController)
+    );
+
+    // POST /api/certificates/generar-evento/:idParticipacion - Generar certificado de evento
+    this.app.post(
+      "/api/certificates/generar-evento/:idParticipacion",
+      validateJWT,
+      this.certificateController.generateEventCertificate.bind(this.certificateController)
+    );
+
+    // POST /api/certificates/generar-curso/:idParticipacion - Generar certificado de curso
+    this.app.post(
+      "/api/certificates/generar-curso/:idParticipacion",
+      validateJWT,
+      this.certificateController.generateCourseCertificate.bind(this.certificateController)
+    );
+
+    // RUTAS LEGACY PARA COMPATIBILIDAD
+    // GET /api/certificados/mis-certificados
+    this.app.get(
+      "/api/certificados/mis-certificados",
+      validateJWT,
+      this.certificateController.getUserCertificates.bind(this.certificateController)
+    );
+
+    // GET /api/certificados/descargar/:tipo/:idParticipacion
+    this.app.get(
+      "/api/certificados/descargar/:tipo/:idParticipacion",
+      validateJWT,
+      this.certificateController.downloadCertificate.bind(this.certificateController)
+    );
+  }
+
+  /**
+   * Configurar rutas de inscripciones
+   */
+  private setupInscriptionRoutes(): void {
+    // RUTAS REFACTORIZADAS
+    this.app.post(
+      "/api/inscriptions/events",
+      validateJWT,
+      this.inscriptionController.enrollInEvent.bind(this.inscriptionController)
+    );
+    this.app.post(
+      "/api/inscriptions/courses",
+      validateJWT,
+      this.inscriptionController.enrollInCourse.bind(this.inscriptionController)
+    );
+    this.app.get(
+      "/api/inscriptions/my-events",
+      validateJWT,
+      this.inscriptionController.getMyEventInscriptions.bind(this.inscriptionController)
+    );
+    this.app.get(
+      "/api/inscriptions/my-courses",
+      validateJWT,
+      this.inscriptionController.getMyCourseInscriptions.bind(this.inscriptionController)
+    );
+
+    // RUTAS LEGACY PARA COMPATIBILIDAD CON FRONTEND
+    // Configurar multer para subida de archivos
+    const multer = require('multer');
+    const path = require('path');
+    
+    const storage = multer.diskStorage({
+      destination: (req: any, file: any, cb: any) => {
+        cb(null, 'uploads/comprobantes/');
+      },
+      filename: (req: any, file: any, cb: any) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'comprobante-' + uniqueSuffix + path.extname(file.originalname));
+      }
+    });
+
+    const uploadReceipt = multer({
+      storage: storage,
+      limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB máximo
+      },
+      fileFilter: (req: any, file: any, cb: any) => {
+        // Permitir archivos PDF e imágenes
+        if (file.mimetype === 'application/pdf' || file.mimetype.startsWith('image/')) {
+          cb(null, true);
+        } else {
+          cb(new Error('Solo se permiten archivos PDF e imágenes') as any, false);
+        }
+      }
+    });
+    
+    // Inscripción a evento con archivo
+    this.app.post(
+      "/api/inscripciones",
+      validateJWT,
+      uploadReceipt.single('comprobantePago'),
+      this.inscriptionController.enrollInEventWithFile.bind(this.inscriptionController)
+    );
+    
+    // Inscripción a curso con archivo
+    this.app.post(
+      "/api/inscripcionesCursos",
+      validateJWT,
+      uploadReceipt.single('comprobantePago'),
+      this.inscriptionController.enrollInCourseWithFile.bind(this.inscriptionController)
+    );
+
+    // Visualizar comprobante de pago de evento
+    this.app.get(
+      "/api/inscripciones/evento/comprobante/:inscripcionId",
+      validateJWT,
+      this.inscriptionController.getEventPaymentReceipt.bind(this.inscriptionController)
+    );
+
+    // Visualizar comprobante de pago de curso
+    this.app.get(
+      "/api/inscripcionesCursos/curso/comprobante/:inscripcionId",
+      validateJWT,
+      this.inscriptionController.getCoursePaymentReceipt.bind(this.inscriptionController)
     );
   }
 
