@@ -1,1 +1,1 @@
-{"version":3,"file":"appRoutes.d.ts","sourceRoot":"","sources":["../../../src/presentation/routes/appRoutes.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,MAAM,EAAE,MAAM,SAAS,CAAC;AAOjC,qBAAa,SAAS;IACpB,OAAO,CAAC,MAAM,CAAS;;IAOvB,OAAO,CAAC,WAAW;IAiDZ,SAAS,IAAI,MAAM;CAG3B"}
+{"version":3,"file":"appRoutes.d.ts","sourceRoot":"","sources":["../../../src/presentation/routes/appRoutes.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,MAAM,EAAE,MAAM,SAAS,CAAC;AAMjC,qBAAa,SAAS;IACpB,OAAO,CAAC,MAAM,CAAS;;IAOvB,OAAO,CAAC,WAAW;IAkBZ,SAAS,IAAI,MAAM;CAG3B"}

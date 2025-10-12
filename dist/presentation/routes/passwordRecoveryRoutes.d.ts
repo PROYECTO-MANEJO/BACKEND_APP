@@ -1,3 +1,9 @@
-declare const router: import("express-serve-static-core").Router;
-export { router as passwordRecoveryRoutes };
+import { Router } from "express";
+export declare class PasswordRecoveryRoutes {
+    private router;
+    private passwordRecoveryController;
+    constructor();
+    private setupRoutes;
+    getRouter(): Router;
+}
 //# sourceMappingURL=passwordRecoveryRoutes.d.ts.map

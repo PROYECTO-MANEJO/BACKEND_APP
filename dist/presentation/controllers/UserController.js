@@ -3,132 +3,175 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserController = void 0;
 const BaseController_1 = require("./BaseController");
 class UserController extends BaseController_1.BaseController {
-    constructor() {
+    constructor(container) {
         super();
+        this.container = container;
+    }
+    /**
+     * GET /api/users/profile
+     * Get current user profile (based on JWT token)
+     */
+    async getUserProfile(req, res) {
+        await this.execute(req, res, async () => {
+            const userId = req.uid; // From JWT middleware
+            const prisma = this.container.getPrismaClient();
+            const user = await prisma.usuario.findUnique({
+                where: { id_usu: userId },
+                include: {
+                    carrera: { select: { id_car: true, nom_car: true } },
+                    cuentas: { select: { cor_cue: true, rol_cue: true } }
+                }
+            });
+            if (!user) {
+                throw new Error('User not found');
+            }
+            const account = user.cuentas[0];
+            const isEstudiante = account?.rol_cue === 'ESTUDIANTE';
+            const userProfile = {
+                id_usu: user.id_usu,
+                ced_usu: user.ced_usu,
+                nom_usu1: user.nom_usu1,
+                nom_usu2: user.nom_usu2,
+                ape_usu1: user.ape_usu1,
+                ape_usu2: user.ape_usu2,
+                fec_nac_usu: user.fec_nac_usu,
+                num_tel_usu: user.num_tel_usu,
+                id_car_per: user.id_car_per,
+                github_token: user.github_token,
+                github_username: user.github_username,
+                email: account?.cor_cue,
+                rol: account?.rol_cue,
+                carrera: user.carrera ? { id_car: user.carrera.id_car, nom_car: user.carrera.nom_car } : null,
+                documentos: {
+                    cedula_subida: !!user.enl_ced_pdf,
+                    matricula_subida: !!user.enl_mat_pdf,
+                    matricula_requerida: isEstudiante,
+                    documentos_verificados: user.documentos_verificados,
+                    fecha_verificacion: user.fec_verificacion_docs,
+                    archivos_completos: isEstudiante ? (!!user.enl_ced_pdf && !!user.enl_mat_pdf) : !!user.enl_ced_pdf
+                }
+            };
+            return userProfile;
+        });
+    }
+    /**
+     * PUT /api/users/profile
+     * Update current user profile
+     */
+    async updateUserProfile(req, res) {
+        await this.execute(req, res, async () => {
+            const userId = req.uid; // From JWT middleware
+            const prisma = this.container.getPrismaClient();
+            const { nom_usu1, nom_usu2, ape_usu1, ape_usu2, fec_nac_usu, num_tel_usu, id_car_per, github_token } = req.body;
+            const existingUser = await prisma.usuario.findUnique({
+                where: { id_usu: userId },
+                include: { cuentas: true }
+            });
+            if (!existingUser) {
+                throw new Error('User not found');
+            }
+            // Validate GitHub token if provided
+            if (github_token) {
+                const userRole = existingUser.cuentas[0]?.rol_cue;
+                const allowedRoles = ['DESARROLLADOR', 'MASTER', 'ADMINISTRADOR'];
+                if (!allowedRoles.includes(userRole || '')) {
+                    throw new Error('Only developers, masters and administrators can configure a GitHub token');
+                }
+            }
+            const isEstudiante = existingUser.cuentas[0]?.rol_cue === 'ESTUDIANTE';
+            let carreraToUpdate = isEstudiante ? id_car_per : null;
+            if (isEstudiante && carreraToUpdate) {
+                const carreraExists = await prisma.carrera.findUnique({ where: { id_car: carreraToUpdate } });
+                if (!carreraExists) {
+                    throw new Error('Selected career does not exist');
+                }
+            }
+            const updatedUser = await prisma.usuario.update({
+                where: { id_usu: userId },
+                data: {
+                    nom_usu1,
+                    nom_usu2: nom_usu2 || '',
+                    ape_usu1,
+                    ape_usu2: ape_usu2 || '',
+                    fec_nac_usu: new Date(fec_nac_usu),
+                    num_tel_usu: num_tel_usu || null,
+                    id_car_per: carreraToUpdate || null,
+                    github_token: github_token || null,
+                    github_username: null // TODO: Implement GitHub validation
+                },
+                include: {
+                    carrera: { select: { id_car: true, nom_car: true } },
+                    cuentas: { select: { cor_cue: true, rol_cue: true } }
+                }
+            });
+            const account = updatedUser.cuentas[0];
+            const userProfile = {
+                id_usu: updatedUser.id_usu,
+                ced_usu: updatedUser.ced_usu,
+                nom_usu1: updatedUser.nom_usu1,
+                nom_usu2: updatedUser.nom_usu2,
+                ape_usu1: updatedUser.ape_usu1,
+                ape_usu2: updatedUser.ape_usu2,
+                fec_nac_usu: updatedUser.fec_nac_usu,
+                num_tel_usu: updatedUser.num_tel_usu,
+                id_car_per: updatedUser.id_car_per,
+                github_token: updatedUser.github_token,
+                github_username: updatedUser.github_username,
+                email: account?.cor_cue,
+                rol: account?.rol_cue,
+                carrera: updatedUser.carrera ? { id_car: updatedUser.carrera.id_car, nom_car: updatedUser.carrera.nom_car } : null
+            };
+            return {
+                success: true,
+                message: 'Profile updated successfully',
+                user: userProfile
+            };
+        });
     }
     /**
      * GET /api/users
-     * Obtener lista de usuarios con paginación
+     * Get all users for admin (based on original getAllUsers function)
      */
-    async getUsers(req, res) {
+    async getAllUsers(req, res) {
         await this.execute(req, res, async () => {
-            const { page, pageSize } = this.getPaginationParams(req);
-            // TODO: Implementar cuando estén disponibles los casos de uso
-            const mockUsers = [
-                {
-                    id: 1,
-                    cedula: "1234567890",
-                    nombres: "Usuario Ejemplo",
-                    apellidos: "Apellido Ejemplo",
-                    email: "usuario@ejemplo.com",
-                    telefono: "0987654321",
-                    rol: "estudiante",
-                    fechaCreacion: new Date(),
-                    estado: true,
+            const prisma = this.container.getPrismaClient();
+            const users = await prisma.usuario.findMany({
+                include: {
+                    carrera: { select: { id_car: true, nom_car: true } },
+                    cuentas: { select: { cor_cue: true, rol_cue: true } }
                 },
-            ];
-            const response = {
-                users: mockUsers,
-                total: mockUsers.length,
-                page,
-                pageSize,
+                orderBy: { nom_usu1: 'asc' }
+            });
+            const userList = users.map(user => {
+                const account = user.cuentas[0];
+                const isEstudiante = account?.rol_cue === 'ESTUDIANTE';
+                return {
+                    id_usu: user.id_usu,
+                    ced_usu: user.ced_usu,
+                    nom_usu1: user.nom_usu1,
+                    nom_usu2: user.nom_usu2,
+                    ape_usu1: user.ape_usu1,
+                    ape_usu2: user.ape_usu2,
+                    fec_nac_usu: user.fec_nac_usu,
+                    num_tel_usu: user.num_tel_usu,
+                    email: account?.cor_cue,
+                    rol: account?.rol_cue,
+                    carrera: user.carrera ? { id_car: user.carrera.id_car, nom_car: user.carrera.nom_car } : null,
+                    documentos: {
+                        cedula_subida: !!user.enl_ced_pdf,
+                        matricula_subida: !!user.enl_mat_pdf,
+                        matricula_requerida: isEstudiante,
+                        documentos_verificados: user.documentos_verificados,
+                        fecha_verificacion: user.fec_verificacion_docs,
+                        archivos_completos: isEstudiante ? (!!user.enl_ced_pdf && !!user.enl_mat_pdf) : !!user.enl_ced_pdf
+                    }
+                };
+            });
+            return {
+                success: true,
+                users: userList,
+                total: userList.length
             };
-            return response;
-        });
-    }
-    /**
-     * GET /api/users/:id
-     * Obtener usuario por ID
-     */
-    async getUserById(req, res) {
-        await this.execute(req, res, async () => {
-            const userId = parseInt(req.params.id);
-            if (isNaN(userId)) {
-                throw new Error("ID de usuario inválido");
-            }
-            // TODO: Implementar cuando estén disponibles los casos de uso
-            const mockUser = {
-                id: userId,
-                cedula: "1234567890",
-                nombres: "Usuario Ejemplo",
-                apellidos: "Apellido Ejemplo",
-                email: "usuario@ejemplo.com",
-                telefono: "0987654321",
-                rol: "estudiante",
-                fechaCreacion: new Date(),
-                estado: true,
-            };
-            return mockUser;
-        });
-    }
-    /**
-     * POST /api/users
-     * Crear nuevo usuario
-     */
-    async createUser(req, res) {
-        await this.execute(req, res, async () => {
-            const userData = req.body;
-            // Validación básica
-            if (!userData.cedula ||
-                !userData.nombres ||
-                !userData.apellidos ||
-                !userData.email ||
-                !userData.password) {
-                throw new Error("Faltan campos obligatorios: cedula, nombres, apellidos, email, password");
-            }
-            // TODO: Implementar cuando estén disponibles los casos de uso
-            const mockUser = {
-                id: Math.floor(Math.random() * 1000),
-                cedula: userData.cedula,
-                nombres: userData.nombres,
-                apellidos: userData.apellidos,
-                email: userData.email,
-                telefono: userData.telefono || "",
-                rol: userData.rol || "estudiante",
-                fechaCreacion: new Date(),
-                estado: true,
-            };
-            return mockUser;
-        });
-    }
-    /**
-     * PUT /api/users/:id
-     * Actualizar usuario
-     */
-    async updateUser(req, res) {
-        await this.execute(req, res, async () => {
-            const userId = parseInt(req.params.id);
-            if (isNaN(userId)) {
-                throw new Error("ID de usuario inválido");
-            }
-            const userData = req.body;
-            // TODO: Implementar cuando estén disponibles los casos de uso
-            const mockUser = {
-                id: userId,
-                cedula: "1234567890",
-                nombres: userData.nombres || "Usuario Ejemplo",
-                apellidos: userData.apellidos || "Apellido Ejemplo",
-                email: userData.email || "usuario@ejemplo.com",
-                telefono: userData.telefono || "",
-                rol: userData.rol || "estudiante",
-                fechaCreacion: new Date(),
-                estado: true,
-            };
-            return mockUser;
-        });
-    }
-    /**
-     * DELETE /api/users/:id
-     * Eliminar usuario (soft delete)
-     */
-    async deleteUser(req, res) {
-        await this.execute(req, res, async () => {
-            const userId = parseInt(req.params.id);
-            if (isNaN(userId)) {
-                throw new Error("ID de usuario inválido");
-            }
-            // TODO: Implementar cuando estén disponibles los casos de uso
-            return { message: "Usuario eliminado correctamente" };
         });
     }
 }

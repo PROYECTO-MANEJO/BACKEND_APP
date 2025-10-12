@@ -1,1 +1,0 @@
-{"version":3,"file":"courseRoutes.d.ts","sourceRoot":"","sources":["../../../src/presentation/routes/courseRoutes.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,MAAM,EAAE,MAAM,SAAS,CAAC;AAcjC,qBAAa,YAAY;IACvB,OAAO,CAAC,MAAM,CAAS;IACvB,OAAO,CAAC,gBAAgB,CAAmB;;IAQ3C,OAAO,CAAC,WAAW;IAkHZ,SAAS,IAAI,MAAM;CAG3B"}

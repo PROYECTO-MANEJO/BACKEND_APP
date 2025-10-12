@@ -3,12 +3,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthRoutes = void 0;
 const express_1 = require("express");
 const AuthController_1 = require("../controllers/AuthController");
+const DIContainer_1 = require("../../infrastructure/DIContainer");
 const validationMiddleware_1 = require("../middleware/validationMiddleware");
 const authMiddleware_1 = require("../middleware/authMiddleware");
 class AuthRoutes {
     constructor() {
         this.router = (0, express_1.Router)();
-        this.authController = new AuthController_1.AuthController();
+        // Use DIContainer for AuthController
+        const container = DIContainer_1.DIContainer.getInstance();
+        this.authController = new AuthController_1.AuthController(container);
         this.setupRoutes();
     }
     setupRoutes() {

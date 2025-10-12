@@ -1,59 +1,197 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.VerificationController = void 0;
-const DIContainer_1 = require("@infrastructure/config/DIContainer");
-const SendEmailVerificationUseCase_1 = require("@application/verification/SendEmailVerificationUseCase");
-const VerifyEmailUseCase_1 = require("@application/verification/VerifyEmailUseCase");
-class VerificationController {
-    constructor() {
-        this.sendVerification = async (req, res) => {
-            try {
-                const { userId } = req.body;
-                if (!userId) {
-                    res.status(400).json({
-                        success: false,
-                        message: "ID de usuario es requerido",
-                    });
-                    return;
-                }
-                const result = await this.sendEmailVerificationUseCase.execute(Number(userId));
-                if (result.success) {
-                    res.status(200).json(result);
-                }
-                else {
-                    res.status(400).json(result);
-                }
-            }
-            catch (error) {
-                console.error("[VerificationController] Error en sendVerification:", error);
-                res.status(500).json({
+const BaseController_1 = require("./BaseController");
+const emailService_1 = require("../../infrastructure/external/emailService");
+const jwtHelper_1 = require("../../infrastructure/helpers/jwtHelper");
+class VerificationController extends BaseController_1.BaseController {
+    constructor(container) {
+        super();
+        this.container = container;
+    }
+    /**
+     * POST /api/verification/send
+     * Enviar token de verificación por email
+     */
+    async sendVerification(req, res) {
+        try {
+            const { userId, email } = req.body;
+            if (!userId || !email) {
+                res.status(400).json({
                     success: false,
-                    message: "Error interno del servidor",
+                    message: 'ID de usuario y email son requeridos'
                 });
+                return;
             }
-        };
-        this.verifyEmail = async (req, res) => {
-            try {
-                const { token } = req.query;
-                const result = await this.verifyEmailUseCase.execute(token);
-                if (result.success) {
-                    res.status(200).json(result);
-                }
-                else {
-                    res.status(400).json(result);
-                }
-            }
-            catch (error) {
-                console.error("[VerificationController] Error en verifyEmail:", error);
-                res.status(500).json({
+            const prisma = this.container.getPrismaClient();
+            // Verificar que el usuario existe
+            const usuario = await prisma.usuario.findUnique({
+                where: { id_usu: userId }
+            });
+            if (!usuario) {
+                res.status(404).json({
                     success: false,
-                    message: "Error interno del servidor",
+                    message: 'Usuario no encontrado'
                 });
+                return;
             }
-        };
-        const container = DIContainer_1.DIContainer.getInstance();
-        this.sendEmailVerificationUseCase = new SendEmailVerificationUseCase_1.SendEmailVerificationUseCase(container.verificationService);
-        this.verifyEmailUseCase = new VerifyEmailUseCase_1.VerifyEmailUseCase(container.verificationService);
+            // Verificar que la cuenta existe
+            const cuenta = await prisma.cuenta.findFirst({
+                where: { id_usu_per: userId, cor_cue: email }
+            });
+            if (!cuenta) {
+                res.status(404).json({
+                    success: false,
+                    message: 'Cuenta no encontrada'
+                });
+                return;
+            }
+            if (cuenta.isVerified) {
+                res.status(200).json({
+                    success: true,
+                    message: 'La cuenta ya está verificada'
+                });
+                return;
+            }
+            // Generar token de verificación
+            const token = await (0, jwtHelper_1.generateVerificationJWT)(userId);
+            // Enviar correo de verificación
+            await (0, emailService_1.sendVerificationEmail)(email, token);
+            res.json({
+                success: true,
+                message: 'Correo de verificación enviado exitosamente'
+            });
+        }
+        catch (error) {
+            console.error('[sendVerification] Error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error al enviar el correo de verificación'
+            });
+        }
+    }
+    /**
+     * GET /api/verification/verify
+     * Verificar email con token
+     */
+    async verifyEmail(req, res) {
+        try {
+            const { token } = req.query;
+            if (!token || typeof token !== 'string') {
+                res.status(400).json({
+                    success: false,
+                    message: 'Token es requerido'
+                });
+                return;
+            }
+            const prisma = this.container.getPrismaClient();
+            // Decodificar token
+            const decoded = await (0, jwtHelper_1.verifyVerificationJWT)(token);
+            console.log('[verifyEmail] Decoded token:', decoded);
+            // Buscar usuario
+            const usuario = await prisma.usuario.findUnique({
+                where: { id_usu: decoded.id }
+            });
+            if (!usuario) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Usuario no encontrado'
+                });
+                return;
+            }
+            // Buscar cuenta asociada
+            const cuenta = await prisma.cuenta.findFirst({
+                where: { id_usu_per: usuario.id_usu }
+            });
+            if (!cuenta) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Cuenta no encontrada'
+                });
+                return;
+            }
+            if (cuenta.isVerified) {
+                res.status(200).json({
+                    success: true,
+                    message: 'La cuenta ya está verificada'
+                });
+                return;
+            }
+            console.log("👉 Cuenta encontrada:", cuenta);
+            console.log("👉 ID_CUE que se actualizará:", cuenta.id_cue);
+            // Actualizar cuenta a verificada
+            const updated = await prisma.cuenta.update({
+                where: { id_cue: cuenta.id_cue },
+                data: {
+                    isVerified: true,
+                    emailVerificationToken: null,
+                    emailVerificationExpiry: null
+                }
+            });
+            console.log("✅ Cuenta actualizada:", updated);
+            res.status(200).json({
+                success: true,
+                message: 'Cuenta verificada exitosamente'
+            });
+        }
+        catch (error) {
+            console.error('[verificationController] Error al verificar el token:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error al verificar la cuenta'
+            });
+        }
+    }
+    /**
+     * POST /api/verification/resend
+     * Reenviar token de verificación
+     */
+    async resendVerification(req, res) {
+        try {
+            const { email } = req.body;
+            if (!email) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Email es requerido'
+                });
+                return;
+            }
+            const prisma = this.container.getPrismaClient();
+            // Buscar cuenta por email
+            const cuenta = await prisma.cuenta.findFirst({
+                where: { cor_cue: email },
+                include: { usuario: true }
+            });
+            if (!cuenta || !cuenta.usuario) {
+                res.status(404).json({
+                    success: false,
+                    message: 'Cuenta no encontrada'
+                });
+                return;
+            }
+            if (cuenta.isVerified) {
+                res.status(200).json({
+                    success: true,
+                    message: 'La cuenta ya está verificada'
+                });
+                return;
+            }
+            // Generar nuevo token de verificación
+            const token = await (0, jwtHelper_1.generateVerificationJWT)(cuenta.usuario.id_usu);
+            // Enviar correo de verificación
+            await (0, emailService_1.sendVerificationEmail)(email, token);
+            res.json({
+                success: true,
+                message: 'Correo de verificación reenviado exitosamente'
+            });
+        }
+        catch (error) {
+            console.error('[resendVerification] Error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error al reenviar el correo de verificación'
+            });
+        }
     }
 }
 exports.VerificationController = VerificationController;

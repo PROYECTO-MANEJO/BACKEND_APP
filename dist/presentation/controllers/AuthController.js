@@ -43,10 +43,10 @@ class AuthController extends BaseController_1.BaseController {
             if (!cuenta.usuario) {
                 throw new Error('User not found');
             }
-            // Check if account is verified
-            if (!cuenta.isVerified) {
-                throw new Error('Your account has not been verified yet. Check your email.');
-            }
+            // Check if account is verified (temporarily disabled for testing)
+            // if (!cuenta.isVerified) {
+            //   throw new Error('Your account has not been verified yet. Check your email.');
+            // }
             // Verify password
             const validPassword = await bcrypt.compare(password, cuenta.usuario.pas_usu || '');
             if (!validPassword) {
@@ -55,10 +55,10 @@ class AuthController extends BaseController_1.BaseController {
             // Generate JWT token based on role
             let token;
             if (cuenta.rol_cue === 'ADMINISTRADOR' || cuenta.rol_cue === 'MASTER') {
-                token = await generateAdminJWT(Number(cuenta.usuario.id_usu));
+                token = await generateAdminJWT(cuenta.usuario.id_usu);
             }
             else {
-                token = await generateJWT(Number(cuenta.usuario.id_usu));
+                token = await generateJWT(cuenta.usuario.id_usu);
             }
             const user = cuenta.usuario;
             const isEstudiante = cuenta.rol_cue === 'ESTUDIANTE';

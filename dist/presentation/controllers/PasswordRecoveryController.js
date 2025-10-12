@@ -1,76 +1,213 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PasswordRecoveryController = void 0;
-const DIContainer_1 = require("@infrastructure/config/DIContainer");
-const RequestPasswordResetUseCase_1 = require("@application/password-recovery/RequestPasswordResetUseCase");
-const ValidateResetTokenUseCase_1 = require("@application/password-recovery/ValidateResetTokenUseCase");
-const ResetPasswordUseCase_1 = require("@application/password-recovery/ResetPasswordUseCase");
-class PasswordRecoveryController {
-    constructor() {
-        this.forgotPassword = async (req, res) => {
-            try {
-                const dto = { email: req.body.email };
-                const result = await this.requestPasswordResetUseCase.execute(dto);
-                if (result.success) {
-                    res.status(200).json(result);
-                }
-                else {
-                    res.status(400).json(result);
-                }
-            }
-            catch (error) {
-                console.error("[PasswordRecoveryController] Error en forgotPassword:", error);
-                res.status(500).json({
+const BaseController_1 = require("./BaseController");
+const recoveryTokenHelper_1 = require("../../infrastructure/helpers/recoveryTokenHelper");
+const emailService_1 = require("../../infrastructure/external/emailService");
+class PasswordRecoveryController extends BaseController_1.BaseController {
+    constructor(container) {
+        super();
+        this.container = container;
+    }
+    /**
+     * POST /api/password-recovery/forgot
+     * Solicitar recuperación de contraseña
+     */
+    async forgotPassword(req, res) {
+        try {
+            const { email } = req.body;
+            console.log(`Solicitud de recuperación de contraseña para: ${email}`);
+            if (!email) {
+                res.status(400).json({
                     success: false,
-                    message: "Error interno del servidor",
+                    message: 'El correo electrónico es requerido'
                 });
+                return;
             }
-        };
-        this.validateToken = async (req, res) => {
-            try {
-                const { token } = req.query;
-                const result = await this.validateResetTokenUseCase.execute(token);
-                if (result.success) {
-                    res.status(200).json(result);
-                }
-                else {
-                    res.status(400).json(result);
-                }
+            const prisma = this.container.getPrismaClient();
+            // Buscar la cuenta y su usuario asociado
+            const cuenta = await prisma.cuenta.findFirst({
+                where: { cor_cue: email },
+                include: { usuario: true }
+            });
+            // Siempre responder que se envió el correo si la cuenta existe o no (por seguridad)
+            if (!cuenta || !cuenta.usuario) {
+                res.json({
+                    success: true,
+                    message: 'Si existe una cuenta con ese correo, se enviarán instrucciones para restablecer la contraseña.'
+                });
+                return;
             }
-            catch (error) {
-                console.error("[PasswordRecoveryController] Error en validateToken:", error);
-                res.status(500).json({
+            // Generar token de recuperación
+            const { token, hashedToken } = await (0, recoveryTokenHelper_1.generateRecoveryToken)();
+            // Establecer fecha de expiración (1 hora desde ahora)
+            const expiryDate = new Date(Date.now() + 3600000);
+            // Actualizar el usuario con el hashed token y fecha de expiración
+            await prisma.usuario.update({
+                where: { id_usu: cuenta.usuario.id_usu },
+                data: {
+                    resetToken: hashedToken,
+                    resetTokenExpiry: expiryDate
+                }
+            });
+            // Enviar correo al usuario con el enlace que incluye el token en texto plano
+            await (0, emailService_1.sendRecoveryEmail)(email, token);
+            res.json({
+                success: true,
+                message: 'Si existe una cuenta con ese correo, se enviarán instrucciones para restablecer la contraseña.'
+            });
+        }
+        catch (error) {
+            console.error('[forgotPassword] Error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error en el servidor, contacte al administrador'
+            });
+        }
+    }
+    /**
+     * POST /api/password-recovery/reset
+     * Restablecer la contraseña
+     */
+    async resetPassword(req, res) {
+        try {
+            const { token, password } = req.body;
+            if (!token || !password) {
+                res.status(400).json({
                     success: false,
-                    message: "Error interno del servidor",
+                    message: 'Token y contraseña son requeridos'
                 });
+                return;
             }
-        };
-        this.resetPassword = async (req, res) => {
-            try {
-                const dto = {
-                    token: req.body.token,
-                    newPassword: req.body.newPassword,
-                };
-                const result = await this.resetPasswordUseCase.execute(dto);
-                if (result.success) {
-                    res.status(200).json(result);
-                }
-                else {
-                    res.status(400).json(result);
-                }
-            }
-            catch (error) {
-                console.error("[PasswordRecoveryController] Error en resetPassword:", error);
-                res.status(500).json({
+            if (password.length < 6) {
+                res.status(400).json({
                     success: false,
-                    message: "Error interno del servidor",
+                    message: 'La contraseña debe tener al menos 6 caracteres'
                 });
+                return;
             }
-        };
-        const container = DIContainer_1.DIContainer.getInstance();
-        this.requestPasswordResetUseCase = new RequestPasswordResetUseCase_1.RequestPasswordResetUseCase(container.passwordRecoveryService);
-        this.validateResetTokenUseCase = new ValidateResetTokenUseCase_1.ValidateResetTokenUseCase(container.passwordRecoveryService);
-        this.resetPasswordUseCase = new ResetPasswordUseCase_1.ResetPasswordUseCase(container.passwordRecoveryService);
+            const prisma = this.container.getPrismaClient();
+            const bcrypt = this.container.getBcrypt();
+            console.log("[resetPassword] Iniciando verificación del token...");
+            // Obtener todos los usuarios con token vigente
+            const usuariosValidos = await prisma.usuario.findMany({
+                where: {
+                    resetTokenExpiry: { gt: new Date() },
+                    resetToken: { not: null }
+                }
+            });
+            console.log("[resetPassword] Usuarios con token vigente:", usuariosValidos.length);
+            let usuario = null;
+            for (const u of usuariosValidos) {
+                console.log(`[resetPassword] Comparando token para usuario: ${u.id_usu}`);
+                try {
+                    const compareResult = await bcrypt.compare(token, u.resetToken || '');
+                    console.log(`[resetPassword] Resultado de bcrypt.compare para ${u.id_usu}:`, compareResult);
+                    if (compareResult) {
+                        usuario = u;
+                        break;
+                    }
+                }
+                catch (compareError) {
+                    console.error(`[resetPassword] Error comparando token para usuario ${u.id_usu}:`, compareError);
+                    continue;
+                }
+            }
+            if (!usuario) {
+                console.log("[resetPassword] No se encontró usuario con token válido");
+                res.status(400).json({
+                    success: false,
+                    message: 'Token inválido o expirado'
+                });
+                return;
+            }
+            console.log("[resetPassword] Usuario encontrado:", usuario.id_usu);
+            // Encriptar la nueva contraseña
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password, salt);
+            console.log("[resetPassword] Contraseña encriptada");
+            // Actualizar el usuario
+            console.log("[resetPassword] Actualizando usuario con id:", usuario.id_usu);
+            await prisma.usuario.update({
+                where: { id_usu: usuario.id_usu },
+                data: {
+                    pas_usu: hashedPassword,
+                    resetToken: null,
+                    resetTokenExpiry: null
+                }
+            });
+            console.log("[resetPassword] Usuario actualizado exitosamente");
+            res.json({
+                success: true,
+                message: 'Contraseña actualizada exitosamente'
+            });
+        }
+        catch (error) {
+            console.error("[resetPassword] Error:", error);
+            res.status(500).json({
+                success: false,
+                message: 'Error en el servidor, contacte al administrador'
+            });
+        }
+    }
+    /**
+     * POST /api/password-recovery/verify-token
+     * Verificar la validez del token
+     */
+    async verifyResetToken(req, res) {
+        try {
+            console.log("Verificando token - body:", req.body);
+            const { token } = req.body;
+            if (!token) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Token es requerido'
+                });
+                return;
+            }
+            console.log("Token recibido:", token);
+            const prisma = this.container.getPrismaClient();
+            const bcrypt = this.container.getBcrypt();
+            // Obtener todos los usuarios con token vigente
+            const usuariosValidos = await prisma.usuario.findMany({
+                where: {
+                    resetTokenExpiry: { gt: new Date() },
+                    resetToken: { not: null }
+                }
+            });
+            console.log(usuariosValidos ? `Usuarios con token vigente: ${usuariosValidos.length}` : "No hay usuarios con token vigente");
+            let usuarioValido = null;
+            for (const u of usuariosValidos) {
+                try {
+                    if (await bcrypt.compare(token, u.resetToken || '')) {
+                        usuarioValido = u;
+                        break;
+                    }
+                }
+                catch (compareError) {
+                    console.error(`Error comparando token para usuario ${u.id_usu}:`, compareError);
+                    continue;
+                }
+            }
+            if (!usuarioValido) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Token inválido o expirado'
+                });
+                return;
+            }
+            res.json({
+                success: true,
+                message: 'Token válido'
+            });
+        }
+        catch (error) {
+            console.error('[verifyResetToken] Error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error en el servidor, contacte al administrador'
+            });
+        }
     }
 }
 exports.PasswordRecoveryController = PasswordRecoveryController;

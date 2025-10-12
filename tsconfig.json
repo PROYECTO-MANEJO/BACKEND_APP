@@ -61,7 +61,13 @@
     "listFiles": false
   },
   "include": ["src/**/*.ts", "src/**/*.js"],
-  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"],
+  "exclude": [
+    "node_modules", 
+    "dist", 
+    "**/*.spec.ts", 
+    "**/*.test.ts",
+    "temp_legacy/**/*"
+  ],
   "ts-node": {
     "require": ["tsconfig-paths/register"],
     "files": true,

@@ -11,9 +11,6 @@ import { CertificateController } from "./presentation/controllers/CertificateCon
 // Importar rutas
 import { AuthRoutes } from "./presentation/routes/authRoutes";
 import { UserRoutes } from "./presentation/routes/userRoutes";
-import { CourseRoutes } from "./presentation/routes/courseRoutes";
-import { EventRoutes } from "./presentation/routes/eventRoutes";
-import { CertificateRoutes } from "./presentation/routes/certificateRoutes";
 
 // Importar middlewares
 import {

@@ -12,9 +12,9 @@ export declare class DIContainer {
     getPrismaClient(): PrismaClient;
     getBcrypt(): typeof bcrypt;
     getJwtHelpers(): {
-        generateJWT: (id: number) => Promise<string>;
-        generateAdminJWT: (id: number) => Promise<string>;
-        generateVerificationJWT: (id: number) => Promise<string>;
+        generateJWT: (id: string) => Promise<string>;
+        generateAdminJWT: (id: string) => Promise<string>;
+        generateVerificationJWT: (id: string) => Promise<string>;
     };
     cleanup(): Promise<void>;
 }

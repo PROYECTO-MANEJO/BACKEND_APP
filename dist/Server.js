@@ -13,6 +13,7 @@ const EventController_1 = require("./presentation/controllers/EventController");
 const CertificateController_1 = require("./presentation/controllers/CertificateController");
 // Importar middlewares
 const securityMiddleware_1 = require("./presentation/middleware/securityMiddleware");
+const jwtMiddleware_1 = require("./presentation/middleware/jwtMiddleware");
 /**
  * Clase principal del servidor Express con Clean Architecture
  */
@@ -24,10 +25,10 @@ class Server {
         this.container = DIContainer_1.DIContainer.getInstance();
         // Initialize controllers with dependency injection
         this.authController = new AuthController_1.AuthController(this.container);
-        this.userController = new UserController_1.UserController(); // TODO: Add DI later
-        this.courseController = new CourseController_1.CourseController(); // TODO: Add DI later
-        this.eventController = new EventController_1.EventController(); // TODO: Add DI later
-        this.certificateController = new CertificateController_1.CertificateController(); // TODO: Add DI later
+        this.userController = new UserController_1.UserController(this.container);
+        this.courseController = new CourseController_1.CourseController(this.container);
+        this.eventController = new EventController_1.EventController(this.container);
+        this.certificateController = new CertificateController_1.CertificateController(this.container);
         this.setupMiddlewares();
         this.setupRoutes();
         this.setupErrorHandling();
@@ -132,11 +133,9 @@ class Server {
      * Configurar rutas de usuarios
      */
     setupUserRoutes() {
-        this.app.get("/api/users", this.userController.getUsers.bind(this.userController));
-        this.app.get("/api/users/:id", this.userController.getUserById.bind(this.userController));
-        this.app.post("/api/users", this.userController.createUser.bind(this.userController));
-        this.app.put("/api/users/:id", this.userController.updateUser.bind(this.userController));
-        this.app.delete("/api/users/:id", this.userController.deleteUser.bind(this.userController));
+        this.app.get("/api/users", this.userController.getAllUsers.bind(this.userController));
+        this.app.get("/api/users/profile", jwtMiddleware_1.validateJWT, this.userController.getUserProfile.bind(this.userController));
+        this.app.put("/api/users/profile", jwtMiddleware_1.validateJWT, this.userController.updateUserProfile.bind(this.userController));
     }
     /**
      * Configurar rutas de cursos
@@ -145,12 +144,6 @@ class Server {
         this.app.get("/api/courses", this.courseController.getCourses.bind(this.courseController));
         this.app.get("/api/courses/:id", this.courseController.getCourseById.bind(this.courseController));
         this.app.post("/api/courses", this.courseController.createCourse.bind(this.courseController));
-        this.app.put("/api/courses/:id", this.courseController.updateCourse.bind(this.courseController));
-        this.app.delete("/api/courses/:id", this.courseController.deleteCourse.bind(this.courseController));
-        this.app.post("/api/courses/:id/enroll", this.courseController.enrollToCourse.bind(this.courseController));
-        this.app.get("/api/courses/:id/enrollments", this.courseController.getCourseEnrollments.bind(this.courseController));
-        this.app.get("/api/courses/available", this.courseController.getAvailableCourses.bind(this.courseController));
-        this.app.get("/api/courses/my-courses", this.courseController.getUserCourses.bind(this.courseController));
     }
     /**
      * Configurar rutas de eventos
@@ -159,27 +152,17 @@ class Server {
         this.app.get("/api/events", this.eventController.getEvents.bind(this.eventController));
         this.app.get("/api/events/:id", this.eventController.getEventById.bind(this.eventController));
         this.app.post("/api/events", this.eventController.createEvent.bind(this.eventController));
-        this.app.put("/api/events/:id", this.eventController.updateEvent.bind(this.eventController));
-        this.app.delete("/api/events/:id", this.eventController.deleteEvent.bind(this.eventController));
-        this.app.post("/api/events/:id/enroll", this.eventController.enrollToEvent.bind(this.eventController));
-        this.app.get("/api/events/:id/enrollments", this.eventController.getEventEnrollments.bind(this.eventController));
-        this.app.get("/api/events/upcoming", this.eventController.getUpcomingEvents.bind(this.eventController));
-        this.app.get("/api/events/my-events", this.eventController.getUserEvents.bind(this.eventController));
-        this.app.get("/api/events/by-area/:area", this.eventController.getEventsByArea.bind(this.eventController));
     }
     /**
      * Configurar rutas de certificados
      */
     setupCertificateRoutes() {
-        this.app.get("/api/certificates", this.certificateController.getCertificates.bind(this.certificateController));
-        this.app.get("/api/certificates/:id", this.certificateController.getCertificateById.bind(this.certificateController));
-        this.app.post("/api/certificates/generate", this.certificateController.generateCertificate.bind(this.certificateController));
-        this.app.put("/api/certificates/:id/approve", this.certificateController.approveCertificate.bind(this.certificateController));
-        this.app.get("/api/certificates/:id/download", this.certificateController.downloadCertificate.bind(this.certificateController));
-        this.app.get("/api/certificates/my-certificates", this.certificateController.getUserCertificates.bind(this.certificateController));
-        this.app.get("/api/certificates/statistics", this.certificateController.getCertificateStatistics.bind(this.certificateController));
-        this.app.get("/api/certificates/pending", this.certificateController.getPendingCertificates.bind(this.certificateController));
-        this.app.post("/api/certificates/bulk-approve", this.certificateController.bulkApproveCertificates.bind(this.certificateController));
+        // GET /api/certificates/my-certificates - Obtener certificados del usuario
+        this.app.get("/api/certificates/my-certificates", jwtMiddleware_1.validateJWT, // Requiere autenticación
+        this.certificateController.getUserCertificates.bind(this.certificateController));
+        // GET /api/certificates/download/:tipo/:idParticipacion - Descargar certificado
+        this.app.get("/api/certificates/download/:tipo/:idParticipacion", jwtMiddleware_1.validateJWT, // Requiere autenticación
+        this.certificateController.downloadCertificate.bind(this.certificateController));
     }
     /**
      * Configurar manejo de errores
@@ -196,20 +179,27 @@ class Server {
     async start() {
         try {
             // El DIContainer se inicializa automáticamente al ser creado
-            this.app.listen(this.port, () => {
-                console.log("🚀 ========================================");
-                console.log(`🚀 Servidor iniciado exitosamente`);
-                console.log(`🚀 Puerto: ${this.port}`);
-                console.log(`🚀 Ambiente: ${process.env.NODE_ENV || "development"}`);
-                console.log(`🚀 Health Check: http://localhost:${this.port}/health`);
-                console.log(`🚀 API Base: http://localhost:${this.port}/api`);
-                console.log("🚀 ========================================");
-                console.log("🏗️  Clean Architecture Structure:");
-                console.log("   📁 Presentation Layer: Controllers, Routes, Middlewares");
-                console.log("   📁 Application Layer: Use Cases (Mock Implementation)");
-                console.log("   📁 Domain Layer: Entities, Repositories (Interfaces)");
-                console.log("   📁 Infrastructure Layer: Database, External Services");
-                console.log("🚀 ========================================");
+            return new Promise((resolve, reject) => {
+                const server = this.app.listen(this.port, () => {
+                    console.log("🚀 ========================================");
+                    console.log(`🚀 Servidor iniciado exitosamente`);
+                    console.log(`🚀 Puerto: ${this.port}`);
+                    console.log(`🚀 Ambiente: ${process.env.NODE_ENV || "development"}`);
+                    console.log(`🚀 Health Check: http://localhost:${this.port}/health`);
+                    console.log(`🚀 API Base: http://localhost:${this.port}/api`);
+                    console.log("🚀 ========================================");
+                    console.log("🏗️  Clean Architecture Structure:");
+                    console.log("   📁 Presentation Layer: Controllers, Routes, Middlewares");
+                    console.log("   📁 Application Layer: Use Cases (Mock Implementation)");
+                    console.log("   📁 Domain Layer: Entities, Repositories (Interfaces)");
+                    console.log("   📁 Infrastructure Layer: Database, External Services");
+                    console.log("🚀 ========================================");
+                    resolve();
+                });
+                server.on('error', (error) => {
+                    console.error("❌ Error al iniciar el servidor:", error);
+                    reject(error);
+                });
             });
         }
         catch (error) {

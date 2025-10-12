@@ -7,305 +7,241 @@ const BaseController_1 = require("./BaseController");
  * Maneja todas las operaciones CRUD y funcionalidades relacionadas con cursos
  */
 class CourseController extends BaseController_1.BaseController {
-    constructor() {
+    constructor(container) {
         super();
+        this.container = container;
     }
     /**
      * GET /api/courses
-     * Obtener lista de cursos con filtros
+     * Get all courses (based on original obtenerCursos function)
      */
     async getCourses(req, res) {
         await this.execute(req, res, async () => {
-            const { page, pageSize } = this.getPaginationParams(req);
-            const { search, carreraId, modalidad } = req.query;
-            // TODO: Implement when getCoursesUseCase is available in DIContainer
-            // const getCoursesUseCase = this.container.getGetCoursesUseCase();
-            // Mock response for now
-            const response = {
-                courses: [
-                    {
-                        id: 1,
-                        nombre: "Curso Mock",
-                        descripcion: "Descripción del curso mock",
-                        carreras: [{ id: 1, nombre: "Carrera Mock" }],
-                        fechaInicio: new Date(),
-                        fechaFin: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-                        precio: 100,
-                        capacidadMaxima: 30,
-                        inscritosActuales: 0,
-                        modalidad: "virtual",
-                        estado: true,
-                        fechaCreacion: new Date(),
-                    },
-                ],
-                total: 1,
-                page: page,
-                pageSize: pageSize,
+            const prisma = this.container.getPrismaClient();
+            const cursos = await prisma.curso.findMany({
+                orderBy: { fec_ini_cur: 'desc' }
+            });
+            const cursosFormateados = cursos.map(curso => ({
+                id_cur: curso.id_cur,
+                nom_cur: curso.nom_cur,
+                des_cur: curso.des_cur,
+                dur_cur: curso.dur_cur,
+                fec_ini_cur: curso.fec_ini_cur,
+                fec_fin_cur: curso.fec_fin_cur,
+                capacidad_max_cur: curso.capacidad_max_cur,
+                precio: curso.precio,
+                es_gratuito: curso.es_gratuito,
+                tipo_audiencia_cur: curso.tipo_audiencia_cur,
+                requiere_verificacion_docs: curso.requiere_verificacion_docs,
+                porcentaje_asistencia_aprobacion: curso.porcentaje_asistencia_aprobacion,
+                nota_minima_aprobacion: curso.nota_minima_aprobacion,
+                estado: curso.estado
+            }));
+            return {
+                success: true,
+                cursos: cursosFormateados,
+                total: cursosFormateados.length
             };
-            return response;
         });
     }
     /**
      * GET /api/courses/:id
-     * Obtener curso por ID
+     * Get course by ID (based on original obtenerCursoPorId function)
      */
     async getCourseById(req, res) {
         await this.execute(req, res, async () => {
-            const courseId = parseInt(req.params.id);
-            if (isNaN(courseId)) {
-                throw new Error("ID de curso inválido");
+            const { id } = req.params;
+            const prisma = this.container.getPrismaClient();
+            const curso = await prisma.curso.findUnique({
+                where: { id_cur: id }
+            });
+            if (!curso) {
+                return {
+                    success: false,
+                    message: 'Course not found',
+                    curso: null
+                };
             }
-            // TODO: Implement when getCourseByIdUseCase is available in DIContainer
-            // const getCourseByIdUseCase = this.container.getGetCourseByIdUseCase();
-            // Mock response for now
+            const cursoFormateado = {
+                id_cur: curso.id_cur,
+                nom_cur: curso.nom_cur,
+                des_cur: curso.des_cur,
+                dur_cur: curso.dur_cur,
+                fec_ini_cur: curso.fec_ini_cur,
+                fec_fin_cur: curso.fec_fin_cur,
+                capacidad_max_cur: curso.capacidad_max_cur,
+                precio: curso.precio,
+                es_gratuito: curso.es_gratuito,
+                tipo_audiencia_cur: curso.tipo_audiencia_cur,
+                requiere_verificacion_docs: curso.requiere_verificacion_docs,
+                porcentaje_asistencia_aprobacion: curso.porcentaje_asistencia_aprobacion,
+                nota_minima_aprobacion: curso.nota_minima_aprobacion,
+                estado: curso.estado
+            };
             return {
-                id: courseId,
-                nombre: "Curso Mock",
-                descripcion: "Descripción del curso mock",
-                carreras: [{ id: 1, nombre: "Carrera Mock" }],
-                fechaInicio: new Date(),
-                fechaFin: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-                precio: 100,
-                capacidadMaxima: 30,
-                inscritosActuales: 0,
-                modalidad: "virtual",
-                estado: true,
-                fechaCreacion: new Date(),
+                success: true,
+                curso: cursoFormateado
             };
         });
     }
     /**
      * POST /api/courses
-     * Crear nuevo curso
+     * Create new course (based on original crearCurso function)
      */
     async createCourse(req, res) {
-        await this.execute(req, res, async () => {
-            const courseData = req.body;
-            // Validación básica
-            if (!courseData.nombre ||
-                !courseData.descripcion ||
-                !courseData.fechaInicio ||
-                !courseData.fechaFin) {
-                throw new Error("Faltan campos obligatorios: nombre, descripcion, fechaInicio, fechaFin");
+        try {
+            const prisma = this.container.getPrismaClient();
+            const { nom_cur, des_cur, dur_cur, fec_ini_cur, fec_fin_cur, id_cat_cur, ced_org_cur, capacidad_max_cur, tipo_audiencia_cur, requiere_verificacion_docs, es_gratuito, precio, porcentaje_asistencia_aprobacion, nota_minima_aprobacion, carreras // Array opcional de IDs de carreras
+             } = req.body;
+            // Basic validations
+            if (!nom_cur || !des_cur || !dur_cur || !fec_ini_cur || !fec_fin_cur ||
+                !id_cat_cur || !ced_org_cur || !capacidad_max_cur ||
+                porcentaje_asistencia_aprobacion == null ||
+                nota_minima_aprobacion == null) {
+                res.status(400).json({
+                    success: false,
+                    error: 'Missing required fields: nom_cur, des_cur, dur_cur, fec_ini_cur, fec_fin_cur, id_cat_cur, ced_org_cur, capacidad_max_cur, porcentaje_asistencia_aprobacion, nota_minima_aprobacion'
+                });
+                return;
             }
-            // TODO: Implement when createCourseUseCase is available in DIContainer
-            // const createCourseUseCase = this.container.getCreateCourseUseCase();
-            // Mock response for now
-            return {
-                id: Date.now(),
-                nombre: courseData.nombre,
-                descripcion: courseData.descripcion,
-                carreras: courseData.carreraIds.map((id) => ({
-                    id,
-                    nombre: `Carrera ${id}`,
-                })),
-                fechaInicio: new Date(courseData.fechaInicio),
-                fechaFin: new Date(courseData.fechaFin),
-                precio: courseData.precio,
-                capacidadMaxima: courseData.capacidadMaxima,
-                inscritosActuales: 0,
-                modalidad: courseData.modalidad,
-                estado: courseData.estado ?? true,
-                fechaCreacion: new Date(),
-            };
-        });
-    }
-    /**
-     * PUT /api/courses/:id
-     * Actualizar curso
-     */
-    async updateCourse(req, res) {
-        await this.execute(req, res, async () => {
-            const courseId = parseInt(req.params.id);
-            if (isNaN(courseId)) {
-                throw new Error("ID de curso inválido");
+            // Validate approval fields
+            const porcentajeAsistencia = parseFloat(porcentaje_asistencia_aprobacion);
+            const notaMinima = parseFloat(nota_minima_aprobacion);
+            if (isNaN(porcentajeAsistencia) || porcentajeAsistencia < 0 || porcentajeAsistencia > 100) {
+                res.status(400).json({
+                    success: false,
+                    error: 'Attendance percentage must be a number between 0 and 100'
+                });
+                return;
             }
-            const courseData = req.body;
-            // TODO: Implement when updateCourseUseCase is available in DIContainer
-            // const updateCourseUseCase = this.container.getUpdateCourseUseCase();
-            // Mock response for now
-            return {
-                id: courseId,
-                nombre: courseData.nombre || "Curso Mock Actualizado",
-                descripcion: courseData.descripcion || "Descripción actualizada",
-                carreras: courseData.carreraIds?.map((id) => ({
-                    id,
-                    nombre: `Carrera ${id}`,
-                })) || [{ id: 1, nombre: "Carrera Mock" }],
-                fechaInicio: courseData.fechaInicio
-                    ? new Date(courseData.fechaInicio)
-                    : new Date(),
-                fechaFin: courseData.fechaFin
-                    ? new Date(courseData.fechaFin)
-                    : new Date(),
-                precio: courseData.precio || 100,
-                capacidadMaxima: courseData.capacidadMaxima || 30,
-                inscritosActuales: 0,
-                modalidad: courseData.modalidad || "virtual",
-                estado: courseData.estado ?? true,
-                fechaCreacion: new Date(),
-            };
-        });
-    }
-    /**
-     * DELETE /api/courses/:id
-     * Eliminar curso
-     */
-    async deleteCourse(req, res) {
-        await this.execute(req, res, async () => {
-            const courseId = parseInt(req.params.id);
-            if (isNaN(courseId)) {
-                throw new Error("ID de curso inválido");
+            if (isNaN(notaMinima) || notaMinima < 0 || notaMinima > 10) {
+                res.status(400).json({
+                    success: false,
+                    error: 'Minimum grade must be a number between 0 and 10'
+                });
+                return;
             }
-            // TODO: Implement when deleteCourseUseCase is available in DIContainer
-            // const deleteCourseUseCase = this.container.getDeleteCourseUseCase();
-            // Mock response for now
-            return { message: "Curso eliminado exitosamente" };
-        });
-    }
-    /**
-     * POST /api/courses/:id/enroll
-     * Inscribirse a un curso
-     */
-    async enrollToCourse(req, res) {
-        await this.execute(req, res, async () => {
-            const courseId = parseInt(req.params.id);
-            const userId = this.getUserId(req);
-            const enrollmentData = req.body;
-            if (isNaN(courseId)) {
-                throw new Error("ID de curso inválido");
+            // Validate dates
+            const fechaInicio = new Date(fec_ini_cur);
+            const fechaFin = new Date(fec_fin_cur);
+            if (isNaN(fechaInicio.getTime())) {
+                res.status(400).json({
+                    success: false,
+                    error: 'Invalid start date. Use YYYY-MM-DD format'
+                });
+                return;
             }
-            // TODO: Implement when enrollToCourseUseCase is available in DIContainer
-            // const enrollToCourseUseCase = this.container.getEnrollToCourseUseCase();
-            // Mock response for now
-            return {
-                id: Date.now(),
-                usuario: {
-                    id: userId,
-                    nombres: "Usuario Mock",
-                    apellidos: "Apellido Mock",
-                    email: "user@mock.com",
-                },
+            if (isNaN(fechaFin.getTime())) {
+                res.status(400).json({
+                    success: false,
+                    error: 'Invalid end date. Use YYYY-MM-DD format'
+                });
+                return;
+            }
+            if (fechaFin <= fechaInicio) {
+                res.status(400).json({
+                    success: false,
+                    error: 'End date must be after start date'
+                });
+                return;
+            }
+            // Validate numbers
+            const duracion = parseInt(dur_cur);
+            const capacidad = parseInt(capacidad_max_cur);
+            if (isNaN(duracion) || duracion <= 0) {
+                res.status(400).json({
+                    success: false,
+                    error: 'Duration must be a positive number'
+                });
+                return;
+            }
+            if (isNaN(capacidad) || capacidad <= 0) {
+                res.status(400).json({
+                    success: false,
+                    error: 'Maximum capacity must be a positive number'
+                });
+                return;
+            }
+            // Create course in transaction
+            const result = await prisma.$transaction(async (tx) => {
+                // Create the course
+                const nuevoCurso = await tx.curso.create({
+                    data: {
+                        nom_cur,
+                        des_cur,
+                        dur_cur: duracion,
+                        fec_ini_cur: fechaInicio,
+                        fec_fin_cur: fechaFin,
+                        id_cat_cur,
+                        ced_org_cur,
+                        capacidad_max_cur: capacidad,
+                        tipo_audiencia_cur: tipo_audiencia_cur || 'PUBLICO_GENERAL',
+                        requiere_verificacion_docs: requiere_verificacion_docs || false,
+                        es_gratuito: es_gratuito || false,
+                        precio: es_gratuito ? 0 : (precio || 0),
+                        porcentaje_asistencia_aprobacion: porcentajeAsistencia,
+                        nota_minima_aprobacion: notaMinima,
+                        estado: 'ACTIVO'
+                    }
+                });
+                // If careers are provided, create the relationships
+                if (carreras && Array.isArray(carreras) && carreras.length > 0) {
+                    const carrerasData = carreras.map((carreraId) => ({
+                        id_cur_per: nuevoCurso.id_cur,
+                        id_car_per: carreraId
+                    }));
+                    await tx.cursoPorCarrera.createMany({
+                        data: carrerasData
+                    });
+                }
+                return nuevoCurso;
+            });
+            res.status(201).json({
+                success: true,
+                message: 'Course created successfully',
                 curso: {
-                    id: courseId,
-                    nombre: "Curso Mock",
-                },
-                fechaInscripcion: new Date(),
-                estadoPago: "pendiente",
-                certificadoGenerado: false,
-            };
-        });
-    }
-    /**
-     * GET /api/courses/:id/enrollments
-     * Obtener inscripciones de un curso (solo para administradores/instructores)
-     */
-    async getCourseEnrollments(req, res) {
-        await this.execute(req, res, async () => {
-            const courseId = parseInt(req.params.id);
-            const { page, pageSize } = this.getPaginationParams(req);
-            if (isNaN(courseId)) {
-                throw new Error("ID de curso inválido");
+                    id_cur: result.id_cur,
+                    nom_cur: result.nom_cur,
+                    des_cur: result.des_cur,
+                    fec_ini_cur: result.fec_ini_cur,
+                    fec_fin_cur: result.fec_fin_cur,
+                    capacidad_max_cur: result.capacidad_max_cur,
+                    estado: result.estado
+                }
+            });
+        }
+        catch (error) {
+            console.error('Error creating course:', error);
+            // Handle Prisma specific errors
+            if (error.code === 'P2003') {
+                // Foreign key constraint violation
+                if (error.meta?.constraint === 'CURSOS_ID_CAT_CUR_fkey') {
+                    res.status(400).json({
+                        success: false,
+                        error: 'Category ID does not exist'
+                    });
+                    return;
+                }
+                else if (error.meta?.constraint === 'CURSOS_CED_ORG_CUR_fkey') {
+                    res.status(400).json({
+                        success: false,
+                        error: 'Organizer ID does not exist'
+                    });
+                    return;
+                }
+                else {
+                    res.status(400).json({
+                        success: false,
+                        error: 'Referenced record does not exist'
+                    });
+                    return;
+                }
             }
-            // TODO: Implement when getCourseEnrollmentsUseCase is available in DIContainer
-            // const getCourseEnrollmentsUseCase = this.container.getGetCourseEnrollmentsUseCase();
-            // Mock response for now
-            return {
-                enrollments: [
-                    {
-                        id: 1,
-                        usuario: {
-                            id: 1,
-                            nombres: "Usuario Mock",
-                            apellidos: "Apellido Mock",
-                            email: "user@mock.com",
-                        },
-                        curso: {
-                            id: courseId,
-                            nombre: "Curso Mock",
-                        },
-                        fechaInscripcion: new Date(),
-                        estadoPago: "completado",
-                        certificadoGenerado: false,
-                    },
-                ],
-                total: 1,
-                page: page,
-                pageSize: pageSize,
-            };
-        });
-    }
-    /**
-     * GET /api/courses/available
-     * Obtener cursos disponibles para inscripción
-     */
-    async getAvailableCourses(req, res) {
-        await this.execute(req, res, async () => {
-            const { page, pageSize } = this.getPaginationParams(req);
-            const { search, carreraId } = req.query;
-            // TODO: Implement when getAvailableCoursesUseCase is available in DIContainer
-            // const getAvailableCoursesUseCase = this.container.getGetAvailableCoursesUseCase();
-            // Mock response for now
-            const response = {
-                courses: [
-                    {
-                        id: 1,
-                        nombre: "Curso Disponible Mock",
-                        descripcion: "Descripción del curso disponible",
-                        carreras: [{ id: 1, nombre: "Carrera Mock" }],
-                        fechaInicio: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Próxima semana
-                        fechaFin: new Date(Date.now() + 37 * 24 * 60 * 60 * 1000),
-                        precio: 150,
-                        capacidadMaxima: 30,
-                        inscritosActuales: 5,
-                        modalidad: "virtual",
-                        estado: true,
-                        fechaCreacion: new Date(),
-                    },
-                ],
-                total: 1,
-                page: page,
-                pageSize: pageSize,
-            };
-            return response;
-        });
-    }
-    /**
-     * GET /api/courses/my-courses
-     * Obtener cursos del usuario autenticado
-     */
-    async getUserCourses(req, res) {
-        await this.execute(req, res, async () => {
-            const userId = this.getUserId(req);
-            const { page, pageSize } = this.getPaginationParams(req);
-            const { status } = req.query;
-            // TODO: Implement when getUserCoursesUseCase is available in DIContainer
-            // const getUserCoursesUseCase = this.container.getGetUserCoursesUseCase();
-            // Mock response for now
-            return {
-                enrollments: [
-                    {
-                        id: 1,
-                        usuario: {
-                            id: userId,
-                            nombres: "Usuario Mock",
-                            apellidos: "Apellido Mock",
-                            email: "user@mock.com",
-                        },
-                        curso: {
-                            id: 1,
-                            nombre: "Mi Curso Mock",
-                        },
-                        fechaInscripcion: new Date(),
-                        estadoPago: "completado",
-                        certificadoGenerado: true,
-                    },
-                ],
-                total: 1,
-                page: page,
-                pageSize: pageSize,
-            };
-        });
+            res.status(500).json({
+                success: false,
+                error: 'Internal server error'
+            });
+        }
     }
 }
 exports.CourseController = CourseController;

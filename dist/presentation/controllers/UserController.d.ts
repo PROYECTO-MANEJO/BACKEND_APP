@@ -1,31 +1,23 @@
 import { Request, Response } from "express";
 import { BaseController } from "./BaseController";
+import { DIContainer } from "../../infrastructure/DIContainer";
 export declare class UserController extends BaseController {
-    constructor();
+    private container;
+    constructor(container: DIContainer);
+    /**
+     * GET /api/users/profile
+     * Get current user profile (based on JWT token)
+     */
+    getUserProfile(req: Request, res: Response): Promise<void>;
+    /**
+     * PUT /api/users/profile
+     * Update current user profile
+     */
+    updateUserProfile(req: Request, res: Response): Promise<void>;
     /**
      * GET /api/users
-     * Obtener lista de usuarios con paginación
+     * Get all users for admin (based on original getAllUsers function)
      */
-    getUsers(req: Request, res: Response): Promise<void>;
-    /**
-     * GET /api/users/:id
-     * Obtener usuario por ID
-     */
-    getUserById(req: Request, res: Response): Promise<void>;
-    /**
-     * POST /api/users
-     * Crear nuevo usuario
-     */
-    createUser(req: Request, res: Response): Promise<void>;
-    /**
-     * PUT /api/users/:id
-     * Actualizar usuario
-     */
-    updateUser(req: Request, res: Response): Promise<void>;
-    /**
-     * DELETE /api/users/:id
-     * Eliminar usuario (soft delete)
-     */
-    deleteUser(req: Request, res: Response): Promise<void>;
+    getAllUsers(req: Request, res: Response): Promise<void>;
 }
 //# sourceMappingURL=UserController.d.ts.map

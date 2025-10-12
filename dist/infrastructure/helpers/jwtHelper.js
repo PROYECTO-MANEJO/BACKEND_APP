@@ -6,7 +6,7 @@ const jsonwebtoken_1 = tslib_1.__importDefault(require("jsonwebtoken"));
 const generateJWT = (id) => {
     return new Promise((resolve, reject) => {
         const payload = { id };
-        jsonwebtoken_1.default.sign(payload, process.env.SECRET_KEY, { expiresIn: '1h' }, (err, token) => {
+        jsonwebtoken_1.default.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' }, (err, token) => {
             if (err) {
                 reject('Could not generate token');
             }
@@ -20,7 +20,7 @@ exports.generateJWT = generateJWT;
 const generateAdminJWT = (id) => {
     return new Promise((resolve, reject) => {
         const payload = { id, role: 'admin' };
-        jsonwebtoken_1.default.sign(payload, process.env.SECRET_KEY, { expiresIn: '24h' }, (err, token) => {
+        jsonwebtoken_1.default.sign(payload, process.env.JWT_SECRET, { expiresIn: '24h' }, (err, token) => {
             if (err) {
                 reject('Could not generate admin token');
             }
@@ -34,7 +34,7 @@ exports.generateAdminJWT = generateAdminJWT;
 const generateVerificationJWT = (id) => {
     return new Promise((resolve, reject) => {
         const payload = { id, type: 'emailVerification' };
-        jsonwebtoken_1.default.sign(payload, process.env.SECRET_KEY, { expiresIn: '1h' }, (err, token) => {
+        jsonwebtoken_1.default.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' }, (err, token) => {
             if (err) {
                 reject('Could not generate verification token');
             }
@@ -47,7 +47,7 @@ const generateVerificationJWT = (id) => {
 exports.generateVerificationJWT = generateVerificationJWT;
 const verifyVerificationJWT = (token) => {
     return new Promise((resolve, reject) => {
-        jsonwebtoken_1.default.verify(token, process.env.SECRET_KEY, (err, decoded) => {
+        jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET, (err, decoded) => {
             if (err) {
                 reject('Invalid or expired token');
             }

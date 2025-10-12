@@ -1,21 +1,51 @@
 import { Router } from "express";
-import { VerificationController } from "@presentation/controllers/VerificationController";
+import { VerificationController } from "../controllers/VerificationController";
+import { DIContainer } from "../../infrastructure/DIContainer";
 
-const router = Router();
-const verificationController = new VerificationController();
+export class VerificationRoutes {
+  private router: Router;
+  private verificationController: VerificationController;
 
-/**
- * @route POST /verification/send
- * @description Envía correo de verificación a un usuario
- * @access Public
- */
-router.post("/send", verificationController.sendVerification);
+  constructor() {
+    this.router = Router();
+    const container = DIContainer.getInstance();
+    this.verificationController = new VerificationController(container);
+    this.setupRoutes();
+  }
 
-/**
- * @route GET /verification/verify
- * @description Verifica el email usando el token
- * @access Public
- */
-router.get("/verify", verificationController.verifyEmail);
+  private setupRoutes(): void {
+    /**
+     * @route POST /verification/send
+     * @description Envía token de verificación por email
+     * @access Public
+     */
+    this.router.post(
+      "/send",
+      this.verificationController.sendVerification.bind(this.verificationController)
+    );
 
-export { router as verificationRoutes };
+    /**
+     * @route GET /verification/verify
+     * @description Verifica email con token (query parameter)
+     * @access Public
+     */
+    this.router.get(
+      "/verify",
+      this.verificationController.verifyEmail.bind(this.verificationController)
+    );
+
+    /**
+     * @route POST /verification/resend
+     * @description Reenvía token de verificación
+     * @access Public
+     */
+    this.router.post(
+      "/resend",
+      this.verificationController.resendVerification.bind(this.verificationController)
+    );
+  }
+
+  public getRouter(): Router {
+    return this.router;
+  }
+}

@@ -3,7 +3,6 @@ export { router as apiRoutes };
 export { AppRoutes } from "./appRoutes";
 export { UserRoutes } from "./userRoutes";
 export { AuthRoutes } from "./authRoutes";
-export { CourseRoutes } from "./courseRoutes";
-export { EventRoutes } from "./eventRoutes";
-export { CertificateRoutes } from "./certificateRoutes";
+export { PasswordRecoveryRoutes } from "./passwordRecoveryRoutes";
+export { VerificationRoutes } from "./verificationRoutes";
 //# sourceMappingURL=index.d.ts.map

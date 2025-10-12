@@ -1,1 +1,0 @@
-{"version":3,"file":"certificateRoutes.d.ts","sourceRoot":"","sources":["../../../src/presentation/routes/certificateRoutes.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,MAAM,EAAE,MAAM,SAAS,CAAC;AASjC,qBAAa,iBAAiB;IAC5B,OAAO,CAAC,MAAM,CAAS;IACvB,OAAO,CAAC,qBAAqB,CAAwB;;IAQrD,OAAO,CAAC,WAAW;IAiIZ,SAAS,IAAI,MAAM;CAG3B"}

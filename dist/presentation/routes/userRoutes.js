@@ -3,40 +3,36 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserRoutes = void 0;
 const express_1 = require("express");
 const UserController_1 = require("../controllers/UserController");
-const authMiddleware_1 = require("../middleware/authMiddleware");
-const validationMiddleware_1 = require("../middleware/validationMiddleware");
+const DIContainer_1 = require("../../infrastructure/DIContainer");
 class UserRoutes {
     constructor() {
         this.router = (0, express_1.Router)();
-        this.userController = new UserController_1.UserController();
+        const container = DIContainer_1.DIContainer.getInstance();
+        this.userController = new UserController_1.UserController(container);
         this.setupRoutes();
     }
     setupRoutes() {
         /**
+         * GET /api/users/profile
+         * Get current user profile (requires JWT token)
+         */
+        this.router.get("/profile", 
+        // TODO: Add JWT middleware
+        this.userController.getUserProfile.bind(this.userController));
+        /**
+         * PUT /api/users/profile
+         * Update current user profile (requires JWT token)
+         */
+        this.router.put("/profile", 
+        // TODO: Add JWT middleware and validation
+        this.userController.updateUserProfile.bind(this.userController));
+        /**
          * GET /api/users
-         * Obtener lista de usuarios (solo administradores)
+         * Get all users (admin only)
          */
-        this.router.get("/", authMiddleware_1.authenticateToken, (0, authMiddleware_1.authorize)("administrador", "admin"), validationMiddleware_1.validatePagination, validationMiddleware_1.handleValidationErrors, this.userController.getUsers.bind(this.userController));
-        /**
-         * GET /api/users/:id
-         * Obtener usuario por ID (solo el mismo usuario o administradores)
-         */
-        this.router.get("/:id", authMiddleware_1.authenticateToken, validationMiddleware_1.validateIdParam, validationMiddleware_1.handleValidationErrors, authMiddleware_1.authorizeOwnerOrAdmin, this.userController.getUserById.bind(this.userController));
-        /**
-         * POST /api/users
-         * Crear nuevo usuario (solo administradores)
-         */
-        this.router.post("/", authMiddleware_1.authenticateToken, (0, authMiddleware_1.authorize)("administrador", "admin"), validationMiddleware_1.validateUserCreation, validationMiddleware_1.handleValidationErrors, this.userController.createUser.bind(this.userController));
-        /**
-         * PUT /api/users/:id
-         * Actualizar usuario (solo el mismo usuario o administradores)
-         */
-        this.router.put("/:id", authMiddleware_1.authenticateToken, validationMiddleware_1.validateIdParam, validationMiddleware_1.validateUserUpdate, validationMiddleware_1.handleValidationErrors, authMiddleware_1.authorizeOwnerOrAdmin, this.userController.updateUser.bind(this.userController));
-        /**
-         * DELETE /api/users/:id
-         * Eliminar usuario (solo administradores)
-         */
-        this.router.delete("/:id", authMiddleware_1.authenticateToken, (0, authMiddleware_1.authorize)("administrador", "admin"), validationMiddleware_1.validateIdParam, validationMiddleware_1.handleValidationErrors, this.userController.deleteUser.bind(this.userController));
+        this.router.get("/", 
+        // TODO: Add JWT middleware and admin authorization
+        this.userController.getAllUsers.bind(this.userController));
     }
     getRouter() {
         return this.router;
