@@ -21,6 +21,7 @@ import {
   globalErrorHandler,
   healthCheck,
 } from "./presentation/middleware/securityMiddleware";
+import { validateJWT } from "./presentation/middleware/jwtMiddleware";
 
 /**
  * Clase principal del servidor Express con Clean Architecture
@@ -46,7 +47,7 @@ export class Server {
 
     // Initialize controllers with dependency injection
     this.authController = new AuthController(this.container);
-    this.userController = new UserController(); // TODO: Add DI later
+    this.userController = new UserController(this.container);
     this.courseController = new CourseController(); // TODO: Add DI later
     this.eventController = new EventController(); // TODO: Add DI later
     this.certificateController = new CertificateController(); // TODO: Add DI later
@@ -200,23 +201,17 @@ export class Server {
   private setupUserRoutes(): void {
     this.app.get(
       "/api/users",
-      this.userController.getUsers.bind(this.userController)
+      this.userController.getAllUsers.bind(this.userController)
     );
     this.app.get(
-      "/api/users/:id",
-      this.userController.getUserById.bind(this.userController)
-    );
-    this.app.post(
-      "/api/users",
-      this.userController.createUser.bind(this.userController)
+      "/api/users/profile",
+      validateJWT,
+      this.userController.getUserProfile.bind(this.userController)
     );
     this.app.put(
-      "/api/users/:id",
-      this.userController.updateUser.bind(this.userController)
-    );
-    this.app.delete(
-      "/api/users/:id",
-      this.userController.deleteUser.bind(this.userController)
+      "/api/users/profile",
+      validateJWT,
+      this.userController.updateUserProfile.bind(this.userController)
     );
   }
 

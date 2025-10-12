@@ -1,17 +1,6 @@
 import { Router } from "express";
 import { UserController } from "../controllers/UserController";
-import {
-  authenticateToken,
-  authorize,
-  authorizeOwnerOrAdmin,
-} from "../middleware/authMiddleware";
-import {
-  handleValidationErrors,
-  validateUserCreation,
-  validateUserUpdate,
-  validatePagination,
-  validateIdParam,
-} from "../middleware/validationMiddleware";
+import { DIContainer } from "../../infrastructure/DIContainer";
 
 export class UserRoutes {
   private router: Router;
@@ -19,75 +8,40 @@ export class UserRoutes {
 
   constructor() {
     this.router = Router();
-    this.userController = new UserController();
+    const container = DIContainer.getInstance();
+    this.userController = new UserController(container);
     this.setupRoutes();
   }
 
   private setupRoutes(): void {
     /**
-     * GET /api/users
-     * Obtener lista de usuarios (solo administradores)
+     * GET /api/users/profile
+     * Get current user profile (requires JWT token)
      */
     this.router.get(
-      "/",
-      authenticateToken,
-      authorize("administrador", "admin"),
-      validatePagination,
-      handleValidationErrors,
-      this.userController.getUsers.bind(this.userController)
+      "/profile",
+      // TODO: Add JWT middleware
+      this.userController.getUserProfile.bind(this.userController)
     );
 
     /**
-     * GET /api/users/:id
-     * Obtener usuario por ID (solo el mismo usuario o administradores)
-     */
-    this.router.get(
-      "/:id",
-      authenticateToken,
-      validateIdParam,
-      handleValidationErrors,
-      authorizeOwnerOrAdmin,
-      this.userController.getUserById.bind(this.userController)
-    );
-
-    /**
-     * POST /api/users
-     * Crear nuevo usuario (solo administradores)
-     */
-    this.router.post(
-      "/",
-      authenticateToken,
-      authorize("administrador", "admin"),
-      validateUserCreation,
-      handleValidationErrors,
-      this.userController.createUser.bind(this.userController)
-    );
-
-    /**
-     * PUT /api/users/:id
-     * Actualizar usuario (solo el mismo usuario o administradores)
+     * PUT /api/users/profile
+     * Update current user profile (requires JWT token)
      */
     this.router.put(
-      "/:id",
-      authenticateToken,
-      validateIdParam,
-      validateUserUpdate,
-      handleValidationErrors,
-      authorizeOwnerOrAdmin,
-      this.userController.updateUser.bind(this.userController)
+      "/profile",
+      // TODO: Add JWT middleware and validation
+      this.userController.updateUserProfile.bind(this.userController)
     );
 
     /**
-     * DELETE /api/users/:id
-     * Eliminar usuario (solo administradores)
+     * GET /api/users
+     * Get all users (admin only)
      */
-    this.router.delete(
-      "/:id",
-      authenticateToken,
-      authorize("administrador", "admin"),
-      validateIdParam,
-      handleValidationErrors,
-      this.userController.deleteUser.bind(this.userController)
+    this.router.get(
+      "/",
+      // TODO: Add JWT middleware and admin authorization
+      this.userController.getAllUsers.bind(this.userController)
     );
   }
 

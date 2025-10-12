@@ -64,9 +64,9 @@ export class AuthController extends BaseController {
       // Generate JWT token based on role
       let token;
       if (cuenta.rol_cue === 'ADMINISTRADOR' || cuenta.rol_cue === 'MASTER') {
-        token = await generateAdminJWT(Number(cuenta.usuario.id_usu));
+        token = await generateAdminJWT(cuenta.usuario.id_usu);
       } else {
-        token = await generateJWT(Number(cuenta.usuario.id_usu));
+        token = await generateJWT(cuenta.usuario.id_usu);
       }
 
       const user = cuenta.usuario;

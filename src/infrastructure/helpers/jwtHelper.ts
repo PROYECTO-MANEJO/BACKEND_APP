@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 
-export const generateJWT = (id: number): Promise<string> => {
+export const generateJWT = (id: string): Promise<string> => {
     return new Promise((resolve, reject) => {
         const payload = { id };
         jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '1h' }, (err, token) => {
@@ -13,7 +13,7 @@ export const generateJWT = (id: number): Promise<string> => {
     });
 };
 
-export const generateAdminJWT = (id: number): Promise<string> => {
+export const generateAdminJWT = (id: string): Promise<string> => {
     return new Promise((resolve, reject) => {
         const payload = { id, role: 'admin' };
         jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '24h' }, (err, token) => {
@@ -26,7 +26,7 @@ export const generateAdminJWT = (id: number): Promise<string> => {
     });
 };
 
-export const generateVerificationJWT = (id: number): Promise<string> => {
+export const generateVerificationJWT = (id: string): Promise<string> => {
   return new Promise((resolve, reject) => {
     const payload = { id, type: 'emailVerification' };
     jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '1h' }, (err, token) => {
