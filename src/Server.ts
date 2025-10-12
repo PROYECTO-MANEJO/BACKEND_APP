@@ -1557,6 +1557,80 @@ export class Server {
       validateJWT,
       this.inscriptionController.getMyCourseInscriptions.bind(this.inscriptionController)
     );
+
+    // RUTAS DE CERTIFICADOS PARA ESTUDIANTES - Reutilizando CertificateController existente
+
+    // GET /api/student/certificates/my-certificates - Mis certificados
+    this.app.get(
+      "/api/student/certificates/my-certificates",
+      validateJWT, // Solo requiere autenticación, no documentos verificados
+      this.certificateController.getUserCertificates.bind(this.certificateController)
+    );
+
+    // GET /api/student/certificates/download/:tipo/:idParticipacion - Descargar certificado
+    this.app.get(
+      "/api/student/certificates/download/:tipo/:idParticipacion",
+      validateJWT,
+      this.certificateController.downloadCertificate.bind(this.certificateController)
+    );
+
+    // GET /api/student/certificates/completed-participations - Participaciones terminadas
+    this.app.get(
+      "/api/student/certificates/completed-participations",
+      validateJWT,
+      this.certificateController.getCompletedParticipations.bind(this.certificateController)
+    );
+
+    // POST /api/student/certificates/generate-event/:idParticipacion - Generar certificado de evento
+    this.app.post(
+      "/api/student/certificates/generate-event/:idParticipacion",
+      validateJWT,
+      this.certificateController.generateEventCertificate.bind(this.certificateController)
+    );
+
+    // POST /api/student/certificates/generate-course/:idParticipacion - Generar certificado de curso
+    this.app.post(
+      "/api/student/certificates/generate-course/:idParticipacion",
+      validateJWT,
+      this.certificateController.generateCourseCertificate.bind(this.certificateController)
+    );
+
+    // RUTAS LEGACY DE CERTIFICADOS PARA ESTUDIANTES
+
+    // GET /api/estudiante/certificados/mis-certificados - Legacy route
+    this.app.get(
+      "/api/estudiante/certificados/mis-certificados",
+      validateJWT,
+      this.certificateController.getUserCertificates.bind(this.certificateController)
+    );
+
+    // GET /api/estudiante/certificados/descargar/:tipo/:idParticipacion - Legacy route
+    this.app.get(
+      "/api/estudiante/certificados/descargar/:tipo/:idParticipacion",
+      validateJWT,
+      this.certificateController.downloadCertificate.bind(this.certificateController)
+    );
+
+    // GET /api/estudiante/certificados/participaciones-terminadas - Legacy route
+    this.app.get(
+      "/api/estudiante/certificados/participaciones-terminadas",
+      validateJWT,
+      this.certificateController.getCompletedParticipations.bind(this.certificateController)
+    );
+
+    // POST /api/estudiante/certificados/generar-evento/:idParticipacion - Legacy route
+    this.app.post(
+      "/api/estudiante/certificados/generar-evento/:idParticipacion",
+      validateJWT,
+      this.certificateController.generateEventCertificate.bind(this.certificateController)
+    );
+
+    // POST /api/estudiante/certificados/generar-curso/:idParticipacion - Legacy route
+    this.app.post(
+      "/api/estudiante/certificados/generar-curso/:idParticipacion",
+      validateJWT,
+      this.certificateController.generateCourseCertificate.bind(this.certificateController)
+    );
   }
 }
 
