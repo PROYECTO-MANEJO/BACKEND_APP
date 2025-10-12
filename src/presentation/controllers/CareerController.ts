@@ -8,6 +8,7 @@ export interface AuthenticatedRequest extends Request {
     rol: string;
     ced_usu: string;
   };
+  uid?: string;  // Agregamos la propiedad uid
 }
 
 export class CareerController extends BaseController {
@@ -86,10 +87,40 @@ export class CareerController extends BaseController {
   public async createCareer(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const { nom_car, des_car, nom_fac_per } = req.body;
-      const userRole = req.usuario?.rol;
+      const usuario_id = req.usuario?.id_usu || req.uid;
 
-      // Solo admin y master pueden crear carreras
-      if (!userRole || !['ADMINISTRADOR', 'MASTER'].includes(userRole)) {
+      if (!usuario_id) {
+        res.status(401).json({
+          success: false,
+          message: 'Usuario no autenticado'
+        });
+        return;
+      }
+
+      const prisma = this.container.getPrismaClient();
+
+      // Verificar rol del usuario
+      const usuario = await prisma.usuario.findUnique({
+        where: { id_usu: usuario_id },
+        include: {
+          cuentas: {
+            select: { rol_cue: true }
+          }
+        }
+      });
+
+      if (!usuario) {
+        res.status(404).json({
+          success: false,
+          message: 'Usuario no encontrado'
+        });
+        return;
+      }
+
+      const roles = usuario.cuentas.map(cuenta => cuenta.rol_cue);
+      const esAdmin = roles.includes('ADMINISTRADOR') || roles.includes('MASTER');
+
+      if (!esAdmin) {
         res.status(403).json({
           success: false,
           message: 'No tienes permisos para crear carreras'
@@ -104,8 +135,6 @@ export class CareerController extends BaseController {
         });
         return;
       }
-
-      const prisma = this.container.getPrismaClient();
 
       // Verificar si ya existe una carrera con el mismo nombre
       const existingCarrera = await prisma.carrera.findFirst({
@@ -156,10 +185,40 @@ export class CareerController extends BaseController {
     try {
       const { id } = req.params;
       const { nom_car, des_car, nom_fac_per } = req.body;
-      const userRole = req.usuario?.rol;
+      const usuario_id = req.usuario?.id_usu || req.uid;
 
-      // Solo admin y master pueden actualizar carreras
-      if (!userRole || !['ADMINISTRADOR', 'MASTER'].includes(userRole)) {
+      if (!usuario_id) {
+        res.status(401).json({
+          success: false,
+          message: 'Usuario no autenticado'
+        });
+        return;
+      }
+
+      const prisma = this.container.getPrismaClient();
+
+      // Verificar rol del usuario
+      const usuario = await prisma.usuario.findUnique({
+        where: { id_usu: usuario_id },
+        include: {
+          cuentas: {
+            select: { rol_cue: true }
+          }
+        }
+      });
+
+      if (!usuario) {
+        res.status(404).json({
+          success: false,
+          message: 'Usuario no encontrado'
+        });
+        return;
+      }
+
+      const roles = usuario.cuentas.map(cuenta => cuenta.rol_cue);
+      const esAdmin = roles.includes('ADMINISTRADOR') || roles.includes('MASTER');
+
+      if (!esAdmin) {
         res.status(403).json({
           success: false,
           message: 'No tienes permisos para actualizar carreras'
@@ -174,8 +233,6 @@ export class CareerController extends BaseController {
         });
         return;
       }
-
-      const prisma = this.container.getPrismaClient();
 
       // Verificar si la carrera existe
       const existingCarrera = await prisma.carrera.findUnique({

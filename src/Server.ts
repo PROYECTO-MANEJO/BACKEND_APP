@@ -11,6 +11,9 @@ import { HomepageController } from "./presentation/controllers/HomepageControlle
 import { ChangeRequestController } from "./presentation/controllers/ChangeRequestController";
 import { InscriptionController } from "./presentation/controllers/InscriptionController";
 import { AdminController } from "./presentation/controllers/AdminController";
+import { CategoryController } from "./presentation/controllers/CategoryController";
+import { OrganizerController } from "./presentation/controllers/OrganizerController";
+import { CareerController } from "./presentation/controllers/CareerController";
 
 // Importar rutas
 import { AuthRoutes } from "./presentation/routes/authRoutes";
@@ -43,6 +46,9 @@ export class Server {
   private changeRequestController: ChangeRequestController;
   private inscriptionController: InscriptionController;
   private adminController: AdminController;
+  private categoryController: CategoryController;
+  private organizerController: OrganizerController;
+  private careerController: CareerController;
 
   constructor(port: number = 3000) {
     this.port = port;
@@ -61,6 +67,9 @@ export class Server {
     this.changeRequestController = new ChangeRequestController(this.container);
     this.inscriptionController = new InscriptionController(this.container);
     this.adminController = new AdminController(this.container);
+    this.categoryController = new CategoryController(this.container);
+    this.organizerController = new OrganizerController(this.container);
+    this.careerController = new CareerController(this.container);
 
     this.setupMiddlewares();
     this.setupRoutes();
@@ -233,6 +242,7 @@ export class Server {
    * Configurar rutas de cursos
    */
   private setupCourseRoutes(): void {
+    // RUTAS PÚBLICAS DE CURSOS
     this.app.get(
       "/api/courses",
       this.courseController.getCourses.bind(this.courseController)
@@ -241,6 +251,68 @@ export class Server {
       "/api/courses/:id",
       this.courseController.getCourseById.bind(this.courseController)
     );
+
+    // RUTAS ADMINISTRATIVAS DE CURSOS (requieren JWT)
+    this.app.get(
+      "/api/cursos",
+      validateJWT,
+      this.courseController.getCursosAdmin.bind(this.courseController)
+    );
+    this.app.post(
+      "/api/cursos",
+      validateJWT,
+      this.courseController.createCourse.bind(this.courseController)
+    );
+    this.app.put(
+      "/api/cursos/:id",
+      validateJWT,
+      this.courseController.updateCourse.bind(this.courseController)
+    );
+    this.app.delete(
+      "/api/cursos/:id",
+      validateJWT,
+      this.courseController.deleteCourse.bind(this.courseController)
+    );
+    this.app.put(
+      "/api/cursos/:id/cerrar",
+      validateJWT,
+      this.courseController.closeCourse.bind(this.courseController)
+    );
+
+    // RUTAS DE CATEGORÍAS
+    this.app.get(
+      "/api/categorias",
+      this.categoryController.getCategorias.bind(this.categoryController)
+    );
+    this.app.post(
+      "/api/categorias",
+      validateJWT,
+      this.categoryController.createCategoria.bind(this.categoryController)
+    );
+
+    // RUTAS DE ORGANIZADORES
+    this.app.get(
+      "/api/organizadores",
+      this.organizerController.getOrganizadores.bind(this.organizerController)
+    );
+    this.app.post(
+      "/api/organizadores",
+      validateJWT,
+      this.organizerController.createOrganizador.bind(this.organizerController)
+    );
+
+    // RUTAS DE CARRERAS
+    this.app.get(
+      "/api/carreras",
+      this.careerController.getAllCareers.bind(this.careerController)
+    );
+    this.app.post(
+      "/api/carreras",
+      validateJWT,
+      this.careerController.createCareer.bind(this.careerController)
+    );
+
+    // LEGACY ROUTES FOR COMPATIBILITY
     this.app.post(
       "/api/courses",
       this.courseController.createCourse.bind(this.courseController)
@@ -251,6 +323,7 @@ export class Server {
    * Configurar rutas de eventos
    */
   private setupEventRoutes(): void {
+    // RUTAS PÚBLICAS DE EVENTOS
     this.app.get(
       "/api/events",
       this.eventController.getEvents.bind(this.eventController)
@@ -259,6 +332,35 @@ export class Server {
       "/api/events/:id",
       this.eventController.getEventById.bind(this.eventController)
     );
+
+    // RUTAS ADMINISTRATIVAS DE EVENTOS (requieren JWT)
+    this.app.get(
+      "/api/eventos",
+      validateJWT,
+      this.eventController.getEventosAdmin.bind(this.eventController)
+    );
+    this.app.post(
+      "/api/eventos",
+      validateJWT,
+      this.eventController.createEvent.bind(this.eventController)
+    );
+    this.app.put(
+      "/api/eventos/:id",
+      validateJWT,
+      this.eventController.updateEvent.bind(this.eventController)
+    );
+    this.app.delete(
+      "/api/eventos/:id",
+      validateJWT,
+      this.eventController.deleteEvent.bind(this.eventController)
+    );
+    this.app.put(
+      "/api/eventos/:id/cerrar",
+      validateJWT,
+      this.eventController.closeEvent.bind(this.eventController)
+    );
+
+    // LEGACY ROUTES FOR COMPATIBILITY
     this.app.post(
       "/api/events",
       this.eventController.createEvent.bind(this.eventController)
