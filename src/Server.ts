@@ -48,7 +48,7 @@ export class Server {
     // Initialize controllers with dependency injection
     this.authController = new AuthController(this.container);
     this.userController = new UserController(this.container);
-    this.courseController = new CourseController(); // TODO: Add DI later
+    this.courseController = new CourseController(this.container);
     this.eventController = new EventController(); // TODO: Add DI later
     this.certificateController = new CertificateController(); // TODO: Add DI later
 
@@ -230,30 +230,6 @@ export class Server {
     this.app.post(
       "/api/courses",
       this.courseController.createCourse.bind(this.courseController)
-    );
-    this.app.put(
-      "/api/courses/:id",
-      this.courseController.updateCourse.bind(this.courseController)
-    );
-    this.app.delete(
-      "/api/courses/:id",
-      this.courseController.deleteCourse.bind(this.courseController)
-    );
-    this.app.post(
-      "/api/courses/:id/enroll",
-      this.courseController.enrollToCourse.bind(this.courseController)
-    );
-    this.app.get(
-      "/api/courses/:id/enrollments",
-      this.courseController.getCourseEnrollments.bind(this.courseController)
-    );
-    this.app.get(
-      "/api/courses/available",
-      this.courseController.getAvailableCourses.bind(this.courseController)
-    );
-    this.app.get(
-      "/api/courses/my-courses",
-      this.courseController.getUserCourses.bind(this.courseController)
     );
   }
 
