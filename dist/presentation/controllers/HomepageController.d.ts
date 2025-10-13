@@ -11,40 +11,42 @@ export interface AuthenticatedRequest extends Request {
 }
 export declare class HomepageController extends BaseController {
     private container;
+    private homepageRepository;
+    private homepageService;
     constructor(container: DIContainer);
     /**
      * GET /api/homepage/content
-     * Obtener contenido de la página principal
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
     getContent(req: Request, res: Response): Promise<void>;
     /**
      * PUT /api/homepage/content
-     * Actualizar contenido de la página principal
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
     updateContent(req: AuthenticatedRequest, res: Response): Promise<void>;
     /**
-     * POST /api/homepage/image/:imageType (o /api/pagina-principal/imagen/:tipoImagen)
-     * Subir imagen específica
+     * POST /api/homepage/image/:imageType
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
     uploadImage(req: AuthenticatedRequest, res: Response): Promise<void>;
     /**
-     * GET /api/homepage/image/:imageType (o /api/pagina-principal/imagen/:tipoImagen)
-     * Obtener imagen específica
+     * GET /api/homepage/image/:imageType
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
     getImage(req: Request, res: Response): Promise<void>;
     /**
      * GET /api/homepage/public-content
-     * Obtener eventos y cursos para usuarios NO autenticados (Homepage sin login)
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
     getPublicContent(req: Request, res: Response): Promise<void>;
     /**
      * GET /api/homepage/student-content
-     * Obtener eventos y cursos para ESTUDIANTES (por carrera + públicos)
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
     getStudentContent(req: AuthenticatedRequest, res: Response): Promise<void>;
     /**
      * GET /api/homepage/external-content
-     * Obtener eventos y cursos para USUARIOS EXTERNOS (solo públicos)
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
     getExternalContent(req: Request, res: Response): Promise<void>;
 }

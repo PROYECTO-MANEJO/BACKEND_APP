@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CareerRoutes = exports.HomepageRoutes = exports.ParticipationRoutes = exports.InscriptionRoutes = exports.DeveloperRoutes = exports.ChangeRequestRoutes = exports.VerificationRoutes = exports.PasswordRecoveryRoutes = exports.AuthRoutes = exports.UserRoutes = exports.AppRoutes = exports.apiRoutes = void 0;
+exports.CareerRoutes = exports.homepageRoutes = exports.ParticipationRoutes = exports.InscriptionRoutes = exports.DeveloperRoutes = exports.ChangeRequestRoutes = exports.VerificationRoutes = exports.PasswordRecoveryRoutes = exports.AuthRoutes = exports.UserRoutes = exports.AppRoutes = exports.apiRoutes = void 0;
 const express_1 = require("express");
 const appRoutes_1 = require("./appRoutes");
 // Crear router principal
@@ -29,7 +29,7 @@ Object.defineProperty(exports, "InscriptionRoutes", { enumerable: true, get: fun
 var participationRoutes_1 = require("./participationRoutes");
 Object.defineProperty(exports, "ParticipationRoutes", { enumerable: true, get: function () { return participationRoutes_1.ParticipationRoutes; } });
 var homepageRoutes_1 = require("./homepageRoutes");
-Object.defineProperty(exports, "HomepageRoutes", { enumerable: true, get: function () { return homepageRoutes_1.HomepageRoutes; } });
+Object.defineProperty(exports, "homepageRoutes", { enumerable: true, get: function () { return homepageRoutes_1.homepageRoutes; } });
 var careerRoutes_1 = require("./careerRoutes");
 Object.defineProperty(exports, "CareerRoutes", { enumerable: true, get: function () { return careerRoutes_1.CareerRoutes; } });
 //# sourceMappingURL=index.js.map

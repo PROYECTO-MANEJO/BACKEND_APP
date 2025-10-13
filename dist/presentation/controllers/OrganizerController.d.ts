@@ -1,5 +1,5 @@
-import { Request, Response } from 'express';
-import { DIContainer } from '../../infrastructure/DIContainer';
+import { Request, Response } from "express";
+import { DIContainer } from "../../infrastructure/DIContainer";
 interface AuthenticatedRequest extends Request {
     usuario?: {
         id_usu: string;
@@ -9,6 +9,7 @@ interface AuthenticatedRequest extends Request {
 }
 export declare class OrganizerController {
     private container;
+    private organizerRepository;
     constructor(container: DIContainer);
     /**
      * GET /api/organizadores
@@ -20,6 +21,21 @@ export declare class OrganizerController {
      * Crear nuevo organizador (Admin only)
      */
     createOrganizador(req: AuthenticatedRequest, res: Response): Promise<void>;
+    /**
+     * GET /api/organizadores/:cedula
+     * Obtener organizador por cédula
+     */
+    getOrganizadorByCedula(req: AuthenticatedRequest, res: Response): Promise<void>;
+    /**
+     * PUT /api/organizadores/:cedula
+     * Actualizar organizador (Admin only)
+     */
+    updateOrganizador(req: AuthenticatedRequest, res: Response): Promise<void>;
+    /**
+     * DELETE /api/organizadores/:cedula
+     * Eliminar organizador (Admin only)
+     */
+    deleteOrganizador(req: AuthenticatedRequest, res: Response): Promise<void>;
 }
 export {};
 //# sourceMappingURL=OrganizerController.d.ts.map

@@ -56,7 +56,8 @@ class Server {
         this.userManagementController = new UserManagementController_1.UserManagementController(this.container);
         this.documentVerificationController = new DocumentVerificationController_1.DocumentVerificationController(this.container);
         this.inscriptionManagementController = new InscriptionManagementController_1.InscriptionManagementController(this.container);
-        this.participationManagementController = new ParticipationManagementController_1.ParticipationManagementController(this.container);
+        this.participationManagementController =
+            new ParticipationManagementController_1.ParticipationManagementController(this.container);
         this.certificateManagementController = new CertificateManagementController_1.CertificateManagementController(this.container);
         this.reportsController = new ReportsController_1.ReportsController(this.container);
         this.studentDocumentController = new StudentDocumentController_1.StudentDocumentController(this.container);
@@ -150,8 +151,8 @@ class Server {
                     "✅ JWT Authentication",
                     "✅ CRUD Operations for Users, Courses, Events, Certificates",
                     "✅ Input Validation & Sanitization",
-                    "✅ Error Handling & Logging"
-                ]
+                    "✅ Error Handling & Logging",
+                ],
             });
         });
     }
@@ -171,7 +172,7 @@ class Server {
         this.app.post("/api/auth/resend-verification", this.authController.resendVerification.bind(this.authController));
         this.app.post("/api/auth/refresh-token", this.authController.refreshToken.bind(this.authController));
         this.app.post("/api/auth/createAdmin", jwtMiddleware_1.validateJWT, // Requiere autenticación
-        (0, jwtMiddleware_1.validateRoles)('MASTER'), // Solo MASTER puede crear administradores
+        (0, jwtMiddleware_1.validateRoles)("MASTER"), // Solo MASTER puede crear administradores
         this.authController.createAdmin.bind(this.authController));
     }
     /**
@@ -181,7 +182,7 @@ class Server {
         this.app.get("/api/users", this.userController.getAllUsers.bind(this.userController));
         this.app.get("/api/users/profile", jwtMiddleware_1.validateJWT, this.userController.getUserProfile.bind(this.userController));
         this.app.put("/api/users/profile", jwtMiddleware_1.validateJWT, this.userController.updateUserProfile.bind(this.userController));
-        this.app.get("/api/users/admins", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('MASTER'), // Solo MASTER puede ver la lista de administradores
+        this.app.get("/api/users/admins", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("MASTER"), // Solo MASTER puede ver la lista de administradores
         this.userController.getAdmins.bind(this.userController));
     }
     /**
@@ -190,6 +191,8 @@ class Server {
     setupCourseRoutes() {
         // RUTAS PÚBLICAS DE CURSOS
         this.app.get("/api/courses", this.courseController.getCourses.bind(this.courseController));
+        this.app.get("/api/courses/available", this.courseController.getAvailableCourses.bind(this.courseController));
+        this.app.get("/api/courses/my-courses", jwtMiddleware_1.validateJWT, this.courseController.getMyCourses.bind(this.courseController));
         this.app.get("/api/courses/:id", this.courseController.getCourseById.bind(this.courseController));
         // RUTAS ADMINISTRATIVAS DE CURSOS (requieren JWT)
         this.app.get("/api/cursos", jwtMiddleware_1.validateJWT, this.courseController.getCursosAdmin.bind(this.courseController));
@@ -215,6 +218,8 @@ class Server {
     setupEventRoutes() {
         // RUTAS PÚBLICAS DE EVENTOS
         this.app.get("/api/events", this.eventController.getEvents.bind(this.eventController));
+        this.app.get("/api/events/available", this.eventController.getAvailableEvents.bind(this.eventController));
+        this.app.get("/api/events/my-events", jwtMiddleware_1.validateJWT, this.eventController.getMyEvents.bind(this.eventController));
         this.app.get("/api/events/:id", this.eventController.getEventById.bind(this.eventController));
         // RUTAS ADMINISTRATIVAS DE EVENTOS (requieren JWT)
         this.app.get("/api/eventos", jwtMiddleware_1.validateJWT, this.eventController.getEventosAdmin.bind(this.eventController));
@@ -258,36 +263,37 @@ class Server {
         this.app.get("/api/inscriptions/my-courses", jwtMiddleware_1.validateJWT, this.inscriptionController.getMyCourseInscriptions.bind(this.inscriptionController));
         // RUTAS LEGACY PARA COMPATIBILIDAD CON FRONTEND
         // Configurar multer para subida de archivos
-        const multer = require('multer');
-        const path = require('path');
+        const multer = require("multer");
+        const path = require("path");
         const storage = multer.diskStorage({
             destination: (req, file, cb) => {
-                cb(null, 'uploads/comprobantes/');
+                cb(null, "uploads/comprobantes/");
             },
             filename: (req, file, cb) => {
-                const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-                cb(null, 'comprobante-' + uniqueSuffix + path.extname(file.originalname));
-            }
+                const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+                cb(null, "comprobante-" + uniqueSuffix + path.extname(file.originalname));
+            },
         });
         const uploadReceipt = multer({
             storage: storage,
             limits: {
-                fileSize: 5 * 1024 * 1024 // 5MB máximo
+                fileSize: 5 * 1024 * 1024, // 5MB máximo
             },
             fileFilter: (req, file, cb) => {
                 // Permitir archivos PDF e imágenes
-                if (file.mimetype === 'application/pdf' || file.mimetype.startsWith('image/')) {
+                if (file.mimetype === "application/pdf" ||
+                    file.mimetype.startsWith("image/")) {
                     cb(null, true);
                 }
                 else {
-                    cb(new Error('Solo se permiten archivos PDF e imágenes'), false);
+                    cb(new Error("Solo se permiten archivos PDF e imágenes"), false);
                 }
-            }
+            },
         });
         // Inscripción a evento con archivo
-        this.app.post("/api/inscripciones", jwtMiddleware_1.validateJWT, uploadReceipt.single('comprobantePago'), this.inscriptionController.enrollInEventWithFile.bind(this.inscriptionController));
+        this.app.post("/api/inscripciones", jwtMiddleware_1.validateJWT, uploadReceipt.single("comprobantePago"), this.inscriptionController.enrollInEventWithFile.bind(this.inscriptionController));
         // Inscripción a curso con archivo
-        this.app.post("/api/inscripcionesCursos", jwtMiddleware_1.validateJWT, uploadReceipt.single('comprobantePago'), this.inscriptionController.enrollInCourseWithFile.bind(this.inscriptionController));
+        this.app.post("/api/inscripcionesCursos", jwtMiddleware_1.validateJWT, uploadReceipt.single("comprobantePago"), this.inscriptionController.enrollInCourseWithFile.bind(this.inscriptionController));
         // Visualizar comprobante de pago de evento
         this.app.get("/api/inscripciones/evento/comprobante/:inscripcionId", jwtMiddleware_1.validateJWT, this.inscriptionController.getEventPaymentReceipt.bind(this.inscriptionController));
         // Visualizar comprobante de pago de curso
@@ -302,17 +308,17 @@ class Server {
         const upload = (0, multer_1.default)({
             storage: storage,
             limits: {
-                fileSize: 5 * 1024 * 1024 // 5MB máximo
+                fileSize: 5 * 1024 * 1024, // 5MB máximo
             },
             fileFilter: (req, file, cb) => {
                 // Verificar que sea una imagen
-                if (file.mimetype.startsWith('image/')) {
+                if (file.mimetype.startsWith("image/")) {
                     cb(null, true);
                 }
                 else {
-                    cb(new Error('Solo se permiten archivos de imagen'), false);
+                    cb(new Error("Solo se permiten archivos de imagen"), false);
                 }
-            }
+            },
         });
         // RUTAS REFACTORIZADAS (NUEVAS)
         // GET /api/homepage/content - Obtener contenido
@@ -320,7 +326,7 @@ class Server {
         // PUT /api/homepage/content - Actualizar contenido
         this.app.put("/api/homepage/content", jwtMiddleware_1.validateJWT, this.homepageController.updateContent.bind(this.homepageController));
         // POST /api/homepage/image/:imageType - Subir imagen
-        this.app.post("/api/homepage/image/:imageType", jwtMiddleware_1.validateJWT, upload.single('imagen'), this.homepageController.uploadImage.bind(this.homepageController));
+        this.app.post("/api/homepage/image/:imageType", jwtMiddleware_1.validateJWT, upload.single("imagen"), this.homepageController.uploadImage.bind(this.homepageController));
         // GET /api/homepage/image/:imageType - Obtener imagen
         this.app.get("/api/homepage/image/:imageType", this.homepageController.getImage.bind(this.homepageController));
         // GET /api/homepage/external-content - Para usuarios externos (solo públicos)
@@ -331,7 +337,7 @@ class Server {
         // PUT /api/pagina-principal/contenido
         this.app.put("/api/pagina-principal/contenido", jwtMiddleware_1.validateJWT, this.homepageController.updateContent.bind(this.homepageController));
         // POST /api/pagina-principal/imagen/:tipoImagen
-        this.app.post("/api/pagina-principal/imagen/:tipoImagen", jwtMiddleware_1.validateJWT, upload.single('imagen'), this.homepageController.uploadImage.bind(this.homepageController));
+        this.app.post("/api/pagina-principal/imagen/:tipoImagen", jwtMiddleware_1.validateJWT, upload.single("imagen"), this.homepageController.uploadImage.bind(this.homepageController));
         // GET /api/pagina-principal/imagen/:tipoImagen
         this.app.get("/api/pagina-principal/imagen/:tipoImagen", this.homepageController.getImage.bind(this.homepageController));
         // GET /api/pagina-principal/eventos-cursos-disponibles (para usuarios normales)
@@ -369,19 +375,19 @@ class Server {
         this.app.get("/api/solicitudes-cambio/mis-estadisticas", jwtMiddleware_1.validateJWT, this.changeRequestController.getMyStatistics.bind(this.changeRequestController));
         // RUTAS DE ADMINISTRACIÓN (ADMIN/MASTER)
         // GET /api/solicitudes-cambio/admin/todas
-        this.app.get("/api/solicitudes-cambio/admin/todas", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.changeRequestController.getAllChangeRequests.bind(this.changeRequestController));
-        // GET /api/solicitudes-cambio/admin/desarrolladores  
-        this.app.get("/api/solicitudes-cambio/admin/desarrolladores", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.changeRequestController.getDevelopers.bind(this.changeRequestController));
+        this.app.get("/api/solicitudes-cambio/admin/todas", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.changeRequestController.getAllChangeRequests.bind(this.changeRequestController));
+        // GET /api/solicitudes-cambio/admin/desarrolladores
+        this.app.get("/api/solicitudes-cambio/admin/desarrolladores", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.changeRequestController.getDevelopers.bind(this.changeRequestController));
         // GET /api/solicitudes-cambio/admin/estadisticas
-        this.app.get("/api/solicitudes-cambio/admin/estadisticas", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.changeRequestController.getAdminStatistics.bind(this.changeRequestController));
+        this.app.get("/api/solicitudes-cambio/admin/estadisticas", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.changeRequestController.getAdminStatistics.bind(this.changeRequestController));
         // GET /api/solicitudes-cambio/admin/solicitud/:id - Obtener solicitud específica
-        this.app.get("/api/solicitudes-cambio/admin/solicitud/:id", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.changeRequestController.getChangeRequestById.bind(this.changeRequestController));
+        this.app.get("/api/solicitudes-cambio/admin/solicitud/:id", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.changeRequestController.getChangeRequestById.bind(this.changeRequestController));
         // PUT /api/solicitudes-cambio/admin/:id/aprobar - Aprobar solicitud
-        this.app.put("/api/solicitudes-cambio/admin/:id/aprobar", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.changeRequestController.approveChangeRequest.bind(this.changeRequestController));
+        this.app.put("/api/solicitudes-cambio/admin/:id/aprobar", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.changeRequestController.approveChangeRequest.bind(this.changeRequestController));
         // PUT /api/solicitudes-cambio/admin/:id/rechazar - Rechazar solicitud
-        this.app.put("/api/solicitudes-cambio/admin/:id/rechazar", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.changeRequestController.rejectChangeRequest.bind(this.changeRequestController));
+        this.app.put("/api/solicitudes-cambio/admin/:id/rechazar", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.changeRequestController.rejectChangeRequest.bind(this.changeRequestController));
         // PUT /api/solicitudes-cambio/admin/:id/actualizar - Actualizar solicitud
-        this.app.put("/api/solicitudes-cambio/admin/:id/actualizar", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.changeRequestController.updateChangeRequestMaster.bind(this.changeRequestController));
+        this.app.put("/api/solicitudes-cambio/admin/:id/actualizar", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.changeRequestController.updateChangeRequestMaster.bind(this.changeRequestController));
     }
     /**
      * Configurar manejo de errores
@@ -415,7 +421,7 @@ class Server {
                     console.log("🚀 ========================================");
                     resolve();
                 });
-                server.on('error', (error) => {
+                server.on("error", (error) => {
                     console.error("❌ Error al iniciar el servidor:", error);
                     reject(error);
                 });
@@ -481,38 +487,38 @@ class Server {
     setupInscriptionManagementRoutes() {
         // RUTAS DE GESTIÓN DE INSCRIPCIONES - Requieren JWT y permisos admin
         // GET /api/administracion/cursos-eventos - Obtener cursos y eventos administrables
-        this.app.get("/api/administracion/cursos-eventos", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.inscriptionManagementController.getCoursesAndEventsForManagement.bind(this.inscriptionManagementController));
+        this.app.get("/api/administracion/cursos-eventos", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.inscriptionManagementController.getCoursesAndEventsForManagement.bind(this.inscriptionManagementController));
         // GET /api/administracion/evento/:idEvento - Detalles de evento para admin
-        this.app.get("/api/administracion/evento/:idEvento", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.inscriptionManagementController.getEventDetailsForAdmin.bind(this.inscriptionManagementController));
+        this.app.get("/api/administracion/evento/:idEvento", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.inscriptionManagementController.getEventDetailsForAdmin.bind(this.inscriptionManagementController));
         // GET /api/administracion/curso/:idCurso - Detalles de curso para admin
-        this.app.get("/api/administracion/curso/:idCurso", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.inscriptionManagementController.getCourseDetailsForAdmin.bind(this.inscriptionManagementController));
+        this.app.get("/api/administracion/curso/:idCurso", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.inscriptionManagementController.getCourseDetailsForAdmin.bind(this.inscriptionManagementController));
         // GET /api/admin/inscriptions/events/pending - Inscripciones de eventos pendientes
-        this.app.get("/api/admin/inscriptions/events/pending", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.inscriptionManagementController.getPendingEventInscriptions.bind(this.inscriptionManagementController));
+        this.app.get("/api/admin/inscriptions/events/pending", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.inscriptionManagementController.getPendingEventInscriptions.bind(this.inscriptionManagementController));
         // GET /api/admin/inscriptions/courses/pending - Inscripciones de cursos pendientes
-        this.app.get("/api/admin/inscriptions/courses/pending", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.inscriptionManagementController.getPendingCourseInscriptions.bind(this.inscriptionManagementController));
+        this.app.get("/api/admin/inscriptions/courses/pending", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.inscriptionManagementController.getPendingCourseInscriptions.bind(this.inscriptionManagementController));
         // PUT /api/admin/inscriptions/events/:id/approve - Aprobar inscripción de evento
-        this.app.put("/api/admin/inscriptions/events/:id/approve", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.inscriptionManagementController.approveEventInscription.bind(this.inscriptionManagementController));
+        this.app.put("/api/admin/inscriptions/events/:id/approve", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.inscriptionManagementController.approveEventInscription.bind(this.inscriptionManagementController));
         // PUT /api/admin/inscriptions/courses/:id/approve - Aprobar inscripción de curso
-        this.app.put("/api/admin/inscriptions/courses/:id/approve", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.inscriptionManagementController.approveCourseInscription.bind(this.inscriptionManagementController));
+        this.app.put("/api/admin/inscriptions/courses/:id/approve", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.inscriptionManagementController.approveCourseInscription.bind(this.inscriptionManagementController));
         // PUT /api/admin/inscriptions/events/:id/reject - Rechazar inscripción de evento
-        this.app.put("/api/admin/inscriptions/events/:id/reject", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.inscriptionManagementController.rejectEventInscription.bind(this.inscriptionManagementController));
+        this.app.put("/api/admin/inscriptions/events/:id/reject", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.inscriptionManagementController.rejectEventInscription.bind(this.inscriptionManagementController));
         // PUT /api/admin/inscriptions/courses/:id/reject - Rechazar inscripción de curso
-        this.app.put("/api/admin/inscriptions/courses/:id/reject", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.inscriptionManagementController.rejectCourseInscription.bind(this.inscriptionManagementController));
+        this.app.put("/api/admin/inscriptions/courses/:id/reject", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.inscriptionManagementController.rejectCourseInscription.bind(this.inscriptionManagementController));
         // GET /api/admin/inscriptions/events/:id/receipt - Descargar comprobante de evento
-        this.app.get("/api/admin/inscriptions/events/:id/receipt", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.inscriptionManagementController.downloadEventReceipt.bind(this.inscriptionManagementController));
+        this.app.get("/api/admin/inscriptions/events/:id/receipt", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.inscriptionManagementController.downloadEventReceipt.bind(this.inscriptionManagementController));
         // GET /api/admin/inscriptions/courses/:id/receipt - Descargar comprobante de curso
-        this.app.get("/api/admin/inscriptions/courses/:id/receipt", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.inscriptionManagementController.downloadCourseReceipt.bind(this.inscriptionManagementController));
+        this.app.get("/api/admin/inscriptions/courses/:id/receipt", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.inscriptionManagementController.downloadCourseReceipt.bind(this.inscriptionManagementController));
         // GET /api/admin/inscriptions/stats - Estadísticas de inscripciones
-        this.app.get("/api/admin/inscriptions/stats", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.inscriptionManagementController.getInscriptionStats.bind(this.inscriptionManagementController));
+        this.app.get("/api/admin/inscriptions/stats", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.inscriptionManagementController.getInscriptionStats.bind(this.inscriptionManagementController));
         // RUTAS LEGACY PARA COMPATIBILIDAD
         // PUT /api/administracion/evento/inscripcion/:idInscripcion/aprobar - Legacy route
-        this.app.put("/api/administracion/evento/inscripcion/:idInscripcion/aprobar", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.inscriptionManagementController.approveEventInscription.bind(this.inscriptionManagementController));
+        this.app.put("/api/administracion/evento/inscripcion/:idInscripcion/aprobar", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.inscriptionManagementController.approveEventInscription.bind(this.inscriptionManagementController));
         // PUT /api/administracion/evento/inscripcion/:idInscripcion/rechazar - Legacy route
-        this.app.put("/api/administracion/evento/inscripcion/:idInscripcion/rechazar", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.inscriptionManagementController.rejectEventInscription.bind(this.inscriptionManagementController));
+        this.app.put("/api/administracion/evento/inscripcion/:idInscripcion/rechazar", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.inscriptionManagementController.rejectEventInscription.bind(this.inscriptionManagementController));
         // PUT /api/administracion/curso/inscripcion/:idInscripcion/aprobar - Legacy route
-        this.app.put("/api/administracion/curso/inscripcion/:idInscripcion/aprobar", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.inscriptionManagementController.approveCourseInscription.bind(this.inscriptionManagementController));
+        this.app.put("/api/administracion/curso/inscripcion/:idInscripcion/aprobar", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.inscriptionManagementController.approveCourseInscription.bind(this.inscriptionManagementController));
         // PUT /api/administracion/curso/inscripcion/:idInscripcion/rechazar - Legacy route
-        this.app.put("/api/administracion/curso/inscripcion/:idInscripcion/rechazar", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.inscriptionManagementController.rejectCourseInscription.bind(this.inscriptionManagementController));
+        this.app.put("/api/administracion/curso/inscripcion/:idInscripcion/rechazar", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.inscriptionManagementController.rejectCourseInscription.bind(this.inscriptionManagementController));
         // PUT /inscripciones/evento/aprobar-inscripcion/:id - Legacy route
         this.app.put("/api/inscripciones/evento/aprobar-inscripcion/:id", jwtMiddleware_1.validateJWT, this.inscriptionManagementController.approveEventInscription.bind(this.inscriptionManagementController));
         // PUT /inscripciones-cursos/aprobar-inscripcion/:id - Legacy route
@@ -524,13 +530,13 @@ class Server {
     setupParticipationManagementRoutes() {
         // RUTAS DE GESTIÓN DE PARTICIPACIONES - Requieren JWT y permisos admin
         // GET /api/participaciones/cursos/:idCurso - Obtener participaciones de curso
-        this.app.get("/api/participaciones/cursos/:idCurso", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.participationManagementController.getCourseParticipations.bind(this.participationManagementController));
+        this.app.get("/api/participaciones/cursos/:idCurso", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.participationManagementController.getCourseParticipations.bind(this.participationManagementController));
         // PUT /api/participaciones/cursos/:idCurso/inscripcion/:idInscripcion - Actualizar participación de curso
-        this.app.put("/api/participaciones/cursos/:idCurso/inscripcion/:idInscripcion", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.participationManagementController.updateCourseParticipation.bind(this.participationManagementController));
+        this.app.put("/api/participaciones/cursos/:idCurso/inscripcion/:idInscripcion", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.participationManagementController.updateCourseParticipation.bind(this.participationManagementController));
         // GET /api/participaciones/eventos/:idEvento - Obtener participaciones de evento
-        this.app.get("/api/participaciones/eventos/:idEvento", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.participationManagementController.getEventParticipations.bind(this.participationManagementController));
+        this.app.get("/api/participaciones/eventos/:idEvento", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.participationManagementController.getEventParticipations.bind(this.participationManagementController));
         // PUT /api/participaciones/eventos/:idEvento/inscripcion/:idInscripcion - Actualizar participación de evento
-        this.app.put("/api/participaciones/eventos/:idEvento/inscripcion/:idInscripcion", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.participationManagementController.updateEventParticipation.bind(this.participationManagementController));
+        this.app.put("/api/participaciones/eventos/:idEvento/inscripcion/:idInscripcion", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.participationManagementController.updateEventParticipation.bind(this.participationManagementController));
         // GET /api/admin/participations/events/:eventId/inscriptions - Inscripciones para participación
         this.app.get("/api/admin/participations/events/:eventId/inscriptions", jwtMiddleware_1.validateJWT, this.participationManagementController.getEventInscriptionsForParticipation.bind(this.participationManagementController));
         // GET /api/admin/participations/courses/:courseId/inscriptions - Inscripciones para participación
@@ -620,54 +626,57 @@ class Server {
         this.app.get("/api/admin/reports/stats", jwtMiddleware_1.validateJWT, this.reportsController.getReportStats.bind(this.reportsController));
         // RUTAS LEGACY PARA COMPATIBILIDAD
         // POST /api/reportes/finanzas/pdf - Legacy route
-        this.app.post("/api/reportes/finanzas/pdf", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.reportsController.generateFinancialReport.bind(this.reportsController));
+        this.app.post("/api/reportes/finanzas/pdf", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.reportsController.generateFinancialReport.bind(this.reportsController));
         // POST /api/reportes/usuarios/pdf - Legacy route
-        this.app.post("/api/reportes/usuarios/pdf", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.reportsController.generateUsersReport.bind(this.reportsController));
+        this.app.post("/api/reportes/usuarios/pdf", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.reportsController.generateUsersReport.bind(this.reportsController));
         // POST /api/reportes/eventos/pdf - Legacy route
-        this.app.post("/api/reportes/eventos/pdf", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.reportsController.generateEventsReport.bind(this.reportsController));
+        this.app.post("/api/reportes/eventos/pdf", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.reportsController.generateEventsReport.bind(this.reportsController));
         // POST /api/reportes/cursos/pdf - Legacy route
-        this.app.post("/api/reportes/cursos/pdf", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.reportsController.generateCoursesReport.bind(this.reportsController));
+        this.app.post("/api/reportes/cursos/pdf", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.reportsController.generateCoursesReport.bind(this.reportsController));
         // POST /api/reportes/solicitudes/estado/pdf - Legacy route (MASTER only)
-        this.app.post("/api/reportes/solicitudes/estado/pdf", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('MASTER'), this.reportsController.generateChangeRequestsStatusReport.bind(this.reportsController));
+        this.app.post("/api/reportes/solicitudes/estado/pdf", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("MASTER"), this.reportsController.generateChangeRequestsStatusReport.bind(this.reportsController));
         // POST /api/reportes/solicitudes/desarrollador/pdf - Legacy route (MASTER only)
-        this.app.post("/api/reportes/solicitudes/desarrollador/pdf", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('MASTER'), this.reportsController.generateChangeRequestsDevelopersReport.bind(this.reportsController));
+        this.app.post("/api/reportes/solicitudes/desarrollador/pdf", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("MASTER"), this.reportsController.generateChangeRequestsDevelopersReport.bind(this.reportsController));
         // POST /api/reportes/solicitudes/resumen/pdf - Legacy route (MASTER only)
-        this.app.post("/api/reportes/solicitudes/resumen/pdf", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('MASTER'), this.reportsController.generateChangeRequestsSummaryReport.bind(this.reportsController));
+        this.app.post("/api/reportes/solicitudes/resumen/pdf", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("MASTER"), this.reportsController.generateChangeRequestsSummaryReport.bind(this.reportsController));
         // GET /api/reportes - Legacy route para listar reportes
-        this.app.get("/api/reportes", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.reportsController.getReports.bind(this.reportsController));
+        this.app.get("/api/reportes", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.reportsController.getReports.bind(this.reportsController));
         // GET /api/reportes/download/:id - Legacy route para descargar
-        this.app.get("/api/reportes/download/:id", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)('ADMINISTRADOR', 'MASTER'), this.reportsController.downloadReport.bind(this.reportsController));
+        this.app.get("/api/reportes/download/:id", jwtMiddleware_1.validateJWT, (0, jwtMiddleware_1.validateRoles)("ADMINISTRADOR", "MASTER"), this.reportsController.downloadReport.bind(this.reportsController));
     }
     /**
      * Configurar rutas específicas para estudiantes
      */
     setupStudentRoutes() {
         // Configurar multer para subida de comprobantes de pago
-        const multer = require('multer');
-        const path = require('path');
+        const multer = require("multer");
+        const path = require("path");
         const receiptStorage = multer.diskStorage({
             destination: (req, file, cb) => {
-                cb(null, 'uploads/comprobantes/');
+                cb(null, "uploads/comprobantes/");
             },
             filename: (req, file, cb) => {
-                const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-                cb(null, 'comprobante-estudiante-' + uniqueSuffix + path.extname(file.originalname));
-            }
+                const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+                cb(null, "comprobante-estudiante-" +
+                    uniqueSuffix +
+                    path.extname(file.originalname));
+            },
         });
         const uploadReceipt = multer({
             storage: receiptStorage,
             limits: {
-                fileSize: 5 * 1024 * 1024 // 5MB máximo
+                fileSize: 5 * 1024 * 1024, // 5MB máximo
             },
             fileFilter: (req, file, cb) => {
                 // Permitir archivos PDF e imágenes
-                if (file.mimetype === 'application/pdf' || file.mimetype.startsWith('image/')) {
+                if (file.mimetype === "application/pdf" ||
+                    file.mimetype.startsWith("image/")) {
                     cb(null, true);
                 }
                 else {
-                    cb(new Error('Tipo de archivo no permitido. Solo PDF e imágenes.'), false);
+                    cb(new Error("Tipo de archivo no permitido. Solo PDF e imágenes."), false);
                 }
-            }
+            },
         });
         // Configuración de multer para subida de documentos
         const documentStorage = multer.memoryStorage();
@@ -678,26 +687,26 @@ class Server {
             },
             fileFilter: (req, file, cb) => {
                 // Solo permitir PDFs
-                if (file.mimetype === 'application/pdf') {
+                if (file.mimetype === "application/pdf") {
                     cb(null, true);
                 }
                 else {
-                    cb(new Error('Solo se permiten archivos PDF'));
+                    cb(new Error("Solo se permiten archivos PDF"));
                 }
-            }
+            },
         });
         // RUTAS DE GESTIÓN DE DOCUMENTOS ESTUDIANTILES - Requieren JWT y rol ESTUDIANTE
         // POST /api/student/documents/upload - Subir documentos (cédula y matrícula)
         this.app.post("/api/student/documents/upload", jwtMiddleware_1.validateJWT, upload.fields([
-            { name: 'cedula', maxCount: 1 },
-            { name: 'matricula', maxCount: 1 }
+            { name: "cedula", maxCount: 1 },
+            { name: "matricula", maxCount: 1 },
         ]), this.studentDocumentController.uploadStudentDocuments.bind(this.studentDocumentController));
         // GET /api/student/documents/status - Estado de verificación de documentos
         this.app.get("/api/student/documents/status", jwtMiddleware_1.validateJWT, this.studentDocumentController.getDocumentStatus.bind(this.studentDocumentController));
         // GET /api/student/documents/download/:type - Descargar documento específico
         this.app.get("/api/student/documents/download/:type", jwtMiddleware_1.validateJWT, this.studentDocumentController.downloadDocument.bind(this.studentDocumentController));
         // PUT /api/student/documents/update/:type - Actualizar documento específico
-        this.app.put("/api/student/documents/update/:type", jwtMiddleware_1.validateJWT, upload.single('document'), this.studentDocumentController.updateDocument.bind(this.studentDocumentController));
+        this.app.put("/api/student/documents/update/:type", jwtMiddleware_1.validateJWT, upload.single("document"), this.studentDocumentController.updateDocument.bind(this.studentDocumentController));
         // GET /api/student/documents/history - Historial de verificaciones
         this.app.get("/api/student/documents/history", jwtMiddleware_1.validateJWT, this.studentDocumentController.getVerificationHistory.bind(this.studentDocumentController));
         // GET /api/student/documents/requirements - Requisitos para estudiantes
@@ -710,15 +719,15 @@ class Server {
         // RUTAS LEGACY PARA COMPATIBILIDAD CON FRONTEND EXISTENTE
         // POST /api/estudiante/documentos/subir - Legacy route
         this.app.post("/api/estudiante/documentos/subir", jwtMiddleware_1.validateJWT, upload.fields([
-            { name: 'cedula', maxCount: 1 },
-            { name: 'matricula', maxCount: 1 }
+            { name: "cedula", maxCount: 1 },
+            { name: "matricula", maxCount: 1 },
         ]), this.studentDocumentController.uploadStudentDocuments.bind(this.studentDocumentController));
         // GET /api/estudiante/documentos/estado - Legacy route
         this.app.get("/api/estudiante/documentos/estado", jwtMiddleware_1.validateJWT, this.studentDocumentController.getDocumentStatus.bind(this.studentDocumentController));
         // GET /api/estudiante/documentos/descargar/:tipo - Legacy route
         this.app.get("/api/estudiante/documentos/descargar/:tipo", jwtMiddleware_1.validateJWT, this.studentDocumentController.downloadDocument.bind(this.studentDocumentController));
         // PUT /api/estudiante/documentos/actualizar/:tipo - Legacy route
-        this.app.put("/api/estudiante/documentos/actualizar/:tipo", jwtMiddleware_1.validateJWT, upload.single('document'), this.studentDocumentController.updateDocument.bind(this.studentDocumentController));
+        this.app.put("/api/estudiante/documentos/actualizar/:tipo", jwtMiddleware_1.validateJWT, upload.single("document"), this.studentDocumentController.updateDocument.bind(this.studentDocumentController));
         // GET /api/estudiante/documentos/historial - Legacy route
         this.app.get("/api/estudiante/documentos/historial", jwtMiddleware_1.validateJWT, this.studentDocumentController.getVerificationHistory.bind(this.studentDocumentController));
         // GET /api/estudiante/requisitos - Legacy route
@@ -736,9 +745,9 @@ class Server {
         this.app.post("/api/student/inscriptions/courses", jwtMiddleware_1.validateJWT, middleware_1.requireVerifiedDocuments, // Middleware específico para estudiantes
         this.inscriptionController.enrollInCourse.bind(this.inscriptionController));
         // POST /api/student/inscriptions/events-with-file - Inscripción a eventos con comprobante
-        this.app.post("/api/student/inscriptions/events-with-file", jwtMiddleware_1.validateJWT, middleware_1.requireVerifiedDocuments, uploadReceipt.single('comprobante'), this.inscriptionController.enrollInEventWithFile.bind(this.inscriptionController));
+        this.app.post("/api/student/inscriptions/events-with-file", jwtMiddleware_1.validateJWT, middleware_1.requireVerifiedDocuments, uploadReceipt.single("comprobante"), this.inscriptionController.enrollInEventWithFile.bind(this.inscriptionController));
         // POST /api/student/inscriptions/courses-with-file - Inscripción a cursos con comprobante
-        this.app.post("/api/student/inscriptions/courses-with-file", jwtMiddleware_1.validateJWT, middleware_1.requireVerifiedDocuments, uploadReceipt.single('comprobante'), this.inscriptionController.enrollInCourseWithFile.bind(this.inscriptionController));
+        this.app.post("/api/student/inscriptions/courses-with-file", jwtMiddleware_1.validateJWT, middleware_1.requireVerifiedDocuments, uploadReceipt.single("comprobante"), this.inscriptionController.enrollInCourseWithFile.bind(this.inscriptionController));
         // GET /api/student/inscriptions/my-events - Mis inscripciones a eventos
         this.app.get("/api/student/inscriptions/my-events", jwtMiddleware_1.validateJWT, this.inscriptionController.getMyEventInscriptions.bind(this.inscriptionController));
         // GET /api/student/inscriptions/my-courses - Mis inscripciones a cursos
@@ -749,9 +758,9 @@ class Server {
         // POST /api/estudiante/inscripciones/cursos - Legacy route
         this.app.post("/api/estudiante/inscripciones/cursos", jwtMiddleware_1.validateJWT, middleware_1.requireVerifiedDocuments, this.inscriptionController.enrollInCourse.bind(this.inscriptionController));
         // POST /api/estudiante/inscripciones/eventos-con-archivo - Legacy route
-        this.app.post("/api/estudiante/inscripciones/eventos-con-archivo", jwtMiddleware_1.validateJWT, middleware_1.requireVerifiedDocuments, uploadReceipt.single('comprobante'), this.inscriptionController.enrollInEventWithFile.bind(this.inscriptionController));
+        this.app.post("/api/estudiante/inscripciones/eventos-con-archivo", jwtMiddleware_1.validateJWT, middleware_1.requireVerifiedDocuments, uploadReceipt.single("comprobante"), this.inscriptionController.enrollInEventWithFile.bind(this.inscriptionController));
         // POST /api/estudiante/inscripciones/cursos-con-archivo - Legacy route
-        this.app.post("/api/estudiante/inscripciones/cursos-con-archivo", jwtMiddleware_1.validateJWT, middleware_1.requireVerifiedDocuments, uploadReceipt.single('comprobante'), this.inscriptionController.enrollInCourseWithFile.bind(this.inscriptionController));
+        this.app.post("/api/estudiante/inscripciones/cursos-con-archivo", jwtMiddleware_1.validateJWT, middleware_1.requireVerifiedDocuments, uploadReceipt.single("comprobante"), this.inscriptionController.enrollInCourseWithFile.bind(this.inscriptionController));
         // GET /api/estudiante/inscripciones/mis-eventos - Legacy route
         this.app.get("/api/estudiante/inscripciones/mis-eventos", jwtMiddleware_1.validateJWT, this.inscriptionController.getMyEventInscriptions.bind(this.inscriptionController));
         // GET /api/estudiante/inscripciones/mis-cursos - Legacy route

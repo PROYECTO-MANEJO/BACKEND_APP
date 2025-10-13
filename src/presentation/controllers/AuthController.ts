@@ -1,260 +1,150 @@
 import { Request, Response } from "express";
 import { BaseController } from "./BaseController";
 import { DIContainer } from "../../infrastructure/DIContainer";
+import { AuthService } from "../../application/services/AuthService";
+import {
+  AuthDTOTransformer,
+  LoginRequestDTO,
+  RegisterRequestDTO,
+  CreateAdminRequestDTO,
+} from "../dto/AuthDTO";
 
+/**
+ * Auth Controller - Presentation Layer
+ *
+ * ✅ SRP: Responsabilidad única - Manejo de HTTP requests/responses para autenticación
+ * - Delega validaciones a AuthValidator
+ * - Delega lógica de negocio a AuthService
+ * - Delega transformaciones a AuthDTOTransformer
+ */
 export class AuthController extends BaseController {
+  private authService: AuthService;
   private container: DIContainer;
 
   constructor(container: DIContainer) {
     super();
     this.container = container;
+    this.authService = new AuthService(container);
   }
 
   /**
    * POST /api/auth/login
-   * User login - CLEAN ARCHITECTURE implementation
+   * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
    */
   public async login(req: Request, res: Response): Promise<void> {
     try {
-      const { email, password } = req.body;
-      
-      // ✅ SOLID: Usar solo repositories
-      const authRepository = this.container.getAuthenticationRepository();
-      const bcrypt = this.container.getBcrypt();
-      const { generateJWT, generateAdminJWT } = this.container.getJwtHelpers();
-
-      // Find complete account information by email
-      const authData = await authRepository.findCompleteByEmail(email);
-
-      // Check if account exists
-      if (!authData) {
-        res.status(400).json({
-          success: false,
-          message: 'Email not found'
-        });
-        return;
-      }
-
-      // Check if account is verified (temporarily disabled for testing)
-      // if (!authData.account.isVerified) {
-      //   return res.status(400).json({
-      //     success: false,
-      //     message: 'Your account has not been verified yet. Check your email.'
-      //   });
-      // }
-
-      // Verify password
-      const validPassword = await bcrypt.compare(password, authData.user.password || '');
-      if (!validPassword) {
-        res.status(400).json({
-          success: false,
-          message: 'Incorrect password'
-        });
-        return;
-      }
-
-      // Generate JWT token based on role
-      let token;
-      if (authData.account.role === 'ADMINISTRADOR' || authData.account.role === 'MASTER') {
-        token = await generateAdminJWT(authData.user.id);
-      } else {
-        token = await generateJWT(authData.user.id);
-      }
-
-      const user = authData.user;
-      const isEstudiante = authData.account.role === 'ESTUDIANTE';
-
-      // Format complete response including document status
-      const userProfile = {
-        id_usu: user.id,
-        ced_usu: user.cedula,
-        nom_usu1: user.firstName,
-        nom_usu2: user.firstName2,
-        ape_usu1: user.lastName,
-        ape_usu2: user.lastName2,
-        fec_nac_usu: user.birthDate,
-        num_tel_usu: user.phone,
-        id_car_per: user.careerId,
-        email: authData.account.email,
-        rol: authData.account.role,
-        carrera: authData.career ? {
-          id_car: authData.career.id,
-          nom_car: authData.career.name
-        } : null,
-        // Include document status
-        documentos: {
-          cedula_subida: !!user.cedulaFileUrl,
-          matricula_subida: !!user.matriculaFileUrl,
-          matricula_requerida: isEstudiante,
-          documentos_verificados: user.documentsVerified,
-          fecha_verificacion: user.verificationDate,
-          archivos_completos: isEstudiante
-            ? (!!user.cedulaFileUrl && !!user.matriculaFileUrl)
-            : !!user.cedulaFileUrl
-        }
+      // ✅ SRP: Transformar DTO de entrada
+      const loginDTO: LoginRequestDTO = {
+        email: req.body.email,
+        password: req.body.password,
       };
 
+      // ✅ SRP: Validar campos básicos
+      AuthDTOTransformer.validateBasicFields(loginDTO);
+
+      // ✅ SRP: Convertir DTO a formato del servicio
+      const loginRequest = AuthDTOTransformer.fromLoginDTO(loginDTO);
+
+      // ✅ SRP: Delegar lógica de negocio al servicio
+      const result = await this.authService.login(loginRequest);
+
+      // ✅ SRP: Si no es exitoso, manejar error
+      if (!result.success) {
+        const status =
+          result.message === "Email not found" ||
+          result.message === "Incorrect password"
+            ? 400
+            : 500;
+
+        res.status(status).json({
+          success: false,
+          message: result.message,
+        });
+        return;
+      }
+
+      // ✅ SRP: Respuesta exitosa con estructura esperada por el frontend
       res.status(200).json({
         success: true,
-        user: userProfile,
-        token
+        user: result.user,
+        token: result.token,
       });
     } catch (error) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
       res.status(500).json({
         success: false,
-        message: 'Internal server error'
+        message: "Internal server error",
       });
     }
   }
 
   /**
    * POST /api/auth/register
-   * Register new user - CLEAN ARCHITECTURE implementation
+   * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
    */
   public async register(req: Request, res: Response): Promise<void> {
-    try {
-      const { email, password, nombre, nombre2, apellido, apellido2, ced_usu, fec_nac_usu, carrera } = req.body;
-      
-      // ✅ SOLID: Usar solo repositories
-      const userRepository = this.container.getUserRepository();
-      const authRepository = this.container.getAuthenticationRepository();
-      const bcrypt = this.container.getBcrypt();
-      const prisma = this.container.getPrismaClient(); // Solo para transacciones complejas
+    await this.execute(req, res, async () => {
+      // ✅ SRP: Transformar DTO de entrada (mapeo flexible para diferentes nombres de campos)
+      const registerDTO: RegisterRequestDTO = {
+        email:
+          req.body.email ||
+          req.body.correo_electronico ||
+          req.body.correoElectronico,
+        password:
+          req.body.password || req.body.contrasena || req.body.contraseña,
+        nombre: req.body.firstName || req.body.nombre || req.body.primer_nombre,
+        nombre2:
+          req.body.secondName || req.body.nombre2 || req.body.segundo_nombre,
+        apellido:
+          req.body.lastName || req.body.apellido || req.body.primer_apellido,
+        apellido2:
+          req.body.secondLastName ||
+          req.body.apellido2 ||
+          req.body.segundo_apellido,
+        ced_usu:
+          req.body.cedula ||
+          req.body.ced_usu ||
+          req.body.dni ||
+          req.body.identificacion,
+        fec_nac_usu:
+          req.body.fec_nac_usu ||
+          req.body.fecha_nacimiento ||
+          req.body.fechaNacimiento,
+        carrera: req.body.carrera || req.body.id_carrera || req.body.idCarrera,
+      };
 
-      // Check if account already exists with this email
-      const existingAccountByEmail = await authRepository.isEmailTaken(email);
-      if (existingAccountByEmail) {
-        res.status(400).json({
-          success: false,
-          message: 'An account with this email already exists'
-        });
-        return;
-      }
+      // ✅ SRP: Validar campos básicos
+      AuthDTOTransformer.validateBasicFields(registerDTO);
 
-      // Check if user already exists with this cedula
-      const existingUserByCedula = await authRepository.isCedulaTaken(ced_usu);
-      if (existingUserByCedula) {
-        res.status(400).json({
-          success: false,
-          message: 'A user with this cedula already exists'
-        });
-        return;
-      }
+      // ✅ SRP: Convertir DTO a formato del servicio
+      const registerRequest = AuthDTOTransformer.fromRegisterDTO(registerDTO);
 
-      if (!ced_usu) {
-        res.status(400).json({
-          success: false,
-          message: 'Cedula is required'
-        });
-        return;
-      }
+      // ✅ SRP: Delegar lógica de negocio al servicio
+      const result = await this.authService.register(registerRequest);
 
-      // Validate password strength
-      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
-      if (!passwordRegex.test(password)) {
-        res.status(400).json({
-          success: false,
-          message: 'Password must contain at least 6 characters, one uppercase letter, one number and one special character (@$!%*?&)'
-        });
-        return;
-      }
-
-      // Validate career for UTA users
-      if (email && email.endsWith('@uta.edu.ec')) {
-        if (!carrera) {
-          res.status(400).json({
-            success: false,
-            message: 'Career is required for UTA students'
-          });
-          return;
+      // ✅ SRP: Si no es exitoso, lanzar error para manejo del BaseController
+      if (!result.success) {
+        const error: any = new Error(result.message);
+        if (
+          result.message?.includes("already exists") ||
+          result.message?.includes("required") ||
+          result.message?.includes("not valid")
+        ) {
+          error.name = "ValidationError";
         }
-        
-        // Check if career exists
-        const carreraExists = await prisma.carrera.findUnique({
-          where: { id_car: carrera }
-        });
-        
-        if (!carreraExists) {
-          res.status(400).json({
-            success: false,
-            message: 'Selected career is not valid'
-          });
-          return;
-        }
+        throw error;
       }
 
-      // Encrypt password
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(password, salt);
+      // ✅ SRP: Devolver resultado para que BaseController use 200
+      // Luego cambiaremos la respuesta a 201 manualmente
+      return { message: result.message };
+    });
 
-      // Automatic role assignment
-      let rolAsignado = email.endsWith('@uta.edu.ec') ? 'ESTUDIANTE' : 'USUARIO';
-
-      // Validate birth date
-      let fechaNacimiento = null;
-      if (fec_nac_usu) {
-        fechaNacimiento = new Date(fec_nac_usu);
-        if (isNaN(fechaNacimiento.getTime())) {
-          res.status(400).json({
-            success: false,
-            message: 'Invalid birth date. Use YYYY-MM-DD format'
-          });
-          return;
-        }
-      } else {
-        fechaNacimiento = new Date('2000-01-01');
-      }
-
-      // Create user and account in transaction
-      const result = await prisma.$transaction(async (prisma) => {
-        // Prepare user data
-        const userData: any = {
-          ced_usu,
-          nom_usu1: nombre,
-          nom_usu2: nombre2 || '',
-          ape_usu1: apellido,
-          ape_usu2: apellido2 || '',
-          pas_usu: hashedPassword,
-          fec_nac_usu: fechaNacimiento
-        };
-
-        // Only add career if UTA user
-        if (email && email.endsWith('@uta.edu.ec') && carrera) {
-          userData.id_car_per = carrera;
-        }
-
-        // ✅ SOLID: Create user using repository
-        const newUser = await userRepository.create(userData);
-
-        const newAccount = await prisma.cuenta.create({
-          data: {
-            cor_cue: email,
-            rol_cue: rolAsignado as any,
-            id_usu_per: newUser.id_usu,
-            isVerified: false
-          }
-        });
-
-        return { user: newUser, account: newAccount };
-      });
-
-      // TODO: Send verification token
-      // await sendVerificationToken(email, result.user.id_usu);
-
-      res.status(201).json({
-        success: true,
-        message: 'A verification email has been sent to your email address. Please verify your account before logging in.'
-      });
-    } catch (error) {
-      console.error('Register error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Internal server error'
-      });
+    // Si llegamos aquí, fue exitoso, cambiar a 201
+    if (res.statusCode === 200) {
+      res.status(201);
     }
   }
-
   /**
    * Simple implementations for other auth methods
    */
@@ -314,136 +204,59 @@ export class AuthController extends BaseController {
 
   /**
    * POST /api/auth/createAdmin
-   * Create new administrator (Master only)
+   * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
    */
   public async createAdmin(req: Request, res: Response): Promise<void> {
-    try {
-      const { 
-        ced_usu, 
-        nom_usu1, 
-        nom_usu2, 
-        ape_usu1, 
-        ape_usu2, 
-        cor_cue, 
-        pas_usu, 
-        fec_nac_usu, 
-        num_tel_usu 
-      } = req.body;
-      
-      // ✅ SOLID: Usar repository en lugar de Prisma directo
-      const userRepository = this.container.getUserRepository();
-      const prisma = this.container.getPrismaClient(); // Solo para validaciones complejas y transacciones
-      const bcrypt = this.container.getBcrypt();
+    await this.execute(req, res, async () => {
+      // ✅ SRP: Transformar DTO de entrada
+      const createAdminDTO: CreateAdminRequestDTO = {
+        ced_usu: req.body.ced_usu,
+        nom_usu1: req.body.nom_usu1,
+        nom_usu2: req.body.nom_usu2,
+        ape_usu1: req.body.ape_usu1,
+        ape_usu2: req.body.ape_usu2,
+        cor_cue: req.body.cor_cue,
+        pas_usu: req.body.pas_usu,
+        fec_nac_usu: req.body.fec_nac_usu,
+        num_tel_usu: req.body.num_tel_usu,
+      };
 
-      // Validar campos requeridos
-      if (!ced_usu || !nom_usu1 || !ape_usu1 || !cor_cue || !pas_usu) {
-        res.status(400).json({
-          success: false,
-          message: 'Campos requeridos: ced_usu, nom_usu1, ape_usu1, cor_cue, pas_usu'
-        });
-        return;
-      }
+      // ✅ SRP: Validar campos básicos
+      AuthDTOTransformer.validateBasicFields(createAdminDTO);
 
-      // ✅ SOLID: Verificar si ya existe un usuario con esta cédula usando repository
-      const existingUserByCedula = await userRepository.findByCedula(ced_usu);
+      // ✅ SRP: Convertir DTO a formato del servicio
+      const createAdminRequest =
+        AuthDTOTransformer.fromCreateAdminDTO(createAdminDTO);
 
-      if (existingUserByCedula) {
-        res.status(400).json({
-          success: false,
-          message: 'Ya existe un usuario con esta cédula'
-        });
-        return;
-      }
+      // ✅ SRP: Delegar lógica de negocio al servicio
+      const result = await this.authService.createAdmin(createAdminRequest);
 
-      // Verificar si ya existe una cuenta con este email
-      const existingAccount = await prisma.cuenta.findFirst({
-        where: { cor_cue }
-      });
-
-      if (existingAccount) {
-        res.status(400).json({
-          success: false,
-          message: 'Ya existe una cuenta con este email'
-        });
-        return;
-      }
-
-      // Validar fortaleza de la contraseña
-      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
-      if (!passwordRegex.test(pas_usu)) {
-        res.status(400).json({
-          success: false,
-          message: 'La contraseña debe tener al menos 6 caracteres, una mayúscula, un número y un carácter especial (@$!%*?&)'
-        });
-        return;
-      }
-
-      // Validar fecha de nacimiento
-      let fechaNacimiento = new Date('1990-01-01'); // Fecha por defecto
-      if (fec_nac_usu) {
-        fechaNacimiento = new Date(fec_nac_usu);
-        if (isNaN(fechaNacimiento.getTime())) {
-          res.status(400).json({
-            success: false,
-            message: 'Fecha de nacimiento inválida. Use formato YYYY-MM-DD'
-          });
-          return;
+      // ✅ SRP: Si no es exitoso, lanzar error para manejo del BaseController
+      if (!result.success) {
+        const error: any = new Error(result.message);
+        if (
+          result.message?.includes("ya existe") ||
+          result.message?.includes("requeridos") ||
+          result.message?.includes("inválida")
+        ) {
+          error.name = "ValidationError";
         }
+        throw error;
       }
 
-      // Encriptar contraseña
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(pas_usu, salt);
+      // ✅ SRP: Transformar respuesta usando DTO
+      const responseData = AuthDTOTransformer.toResponseDTO(result);
 
-      // Crear usuario y cuenta en transacción
-      const result = await prisma.$transaction(async (prisma) => {
-        // Crear usuario
-        const newUser = await prisma.usuario.create({
-          data: {
-            ced_usu,
-            nom_usu1,
-            nom_usu2: nom_usu2 || '',
-            ape_usu1,
-            ape_usu2: ape_usu2 || '',
-            pas_usu: hashedPassword,
-            fec_nac_usu: fechaNacimiento,
-            num_tel_usu: num_tel_usu || null,
-            id_car_per: null // Los administradores no tienen carrera
-          }
-        });
+      // ✅ SRP: Devolver resultado para que BaseController use 200
+      return {
+        message: result.message,
+        data: responseData.user,
+      };
+    });
 
-        // Crear cuenta con rol ADMINISTRADOR
-        const newAccount = await prisma.cuenta.create({
-          data: {
-            cor_cue,
-            rol_cue: 'ADMINISTRADOR',
-            id_usu_per: newUser.id_usu,
-            isVerified: true // Los administradores se crean verificados
-          }
-        });
-
-        return { user: newUser, account: newAccount };
-      });
-
-      res.status(201).json({
-        success: true,
-        message: 'Administrador creado exitosamente',
-        data: {
-          id_usu: result.user.id_usu,
-          ced_usu: result.user.ced_usu,
-          nom_usu1: result.user.nom_usu1,
-          ape_usu1: result.user.ape_usu1,
-          cor_cue: result.account.cor_cue,
-          rol_cue: result.account.rol_cue
-        }
-      });
-
-    } catch (error: any) {
-      console.error('[createAdmin] Error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error interno del servidor'
-      });
+    // Si llegamos aquí, fue exitoso, cambiar a 201
+    if (res.statusCode === 200) {
+      res.status(201);
     }
   }
 }

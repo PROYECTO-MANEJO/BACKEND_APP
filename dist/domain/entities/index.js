@@ -12,7 +12,7 @@ var Course_1 = require("./Course");
 Object.defineProperty(exports, "Course", { enumerable: true, get: function () { return Course_1.Course; } });
 var Event_1 = require("./Event");
 Object.defineProperty(exports, "Event", { enumerable: true, get: function () { return Event_1.Event; } });
-// Management Entities  
+// Management Entities
 var Certificate_1 = require("./Certificate");
 Object.defineProperty(exports, "Certificate", { enumerable: true, get: function () { return Certificate_1.Certificate; } });
 var ChangeRequest_1 = require("./ChangeRequest");

@@ -1,17 +1,26 @@
 import { Request, Response } from "express";
 import { BaseController } from "./BaseController";
 import { DIContainer } from "../../infrastructure/DIContainer";
+/**
+ * Auth Controller - Presentation Layer
+ *
+ * ✅ SRP: Responsabilidad única - Manejo de HTTP requests/responses para autenticación
+ * - Delega validaciones a AuthValidator
+ * - Delega lógica de negocio a AuthService
+ * - Delega transformaciones a AuthDTOTransformer
+ */
 export declare class AuthController extends BaseController {
+    private authService;
     private container;
     constructor(container: DIContainer);
     /**
      * POST /api/auth/login
-     * User login - CLEAN ARCHITECTURE implementation
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
     login(req: Request, res: Response): Promise<void>;
     /**
      * POST /api/auth/register
-     * Register new user - CLEAN ARCHITECTURE implementation
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
     register(req: Request, res: Response): Promise<void>;
     /**
@@ -28,7 +37,7 @@ export declare class AuthController extends BaseController {
     refreshToken(req: Request, res: Response): Promise<void>;
     /**
      * POST /api/auth/createAdmin
-     * Create new administrator (Master only)
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
     createAdmin(req: Request, res: Response): Promise<void>;
 }

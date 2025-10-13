@@ -2,556 +2,252 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CourseController = void 0;
 const BaseController_1 = require("./BaseController");
+const CourseService_1 = require("../../application/services/CourseService");
+const CourseDTO_1 = require("../dto/CourseDTO");
 /**
- * Controlador para gestión de cursos
- * Maneja todas las operaciones CRUD y funcionalidades relacionadas con cursos
+ * Course Controller - Presentation Layer
+ *
+ * ✅ SRP: Responsabilidad única - Manejo de HTTP requests/responses para cursos
+ * - Delega validaciones a CourseValidator
+ * - Delega lógica de negocio a CourseService
+ * - Delega transformaciones a CourseDTOTransformer
  */
 class CourseController extends BaseController_1.BaseController {
     constructor(container) {
         super();
         this.container = container;
+        this.courseService = new CourseService_1.CourseService(container);
     }
     /**
      * GET /api/courses
-     * Get all courses (based on original obtenerCursos function)
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
     async getCourses(req, res) {
         await this.execute(req, res, async () => {
-            // ✅ SOLID: Usar repository en lugar de Prisma directo
-            const courseRepository = this.container.getCourseRepository();
-            const cursos = await courseRepository.findAll();
-            const cursosFormateados = cursos.map((curso) => ({
-                id_cur: curso.id_cur,
-                nom_cur: curso.nom_cur,
-                des_cur: curso.des_cur,
-                dur_cur: curso.dur_cur,
-                fec_ini_cur: curso.fec_ini_cur,
-                fec_fin_cur: curso.fec_fin_cur,
-                capacidad_max_cur: curso.capacidad_max_cur,
-                precio: curso.precio,
-                es_gratuito: curso.es_gratuito,
-                tipo_audiencia_cur: curso.tipo_audiencia_cur,
-                requiere_verificacion_docs: curso.requiere_verificacion_docs,
-                porcentaje_asistencia_aprobacion: curso.porcentaje_asistencia_aprobacion,
-                nota_minima_aprobacion: curso.nota_minima_aprobacion,
-                estado: curso.estado
-            }));
-            return {
-                success: true,
-                cursos: cursosFormateados,
-                total: cursosFormateados.length
-            };
-        });
-    }
-    /**
-     * GET /api/courses/:id
-     * Get course by ID (based on original obtenerCursoPorId function)
-     */
-    async getCourseById(req, res) {
-        await this.execute(req, res, async () => {
-            const { id } = req.params;
-            if (!id)
-                throw new Error('ID is required');
-            // ✅ SOLID: Usar repository en lugar de Prisma directo
-            const courseRepository = this.container.getCourseRepository();
-            const curso = await courseRepository.findById(id);
-            if (!curso) {
-                return {
-                    success: false,
-                    message: 'Course not found',
-                    curso: null
-                };
-            }
-            const cursoFormateado = {
-                id_cur: curso.id_cur,
-                nom_cur: curso.nom_cur,
-                des_cur: curso.des_cur,
-                dur_cur: curso.dur_cur,
-                fec_ini_cur: curso.fec_ini_cur,
-                fec_fin_cur: curso.fec_fin_cur,
-                capacidad_max_cur: curso.capacidad_max_cur,
-                precio: curso.precio,
-                es_gratuito: curso.es_gratuito,
-                tipo_audiencia_cur: curso.tipo_audiencia_cur,
-                requiere_verificacion_docs: curso.requiere_verificacion_docs,
-                porcentaje_asistencia_aprobacion: curso.porcentaje_asistencia_aprobacion,
-                nota_minima_aprobacion: curso.nota_minima_aprobacion,
-                estado: curso.estado
-            };
-            return {
-                success: true,
-                curso: cursoFormateado
-            };
-        });
-    }
-    /**
-     * POST /api/courses
-     * Create new course (based on original crearCurso function)
-     */
-    async createCourse(req, res) {
-        try {
-            // ✅ SOLID: Usar repository en lugar de Prisma directo
-            const courseRepository = this.container.getCourseRepository();
-            const prisma = this.container.getPrismaClient(); // Solo para validaciones y transacciones complejas
-            const { nom_cur, des_cur, dur_cur, fec_ini_cur, fec_fin_cur, id_cat_cur, ced_org_cur, capacidad_max_cur, tipo_audiencia_cur, requiere_verificacion_docs, es_gratuito, precio, porcentaje_asistencia_aprobacion, nota_minima_aprobacion, carreras // Array opcional de IDs de carreras
-             } = req.body;
-            // Basic validations
-            if (!nom_cur || !des_cur || !dur_cur || !fec_ini_cur || !fec_fin_cur ||
-                !id_cat_cur || !ced_org_cur || !capacidad_max_cur ||
-                porcentaje_asistencia_aprobacion == null ||
-                nota_minima_aprobacion == null) {
-                res.status(400).json({
-                    success: false,
-                    error: 'Missing required fields: nom_cur, des_cur, dur_cur, fec_ini_cur, fec_fin_cur, id_cat_cur, ced_org_cur, capacidad_max_cur, porcentaje_asistencia_aprobacion, nota_minima_aprobacion'
-                });
-                return;
-            }
-            // Validate approval fields
-            const porcentajeAsistencia = parseFloat(porcentaje_asistencia_aprobacion);
-            const notaMinima = parseFloat(nota_minima_aprobacion);
-            if (isNaN(porcentajeAsistencia) || porcentajeAsistencia < 0 || porcentajeAsistencia > 100) {
-                res.status(400).json({
-                    success: false,
-                    error: 'Attendance percentage must be a number between 0 and 100'
-                });
-                return;
-            }
-            if (isNaN(notaMinima) || notaMinima < 0 || notaMinima > 10) {
-                res.status(400).json({
-                    success: false,
-                    error: 'Minimum grade must be a number between 0 and 10'
-                });
-                return;
-            }
-            // Validate dates
-            const fechaInicio = new Date(fec_ini_cur);
-            const fechaFin = new Date(fec_fin_cur);
-            if (isNaN(fechaInicio.getTime())) {
-                res.status(400).json({
-                    success: false,
-                    error: 'Invalid start date. Use YYYY-MM-DD format'
-                });
-                return;
-            }
-            if (isNaN(fechaFin.getTime())) {
-                res.status(400).json({
-                    success: false,
-                    error: 'Invalid end date. Use YYYY-MM-DD format'
-                });
-                return;
-            }
-            if (fechaFin <= fechaInicio) {
-                res.status(400).json({
-                    success: false,
-                    error: 'End date must be after start date'
-                });
-                return;
-            }
-            // Validate numbers
-            const duracion = parseInt(dur_cur);
-            const capacidad = parseInt(capacidad_max_cur);
-            if (isNaN(duracion) || duracion <= 0) {
-                res.status(400).json({
-                    success: false,
-                    error: 'Duration must be a positive number'
-                });
-                return;
-            }
-            if (isNaN(capacidad) || capacidad <= 0) {
-                res.status(400).json({
-                    success: false,
-                    error: 'Maximum capacity must be a positive number'
-                });
-                return;
-            }
-            // Create course in transaction
-            const result = await prisma.$transaction(async (tx) => {
-                // Create the course
-                const nuevoCurso = await tx.curso.create({
-                    data: {
-                        nom_cur,
-                        des_cur,
-                        dur_cur: duracion,
-                        fec_ini_cur: fechaInicio,
-                        fec_fin_cur: fechaFin,
-                        id_cat_cur,
-                        ced_org_cur,
-                        capacidad_max_cur: capacidad,
-                        tipo_audiencia_cur: tipo_audiencia_cur || 'PUBLICO_GENERAL',
-                        requiere_verificacion_docs: requiere_verificacion_docs || false,
-                        es_gratuito: es_gratuito || false,
-                        precio: es_gratuito ? 0 : (precio || 0),
-                        porcentaje_asistencia_aprobacion: porcentajeAsistencia,
-                        nota_minima_aprobacion: notaMinima,
-                        estado: 'ACTIVO'
-                    }
-                });
-                // If careers are provided, create the relationships
-                if (carreras && Array.isArray(carreras) && carreras.length > 0) {
-                    const carrerasData = carreras.map((carreraId) => ({
-                        id_cur_per: nuevoCurso.id_cur,
-                        id_car_per: carreraId
-                    }));
-                    await tx.cursoPorCarrera.createMany({
-                        data: carrerasData
-                    });
-                }
-                return nuevoCurso;
-            });
-            res.status(201).json({
-                success: true,
-                message: 'Course created successfully',
-                curso: {
-                    id_cur: result.id_cur,
-                    nom_cur: result.nom_cur,
-                    des_cur: result.des_cur,
-                    fec_ini_cur: result.fec_ini_cur,
-                    fec_fin_cur: result.fec_fin_cur,
-                    capacidad_max_cur: result.capacidad_max_cur,
-                    estado: result.estado
-                }
-            });
-        }
-        catch (error) {
-            console.error('Error creating course:', error);
-            // Handle Prisma specific errors
-            if (error.code === 'P2003') {
-                // Foreign key constraint violation
-                if (error.meta?.constraint === 'CURSOS_ID_CAT_CUR_fkey') {
-                    res.status(400).json({
-                        success: false,
-                        error: 'Category ID does not exist'
-                    });
-                    return;
-                }
-                else if (error.meta?.constraint === 'CURSOS_CED_ORG_CUR_fkey') {
-                    res.status(400).json({
-                        success: false,
-                        error: 'Organizer ID does not exist'
-                    });
-                    return;
-                }
-                else {
-                    res.status(400).json({
-                        success: false,
-                        error: 'Referenced record does not exist'
-                    });
-                    return;
-                }
-            }
-            res.status(500).json({
-                success: false,
-                error: 'Internal server error'
-            });
-        }
-    }
-    /**
-     * PUT /api/courses/:id
-     * Update existing course (Admin only)
-     */
-    async updateCourse(req, res) {
-        try {
-            const { id } = req.params;
-            if (!id)
-                throw new Error('ID is required');
+            // Para el listado completo, necesitamos información adicional de categorías y organizadores
             const prisma = this.container.getPrismaClient();
-            const { nom_cur, des_cur, dur_cur, fec_ini_cur, fec_fin_cur, id_cat_cur, ced_org_cur, capacidad_max_cur, tipo_audiencia_cur, requiere_verificacion_docs, es_gratuito, precio, porcentaje_asistencia_aprobacion, nota_minima_aprobacion } = req.body;
-            // ✅ SOLID: Usar repository en lugar de Prisma directo
-            const courseRepository = this.container.getCourseRepository();
-            // Verificar que el curso existe
-            const cursoExistente = await courseRepository.findById(id);
-            if (!cursoExistente) {
-                res.status(404).json({
-                    success: false,
-                    message: 'Curso no encontrado'
-                });
-                return;
-            }
-            // Validaciones básicas
-            if (fec_ini_cur && fec_fin_cur) {
-                const fechaInicio = new Date(fec_ini_cur);
-                const fechaFin = new Date(fec_fin_cur);
-                if (fechaFin <= fechaInicio) {
-                    res.status(400).json({
-                        success: false,
-                        message: 'La fecha de fin debe ser posterior a la fecha de inicio'
-                    });
-                    return;
-                }
-            }
-            // Preparar datos de actualización
-            const datosActualizacion = {};
-            if (nom_cur !== undefined)
-                datosActualizacion.nom_cur = nom_cur;
-            if (des_cur !== undefined)
-                datosActualizacion.des_cur = des_cur;
-            if (dur_cur !== undefined)
-                datosActualizacion.dur_cur = parseInt(dur_cur);
-            if (fec_ini_cur !== undefined)
-                datosActualizacion.fec_ini_cur = new Date(fec_ini_cur);
-            if (fec_fin_cur !== undefined)
-                datosActualizacion.fec_fin_cur = new Date(fec_fin_cur);
-            if (id_cat_cur !== undefined)
-                datosActualizacion.id_cat_cur = id_cat_cur;
-            if (ced_org_cur !== undefined)
-                datosActualizacion.ced_org_cur = ced_org_cur;
-            if (capacidad_max_cur !== undefined)
-                datosActualizacion.capacidad_max_cur = parseInt(capacidad_max_cur);
-            if (tipo_audiencia_cur !== undefined)
-                datosActualizacion.tipo_audiencia_cur = tipo_audiencia_cur;
-            if (requiere_verificacion_docs !== undefined)
-                datosActualizacion.requiere_verificacion_docs = requiere_verificacion_docs;
-            if (es_gratuito !== undefined) {
-                datosActualizacion.es_gratuito = es_gratuito;
-                datosActualizacion.precio = es_gratuito ? null : (precio ? parseFloat(precio) : null);
-            }
-            if (porcentaje_asistencia_aprobacion !== undefined)
-                datosActualizacion.porcentaje_asistencia_aprobacion = parseFloat(porcentaje_asistencia_aprobacion);
-            if (nota_minima_aprobacion !== undefined)
-                datosActualizacion.nota_minima_aprobacion = parseFloat(nota_minima_aprobacion);
-            // Actualizar curso
-            const cursoActualizado = await prisma.curso.update({
-                where: { id_cur: id },
-                data: datosActualizacion,
+            const cursosCompletos = await prisma.curso.findMany({
                 include: {
-                    categoria: {
-                        select: { nom_cat: true }
-                    },
-                    organizador: {
-                        select: { nom_org1: true, nom_org2: true, ape_org1: true, ape_org2: true }
-                    }
-                }
-            });
-            res.json({
-                success: true,
-                message: 'Curso actualizado exitosamente',
-                curso: cursoActualizado
-            });
-        }
-        catch (error) {
-            console.error('[updateCourse] Error:', error);
-            if (error.code === 'P2003') {
-                res.status(400).json({
-                    success: false,
-                    message: 'Error de referencia: Verifique que la categoría y organizador existan'
-                });
-                return;
-            }
-            res.status(500).json({
-                success: false,
-                message: 'Error interno del servidor'
-            });
-        }
-    }
-    /**
-     * DELETE /api/courses/:id
-     * Delete course (Admin only) - Soft delete
-     */
-    async deleteCourse(req, res) {
-        try {
-            const { id } = req.params;
-            if (!id)
-                throw new Error('ID is required');
-            // ✅ SOLID: Usar repository en lugar de Prisma directo
-            const courseRepository = this.container.getCourseRepository();
-            const prismaForComplex = this.container.getPrismaClient(); // Solo para queries complejas con count
-            // Verificar que el curso existe
-            const curso = await prismaForComplex.curso.findUnique({
-                where: { id_cur: id },
-                include: {
-                    _count: {
-                        select: {
-                            inscripcionesCurso: true
-                        }
-                    }
-                }
-            });
-            if (!curso) {
-                res.status(404).json({
-                    success: false,
-                    message: 'Curso no encontrado'
-                });
-                return;
-            }
-            // Verificar si tiene inscripciones
-            if (curso._count.inscripcionesCurso > 0) {
-                res.status(400).json({
-                    success: false,
-                    message: 'No se puede eliminar un curso que tiene inscripciones. Considere cancelarlo en su lugar.'
-                });
-                return;
-            }
-            // Eliminar curso (hard delete si no tiene inscripciones)
-            // ✅ SOLID: Eliminar curso usando repository
-            await courseRepository.delete(id);
-            res.json({
-                success: true,
-                message: 'Curso eliminado exitosamente'
-            });
-        }
-        catch (error) {
-            console.error('[deleteCourse] Error:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Error interno del servidor'
-            });
-        }
-    }
-    /**
-     * PUT /api/courses/:id/cerrar
-     * Close course and generate certificates (Admin only)
-     */
-    async closeCourse(req, res) {
-        try {
-            const { id } = req.params;
-            const prisma = this.container.getPrismaClient();
-            // Verificar que el curso existe
-            const curso = await prisma.curso.findUnique({
-                where: { id_cur: id },
-                include: {
-                    inscripcionesCurso: {
+                    categoria: true,
+                    organizador: true,
+                    cursosPorCarrera: {
                         include: {
-                            participacionesCurso: true,
-                            usuario: {
-                                select: {
-                                    nom_usu1: true,
-                                    ape_usu1: true,
-                                    ced_usu: true
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-            if (!curso) {
-                res.status(404).json({
-                    success: false,
-                    message: 'Curso no encontrado'
-                });
-                return;
-            }
-            if (curso.estado === 'CERRADO') {
-                res.status(400).json({
-                    success: false,
-                    message: 'El curso ya está cerrado'
-                });
-                return;
-            }
-            // Cerrar el curso
-            await prisma.curso.update({
-                where: { id_cur: id },
-                data: { estado: 'CERRADO' }
-            });
-            // Calcular estadísticas
-            const participacionesAprobadas = [];
-            let totalParticipaciones = 0;
-            for (const inscripcion of curso.inscripcionesCurso) {
-                if (inscripcion.participacionesCurso && inscripcion.participacionesCurso.length > 0) {
-                    totalParticipaciones += inscripcion.participacionesCurso.length;
-                    for (const participacion of inscripcion.participacionesCurso) {
-                        if (participacion.aprobado) {
-                            participacionesAprobadas.push(participacion);
-                        }
-                    }
-                }
-            }
-            const participantesAprobados = participacionesAprobadas.length;
-            let certificadosGenerados = 0;
-            // Generar certificados para participantes aprobados que no los tengan
-            for (const participacion of participacionesAprobadas) {
-                if (participacion.aprobado && !participacion.certificado_pdf) {
-                    try {
-                        // Aquí iría la lógica de generación de certificado PDF
-                        // Por ahora solo marcamos que se generó
-                        await prisma.participacionCurso.update({
-                            where: { id_par_cur: participacion.id_par_cur },
-                            data: {
-                                fec_cer_par_cur: new Date(),
-                                certificado_filename: `certificado_${participacion.id_par_cur}.pdf`
-                            }
-                        });
-                        certificadosGenerados++;
-                    }
-                    catch (error) {
-                        console.error(`Error generando certificado para participación ${participacion.id_par_cur}:`, error);
-                    }
-                }
-            }
-            res.json({
-                success: true,
-                message: 'Curso cerrado exitosamente',
-                estadisticas: {
-                    totalParticipaciones,
-                    participantesAprobados,
-                    certificadosGenerados
-                }
-            });
-        }
-        catch (error) {
-            console.error('[closeCourse] Error:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Error interno del servidor'
-            });
-        }
-    }
-    /**
-     * GET /api/cursos (Legacy route for frontend compatibility)
-     * Get all courses with admin details
-     */
-    async getCursosAdmin(req, res) {
-        try {
-            const prisma = this.container.getPrismaClient();
-            const cursos = await prisma.curso.findMany({
-                include: {
-                    categoria: {
-                        select: { nom_cat: true }
+                            carrera: true,
+                        },
                     },
-                    organizador: {
-                        select: { nom_org1: true, nom_org2: true, ape_org1: true, ape_org2: true }
-                    },
-                    _count: {
-                        select: {
-                            inscripcionesCurso: true
-                        }
-                    }
                 },
-                orderBy: { fec_ini_cur: 'desc' }
             });
-            const cursosFormateados = cursos.map(curso => ({
+            // Transformar a formato de respuesta
+            const cursosFormateados = cursosCompletos.map((curso) => ({
                 id_cur: curso.id_cur,
                 nom_cur: curso.nom_cur,
                 des_cur: curso.des_cur,
                 dur_cur: curso.dur_cur,
-                fec_ini_cur: curso.fec_ini_cur,
-                fec_fin_cur: curso.fec_fin_cur,
+                fec_ini_cur: curso.fec_ini_cur ? curso.fec_ini_cur.toISOString() : "",
+                fec_fin_cur: curso.fec_fin_cur ? curso.fec_fin_cur.toISOString() : "",
+                id_cat_cur: curso.id_cat_cur,
+                ced_org_cur: curso.ced_org_cur,
                 capacidad_max_cur: curso.capacidad_max_cur,
-                precio: curso.precio,
+                precio: curso.precio?.toString() || null,
                 es_gratuito: curso.es_gratuito,
                 tipo_audiencia_cur: curso.tipo_audiencia_cur,
                 requiere_verificacion_docs: curso.requiere_verificacion_docs,
                 porcentaje_asistencia_aprobacion: curso.porcentaje_asistencia_aprobacion,
                 nota_minima_aprobacion: curso.nota_minima_aprobacion,
                 estado: curso.estado,
-                id_cat_cur: curso.id_cat_cur,
-                ced_org_cur: curso.ced_org_cur,
-                categoria_nombre: curso.categoria.nom_cat,
-                organizador_nombre: `${curso.organizador.nom_org1} ${curso.organizador.ape_org1}`,
-                total_inscripciones: curso._count.inscripcionesCurso
+                categoria: curso.categoria
+                    ? {
+                        id_cat: curso.categoria.id_cat,
+                        nom_cat: curso.categoria.nom_cat,
+                    }
+                    : null,
+                organizador: curso.organizador
+                    ? {
+                        ced_org: curso.organizador.ced_org,
+                        nom_org1: curso.organizador.nom_org1,
+                        nom_org2: curso.organizador.nom_org2,
+                        ape_org1: curso.organizador.ape_org1,
+                        ape_org2: curso.organizador.ape_org2,
+                    }
+                    : null,
             }));
-            res.json({
-                success: true,
+            return {
                 cursos: cursosFormateados,
-                total: cursosFormateados.length
+                total: cursosFormateados.length,
+            };
+        });
+    }
+    /**
+     * GET /api/courses/:id
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
+     */
+    async getCourseById(req, res) {
+        await this.execute(req, res, async () => {
+            const { id } = req.params;
+            if (!id)
+                throw new Error("ID is required");
+            // ✅ SRP: Delegar lógica de negocio al servicio
+            const course = await this.courseService.getCourseById(id);
+            if (!course) {
+                throw new Error("Course not found");
+            }
+            // ✅ SRP: Delegar transformación al DTOTransformer
+            const cursoFormateado = CourseDTO_1.CourseDTOTransformer.toResponseDTO(course);
+            return {
+                curso: cursoFormateado,
+            };
+        });
+    }
+    /**
+     * POST /api/courses
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
+     */
+    async createCourse(req, res) {
+        await this.execute(req, res, async () => {
+            // ✅ SRP: Validar estructura básica del request (responsabilidad del controlador)
+            const requiredFields = [
+                "nom_cur",
+                "des_cur",
+                "dur_cur",
+                "fec_ini_cur",
+                "fec_fin_cur",
+                "id_cat_cur",
+                "ced_org_cur",
+                "capacidad_max_cur",
+                "tipo_audiencia_cur",
+                "porcentaje_asistencia_aprobacion",
+                "nota_minima_aprobacion",
+            ];
+            for (const field of requiredFields) {
+                if (req.body[field] == null) {
+                    throw new Error(`Missing required field: ${field}`);
+                }
+            }
+            // ✅ SRP: Delegar transformación al DTOTransformer
+            const createCourseDTO = req.body;
+            // ✅ SRP: Validar tipos básicos (responsabilidad del DTOTransformer)
+            CourseDTO_1.CourseDTOTransformer.validateBasicTypes(createCourseDTO);
+            // ✅ SRP: Convertir DTO a datos del dominio (responsabilidad del DTOTransformer)
+            const courseData = CourseDTO_1.CourseDTOTransformer.fromCreateDTO(createCourseDTO);
+            // ✅ SRP: Delegar lógica de negocio al servicio
+            const createdCourse = await this.courseService.createCourse({
+                ...courseData,
+                carreras: createCourseDTO.carreras_seleccionadas,
             });
-        }
-        catch (error) {
-            console.error('[getCursosAdmin] Error:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Error interno del servidor'
+            // ✅ SRP: Delegar transformación de respuesta al DTOTransformer
+            const cursoResponse = CourseDTO_1.CourseDTOTransformer.toResponseDTO(createdCourse);
+            return {
+                message: "Course created successfully",
+                curso: cursoResponse,
+            };
+        });
+    }
+    /**
+     * PUT /api/courses/:id
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
+     */
+    async updateCourse(req, res) {
+        await this.execute(req, res, async () => {
+            const { id } = req.params;
+            if (!id)
+                throw new Error("ID is required");
+            // ✅ SRP: Delegar lógica de negocio al servicio
+            const updatedCourse = await this.courseService.updateCourse(id, req.body);
+            // ✅ SRP: Delegar transformación al DTOTransformer
+            const cursoResponse = CourseDTO_1.CourseDTOTransformer.toResponseDTO(updatedCourse);
+            return {
+                message: "Course updated successfully",
+                curso: cursoResponse,
+            };
+        });
+    }
+    /**
+     * DELETE /api/courses/:id
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
+     */
+    async deleteCourse(req, res) {
+        await this.execute(req, res, async () => {
+            const { id } = req.params;
+            if (!id)
+                throw new Error("ID is required");
+            // ✅ SRP: Delegar lógica de negocio al servicio
+            await this.courseService.deleteCourse(id);
+            return {
+                message: "Course deleted successfully",
+            };
+        });
+    }
+    /**
+     * POST /api/courses/:id/close
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
+     */
+    async closeCourse(req, res) {
+        await this.execute(req, res, async () => {
+            const { id } = req.params;
+            if (!id)
+                throw new Error("ID is required");
+            // ✅ SRP: Delegar lógica de negocio al servicio
+            const closedCourse = await this.courseService.closeCourse(id);
+            // ✅ SRP: Delegar transformación al DTOTransformer
+            const cursoResponse = CourseDTO_1.CourseDTOTransformer.toResponseDTO(closedCourse);
+            return {
+                message: "Course closed successfully",
+                curso: cursoResponse,
+            };
+        });
+    }
+    /**
+     * GET /api/cursos (Admin)
+     * ✅ SRP: Solo maneja HTTP request/response para admin, delega todo lo demás
+     */
+    async getCursosAdmin(req, res) {
+        await this.execute(req, res, async () => {
+            // ✅ SRP: Delegar lógica de negocio al servicio
+            const courses = await this.courseService.getAllCourses();
+            // ✅ SRP: Delegar transformación al DTOTransformer
+            const cursosFormateados = CourseDTO_1.CourseDTOTransformer.toResponseDTOList(courses);
+            return {
+                cursos: cursosFormateados,
+                total: cursosFormateados.length,
+            };
+        });
+    }
+    /**
+     * GET /api/courses/available
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
+     */
+    async getAvailableCourses(req, res) {
+        await this.execute(req, res, async () => {
+            // TODO: Implementar lógica para obtener cursos disponibles
+            // Por ahora, devolver todos los cursos activos
+            const courses = await this.courseService.getAllCourses();
+            // Filtrar cursos activos y futuros
+            const now = new Date();
+            const availableCourses = courses.filter((course) => {
+                const courseData = course.toPlainObject();
+                return (courseData.estado_cur === "ACTIVO" &&
+                    new Date(courseData.fec_ini_cur) >= now);
             });
-        }
+            const cursosFormateados = CourseDTO_1.CourseDTOTransformer.toResponseDTOList(availableCourses);
+            return {
+                cursos: cursosFormateados,
+                total: cursosFormateados.length,
+            };
+        });
+    }
+    /**
+     * GET /api/courses/my-courses
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
+     */
+    async getMyCourses(req, res) {
+        await this.execute(req, res, async () => {
+            // TODO: Implementar lógica para obtener cursos del usuario
+            // Por ahora, devolver array vacío hasta implementar inscripciones
+            return {
+                cursos: [],
+                total: 0,
+            };
+        });
     }
 }
 exports.CourseController = CourseController;

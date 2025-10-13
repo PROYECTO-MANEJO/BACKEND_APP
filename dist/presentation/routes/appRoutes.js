@@ -43,8 +43,7 @@ class AppRoutes {
         const participationRoutes = new participationRoutes_1.ParticipationRoutes();
         this.router.use("/participations", participationRoutes.getRouter());
         // Rutas de página principal
-        const homepageRoutes = new homepageRoutes_1.HomepageRoutes();
-        this.router.use("/homepage", homepageRoutes.getRouter());
+        this.router.use("/homepage", homepageRoutes_1.homepageRoutes);
         // Rutas de carreras
         const careerRoutes = new careerRoutes_1.CareerRoutes();
         this.router.use("/careers", careerRoutes.getRouter());

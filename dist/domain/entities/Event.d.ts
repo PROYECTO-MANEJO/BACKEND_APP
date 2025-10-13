@@ -1,8 +1,9 @@
 /**
  * Event Entity - Domain Layer
  *
- * Representa un evento del sistema con todas sus reglas de negocio
- * y validaciones correspondientes.
+ * ✅ SRP: Responsabilidad única - Gestión de datos del evento
+ * Las validaciones están en EventValidator
+ * Las reglas de negocio están en EventBusinessRules
  */
 export interface EventData {
     id?: string;
@@ -52,23 +53,8 @@ export declare class Event {
     private _fecha_creacion?;
     private _fecha_actualizacion?;
     constructor(data: EventData);
-    private validateEventData;
-    private validateDates;
-    private validateAttendancePercentage;
-    private validatePrice;
-    private validateAudienceType;
-    private validateDuration;
-    private validateCapacity;
-    canBeUpdated(): boolean;
-    canBeDeleted(): boolean;
-    canBeClosed(): boolean;
-    isActive(): boolean;
-    isUpcoming(): boolean;
-    isInProgress(): boolean;
-    isFinished(): boolean;
-    updateBasicInfo(data: Partial<EventData>): void;
-    close(): void;
-    cancel(): void;
+    updateData(data: Partial<EventData>): void;
+    changeStatus(newStatus: string): void;
     get id(): string | undefined;
     get nom_eve(): string;
     get des_eve(): string;

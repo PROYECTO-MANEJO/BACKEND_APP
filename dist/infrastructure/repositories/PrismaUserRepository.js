@@ -56,6 +56,37 @@ class PrismaUserRepository {
             return null;
         return this.mapToUserData(usuario);
     }
+    async findProfileById(id) {
+        const usuario = await this.prisma.usuario.findUnique({
+            where: { id_usu: id },
+            include: {
+                carrera: true,
+                cuentas: true,
+            },
+        });
+        if (!usuario)
+            return null;
+        const account = usuario.cuentas[0];
+        return {
+            id_usu: usuario.id_usu,
+            ced_usu: usuario.ced_usu,
+            nom_usu1: usuario.nom_usu1,
+            nom_usu2: usuario.nom_usu2,
+            ape_usu1: usuario.ape_usu1,
+            ape_usu2: usuario.ape_usu2,
+            fec_nac_usu: usuario.fec_nac_usu,
+            num_tel_usu: usuario.num_tel_usu || undefined,
+            id_car_per: usuario.id_car_per || undefined,
+            github_token: usuario.github_token || undefined,
+            github_username: usuario.github_username || undefined,
+            email: account?.cor_cue,
+            rol: account?.rol_cue,
+            carrera: usuario.carrera
+                ? { id_car: usuario.carrera.id_car, nom_car: usuario.carrera.nom_car }
+                : undefined,
+            cuentas: usuario.cuentas,
+        };
+    }
     async findByEmail(email) {
         const cuenta = await this.prisma.cuenta.findFirst({
             where: { cor_cue: email },

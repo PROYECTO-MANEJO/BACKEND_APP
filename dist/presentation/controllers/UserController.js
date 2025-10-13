@@ -14,39 +14,26 @@ class UserController extends BaseController_1.BaseController {
     async getUserProfile(req, res) {
         await this.execute(req, res, async () => {
             const userId = req.uid; // From JWT middleware
-            // ✅ SOLID: Usar repository en lugar de Prisma directo
+            // ✅ SOLID: Usar repository con método específico para perfil
             const userRepository = this.container.getUserRepository();
-            const user = await userRepository.findById(userId);
-            if (!user) {
-                throw new Error('User not found');
+            const userProfile = await userRepository.findProfileById(userId);
+            if (!userProfile) {
+                throw new Error("User not found");
             }
-            const account = user.cuentas[0];
-            const isEstudiante = account?.rol_cue === 'ESTUDIANTE';
-            const userProfile = {
-                id_usu: user.id_usu,
-                ced_usu: user.ced_usu,
-                nom_usu1: user.nom_usu1,
-                nom_usu2: user.nom_usu2,
-                ape_usu1: user.ape_usu1,
-                ape_usu2: user.ape_usu2,
-                fec_nac_usu: user.fec_nac_usu,
-                num_tel_usu: user.num_tel_usu,
-                id_car_per: user.id_car_per,
-                github_token: user.github_token,
-                github_username: user.github_username,
-                email: account?.cor_cue,
-                rol: account?.rol_cue,
-                carrera: user.carrera ? { id_car: user.carrera.id_car, nom_car: user.carrera.nom_car } : null,
+            const isEstudiante = userProfile.rol === "ESTUDIANTE";
+            return {
+                ...userProfile,
                 documentos: {
-                    cedula_subida: !!user.enl_ced_pdf,
-                    matricula_subida: !!user.enl_mat_pdf,
+                    cedula_subida: !!userProfile.enl_ced_pdf,
+                    matricula_subida: !!userProfile.enl_mat_pdf,
                     matricula_requerida: isEstudiante,
-                    documentos_verificados: user.documentos_verificados,
-                    fecha_verificacion: user.fec_verificacion_docs,
-                    archivos_completos: isEstudiante ? (!!user.enl_ced_pdf && !!user.enl_mat_pdf) : !!user.enl_ced_pdf
-                }
+                    documentos_verificados: userProfile.documentos_verificados,
+                    fecha_verificacion: userProfile.fec_verificacion_docs,
+                    archivos_completos: isEstudiante
+                        ? !!userProfile.enl_ced_pdf && !!userProfile.enl_mat_pdf
+                        : !!userProfile.enl_ced_pdf,
+                },
             };
-            return userProfile;
         });
     }
     /**
@@ -59,44 +46,46 @@ class UserController extends BaseController_1.BaseController {
             // ✅ SOLID: Usar repository en lugar de Prisma directo
             const userRepository = this.container.getUserRepository();
             const prisma = this.container.getPrismaClient(); // Solo para validaciones complejas
-            const { nom_usu1, nom_usu2, ape_usu1, ape_usu2, fec_nac_usu, num_tel_usu, id_car_per, github_token } = req.body;
+            const { nom_usu1, nom_usu2, ape_usu1, ape_usu2, fec_nac_usu, num_tel_usu, id_car_per, github_token, } = req.body;
             const existingUser = await userRepository.findById(userId);
             if (!existingUser) {
-                throw new Error('User not found');
+                throw new Error("User not found");
             }
             // Validate GitHub token if provided
             if (github_token) {
                 const userRole = existingUser.cuentas[0]?.rol_cue;
-                const allowedRoles = ['DESARROLLADOR', 'MASTER', 'ADMINISTRADOR'];
-                if (!allowedRoles.includes(userRole || '')) {
-                    throw new Error('Only developers, masters and administrators can configure a GitHub token');
+                const allowedRoles = ["DESARROLLADOR", "MASTER", "ADMINISTRADOR"];
+                if (!allowedRoles.includes(userRole || "")) {
+                    throw new Error("Only developers, masters and administrators can configure a GitHub token");
                 }
             }
-            const isEstudiante = existingUser.cuentas[0]?.rol_cue === 'ESTUDIANTE';
+            const isEstudiante = existingUser.cuentas[0]?.rol_cue === "ESTUDIANTE";
             let carreraToUpdate = isEstudiante ? id_car_per : null;
             if (isEstudiante && carreraToUpdate) {
-                const carreraExists = await prisma.carrera.findUnique({ where: { id_car: carreraToUpdate } });
+                const carreraExists = await prisma.carrera.findUnique({
+                    where: { id_car: carreraToUpdate },
+                });
                 if (!carreraExists) {
-                    throw new Error('Selected career does not exist');
+                    throw new Error("Selected career does not exist");
                 }
             }
             const updatedUser = await prisma.usuario.update({
                 where: { id_usu: userId },
                 data: {
                     nom_usu1,
-                    nom_usu2: nom_usu2 || '',
+                    nom_usu2: nom_usu2 || "",
                     ape_usu1,
-                    ape_usu2: ape_usu2 || '',
+                    ape_usu2: ape_usu2 || "",
                     fec_nac_usu: new Date(fec_nac_usu),
                     num_tel_usu: num_tel_usu || null,
                     id_car_per: carreraToUpdate || null,
                     github_token: github_token || null,
-                    github_username: null // TODO: Implement GitHub validation
+                    github_username: null, // TODO: Implement GitHub validation
                 },
                 include: {
                     carrera: { select: { id_car: true, nom_car: true } },
-                    cuentas: { select: { cor_cue: true, rol_cue: true } }
-                }
+                    cuentas: { select: { cor_cue: true, rol_cue: true } },
+                },
             });
             const account = updatedUser.cuentas[0];
             const userProfile = {
@@ -113,12 +102,17 @@ class UserController extends BaseController_1.BaseController {
                 github_username: updatedUser.github_username,
                 email: account?.cor_cue,
                 rol: account?.rol_cue,
-                carrera: updatedUser.carrera ? { id_car: updatedUser.carrera.id_car, nom_car: updatedUser.carrera.nom_car } : null
+                carrera: updatedUser.carrera
+                    ? {
+                        id_car: updatedUser.carrera.id_car,
+                        nom_car: updatedUser.carrera.nom_car,
+                    }
+                    : null,
             };
             return {
                 success: true,
-                message: 'Profile updated successfully',
-                user: userProfile
+                message: "Profile updated successfully",
+                user: userProfile,
             };
         });
     }
@@ -132,13 +126,13 @@ class UserController extends BaseController_1.BaseController {
             const users = await prisma.usuario.findMany({
                 include: {
                     carrera: { select: { id_car: true, nom_car: true } },
-                    cuentas: { select: { cor_cue: true, rol_cue: true } }
+                    cuentas: { select: { cor_cue: true, rol_cue: true } },
                 },
-                orderBy: { nom_usu1: 'asc' }
+                orderBy: { nom_usu1: "asc" },
             });
-            const userList = users.map(user => {
+            const userList = users.map((user) => {
                 const account = user.cuentas[0];
-                const isEstudiante = account?.rol_cue === 'ESTUDIANTE';
+                const isEstudiante = account?.rol_cue === "ESTUDIANTE";
                 return {
                     id_usu: user.id_usu,
                     ced_usu: user.ced_usu,
@@ -150,21 +144,25 @@ class UserController extends BaseController_1.BaseController {
                     num_tel_usu: user.num_tel_usu,
                     email: account?.cor_cue,
                     rol: account?.rol_cue,
-                    carrera: user.carrera ? { id_car: user.carrera.id_car, nom_car: user.carrera.nom_car } : null,
+                    carrera: user.carrera
+                        ? { id_car: user.carrera.id_car, nom_car: user.carrera.nom_car }
+                        : null,
                     documentos: {
                         cedula_subida: !!user.enl_ced_pdf,
                         matricula_subida: !!user.enl_mat_pdf,
                         matricula_requerida: isEstudiante,
                         documentos_verificados: user.documentos_verificados,
                         fecha_verificacion: user.fec_verificacion_docs,
-                        archivos_completos: isEstudiante ? (!!user.enl_ced_pdf && !!user.enl_mat_pdf) : !!user.enl_ced_pdf
-                    }
+                        archivos_completos: isEstudiante
+                            ? !!user.enl_ced_pdf && !!user.enl_mat_pdf
+                            : !!user.enl_ced_pdf,
+                    },
                 };
             });
             return {
                 success: true,
                 users: userList,
-                total: userList.length
+                total: userList.length,
             };
         });
     }
@@ -174,36 +172,39 @@ class UserController extends BaseController_1.BaseController {
      */
     async getAdmins(req, res) {
         await this.execute(req, res, async () => {
-            // ✅ SOLID: Usar repository en lugar de Prisma directo
-            const userRepository = this.container.getUserRepository();
-            const admins = await userRepository.findByRole('ADMINISTRADOR');
-            const formattedAdmins = admins.map((admin) => {
-                const account = admin.cuentas[0];
+            // ✅ SOLID: Usar AuthenticationRepository que incluye datos completos
+            const authRepository = this.container.getAuthenticationRepository();
+            const admins = await authRepository.findByRole("ADMINISTRADOR");
+            const formattedAdmins = admins.map((adminData) => {
+                const user = adminData.user;
+                const account = adminData.account;
                 return {
-                    id_usu: admin.id_usu,
-                    ced_usu: admin.ced_usu,
-                    nom_usu1: admin.nom_usu1,
-                    nom_usu2: admin.nom_usu2,
-                    ape_usu1: admin.ape_usu1,
-                    ape_usu2: admin.ape_usu2,
-                    fec_nac_usu: admin.fec_nac_usu,
-                    num_tel_usu: admin.num_tel_usu,
-                    cor_cue: account?.cor_cue, // ✅ Usar cor_cue como espera el frontend
-                    rol_cue: account?.rol_cue, // ✅ Mantener rol_cue
-                    carrera: admin.carrera ? { id_car: admin.carrera.id_car, nom_car: admin.carrera.nom_car } : null,
+                    id_usu: user.id,
+                    ced_usu: user.cedula,
+                    nom_usu1: user.firstName,
+                    nom_usu2: user.firstName2 || "",
+                    ape_usu1: user.lastName,
+                    ape_usu2: user.lastName2 || "",
+                    fec_nac_usu: user.birthDate,
+                    num_tel_usu: user.phone,
+                    cor_cue: account.email,
+                    rol_cue: account.role,
+                    carrera: adminData.career
+                        ? { id_car: adminData.career.id, nom_car: adminData.career.name }
+                        : null,
                     documentos: {
-                        cedula_subida: !!admin.enl_ced_pdf,
+                        cedula_subida: !!user.cedulaFileUrl,
                         matricula_subida: false, // Los admins no necesitan matrícula
                         matricula_requerida: false,
-                        documentos_verificados: admin.documentos_verificados,
-                        fecha_verificacion: admin.fec_verificacion_docs,
-                        archivos_completos: !!admin.enl_ced_pdf
-                    }
+                        documentos_verificados: user.documentsVerified || false,
+                        fecha_verificacion: user.verificationDate,
+                        archivos_completos: !!user.cedulaFileUrl,
+                    },
                 };
             });
             return {
                 success: true,
-                usuarios: formattedAdmins // Usar 'usuarios' como espera el frontend
+                usuarios: formattedAdmins, // Usar 'usuarios' como espera el frontend
             };
         });
     }

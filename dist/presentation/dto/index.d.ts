@@ -4,11 +4,14 @@
  * Todos los DTOs organizados por funcionalidad y exportados
  * desde un punto central para facilitar imports
  */
-export * from './user/UserDTO';
-export * from './user/UserManagementTypes';
-export * from './course/CourseDTO';
-export * from './event/EventDTO';
-export * from './admin/CertificateDTO';
-export * from './common/CommonTypes';
-export * from './common/CareerDTO';
+export * from "./user/UserDTO";
+export * from "./user/UserManagementTypes";
+export * from "./CourseDTO";
+export * from "./EventDTO";
+export * from "./admin/CertificateDTO";
+export * from "./OrganizerDTO";
+export * from "./CategoryDTO";
+export * from "./HomepageDTO";
+export * from "./common/CommonTypes";
+export * from "./common/CareerDTO";
 //# sourceMappingURL=index.d.ts.map

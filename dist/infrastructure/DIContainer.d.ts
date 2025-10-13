@@ -1,14 +1,21 @@
-import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcrypt';
-import { IUserRepository } from '../domain/repositories/IUserRepository';
-import { ICourseRepository } from '../domain/repositories/ICourseRepository';
-import { IEventRepository } from '../domain/repositories/IEventRepository';
-import { ICertificateRepository } from '../domain/repositories/ICertificateRepository';
-import { IEnrollmentRepository } from '../domain/repositories/IEnrollmentRepository';
-import { DeveloperRepository } from '../domain/repositories/IDeveloperRepository';
-import { ChangeRequestRepository } from '../domain/repositories/IChangeRequestRepository';
-import { IAuthenticationRepository } from '../domain/repositories/IAuthenticationRepository';
-import { IEmailService } from '../domain/repositories/IEmailService';
+import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcrypt";
+import { IUserRepository } from "../domain/repositories/IUserRepository";
+import { ICourseRepository } from "../domain/repositories/ICourseRepository";
+import { IEventRepository } from "../domain/repositories/IEventRepository";
+import { ICertificateRepository } from "../domain/repositories/ICertificateRepository";
+import { IEnrollmentRepository } from "../domain/repositories/IEnrollmentRepository";
+import { DeveloperRepository } from "../domain/repositories/IDeveloperRepository";
+import { ChangeRequestRepository } from "../domain/repositories/IChangeRequestRepository";
+import { IAuthenticationRepository } from "../domain/repositories/IAuthenticationRepository";
+import { IEmailService } from "../domain/repositories/IEmailService";
+import { IOrganizerRepository } from "../domain/repositories/IOrganizerRepository";
+import { ICategoryRepository } from "../domain/repositories/ICategoryRepository";
+import { IParticipationRepository } from "../domain/repositories/IParticipationRepository";
+import { IDocumentRepository } from "../domain/repositories/IDocumentRepository";
+import { IReportRepository } from "../domain/repositories/IReportRepository";
+import { ICareerRepository } from "../domain/repositories/ICareerRepository";
+import { IHomepageRepository } from "../domain/repositories/IHomepageRepository";
 /**
  * SOLID Dependency Injection Container
  * Implementa DIP (Dependency Inversion Principle)
@@ -25,6 +32,13 @@ export declare class DIContainer {
     private changeRequestRepository?;
     private authenticationRepository?;
     private emailService?;
+    private organizerRepository?;
+    private categoryRepository?;
+    private participationRepository?;
+    private documentRepository?;
+    private reportRepository?;
+    private careerRepository?;
+    private homepageRepository?;
     private constructor();
     static getInstance(): DIContainer;
     getUserRepository(): IUserRepository;
@@ -36,6 +50,13 @@ export declare class DIContainer {
     getChangeRequestRepository(): ChangeRequestRepository;
     getAuthenticationRepository(): IAuthenticationRepository;
     getEmailService(): IEmailService;
+    getOrganizerRepository(): IOrganizerRepository;
+    getCategoryRepository(): ICategoryRepository;
+    getParticipationRepository(): IParticipationRepository;
+    getDocumentRepository(): IDocumentRepository;
+    getReportRepository(): IReportRepository;
+    getCareerRepository(): ICareerRepository;
+    getHomepageRepository(): IHomepageRepository;
     getPrismaClient(): PrismaClient;
     getBcrypt(): typeof bcrypt;
     getJwtHelpers(): {

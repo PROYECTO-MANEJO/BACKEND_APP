@@ -1,8 +1,9 @@
 /**
  * Course Entity - Domain Layer
  *
- * Representa un curso del sistema con todas sus reglas de negocio
- * y validaciones correspondientes.
+ * ✅ SRP: Responsabilidad única - Gestión de datos del curso
+ * Las validaciones están en CourseValidator
+ * Las reglas de negocio están en CourseBusinessRules
  */
 export interface CourseData {
     id?: string;
@@ -26,7 +27,7 @@ export interface CourseData {
     categoria?: any;
     organizador?: any;
     inscripciones?: any[];
-    carreras?: number[];
+    carreras?: string[];
 }
 export declare class Course {
     private _id?;
@@ -48,25 +49,16 @@ export declare class Course {
     private _fecha_creacion?;
     private _fecha_actualizacion?;
     constructor(data: CourseData);
-    private validateCourseData;
-    private validateDates;
-    private validateDuration;
-    private validateCapacity;
-    private validateApprovalCriteria;
-    private validatePrice;
-    private validateAudienceType;
-    canBeUpdated(): boolean;
-    canBeDeleted(): boolean;
-    canBeClosed(): boolean;
-    isActive(): boolean;
-    isUpcoming(): boolean;
-    isInProgress(): boolean;
-    isFinished(): boolean;
-    requiresDocumentVerification(): boolean;
-    isForSpecificCareer(): boolean;
-    updateBasicInfo(data: Partial<CourseData>): void;
-    close(): void;
-    cancel(): void;
+    /**
+     * Actualizar información básica del curso
+     * NOTA: Las validaciones y reglas de negocio deben aplicarse ANTES de llamar este método
+     */
+    updateData(data: Partial<CourseData>): void;
+    /**
+     * Cambiar estado del curso
+     * NOTA: Las reglas de negocio deben aplicarse ANTES de llamar este método
+     */
+    changeStatus(newStatus: string): void;
     get id(): string | undefined;
     get nom_cur(): string;
     get des_cur(): string;

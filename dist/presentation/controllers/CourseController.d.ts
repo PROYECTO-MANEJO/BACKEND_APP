@@ -10,46 +10,61 @@ import { Request, Response } from "express";
 import { BaseController } from "./BaseController";
 import { DIContainer } from "../../infrastructure/DIContainer";
 /**
- * Controlador para gestión de cursos
- * Maneja todas las operaciones CRUD y funcionalidades relacionadas con cursos
+ * Course Controller - Presentation Layer
+ *
+ * ✅ SRP: Responsabilidad única - Manejo de HTTP requests/responses para cursos
+ * - Delega validaciones a CourseValidator
+ * - Delega lógica de negocio a CourseService
+ * - Delega transformaciones a CourseDTOTransformer
  */
 export declare class CourseController extends BaseController {
+    private courseService;
     private container;
     constructor(container: DIContainer);
     /**
      * GET /api/courses
-     * Get all courses (based on original obtenerCursos function)
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
     getCourses(req: Request, res: Response): Promise<void>;
     /**
      * GET /api/courses/:id
-     * Get course by ID (based on original obtenerCursoPorId function)
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
     getCourseById(req: Request, res: Response): Promise<void>;
     /**
      * POST /api/courses
-     * Create new course (based on original crearCurso function)
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
     createCourse(req: Request, res: Response): Promise<void>;
     /**
      * PUT /api/courses/:id
-     * Update existing course (Admin only)
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
-    updateCourse(req: AuthenticatedRequest, res: Response): Promise<void>;
+    updateCourse(req: Request, res: Response): Promise<void>;
     /**
      * DELETE /api/courses/:id
-     * Delete course (Admin only) - Soft delete
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
-    deleteCourse(req: AuthenticatedRequest, res: Response): Promise<void>;
+    deleteCourse(req: Request, res: Response): Promise<void>;
     /**
-     * PUT /api/courses/:id/cerrar
-     * Close course and generate certificates (Admin only)
+     * POST /api/courses/:id/close
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
-    closeCourse(req: AuthenticatedRequest, res: Response): Promise<void>;
+    closeCourse(req: Request, res: Response): Promise<void>;
     /**
-     * GET /api/cursos (Legacy route for frontend compatibility)
-     * Get all courses with admin details
+     * GET /api/cursos (Admin)
+     * ✅ SRP: Solo maneja HTTP request/response para admin, delega todo lo demás
      */
     getCursosAdmin(req: AuthenticatedRequest, res: Response): Promise<void>;
+    /**
+     * GET /api/courses/available
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
+     */
+    getAvailableCourses(req: Request, res: Response): Promise<void>;
+    /**
+     * GET /api/courses/my-courses
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
+     */
+    getMyCourses(req: AuthenticatedRequest, res: Response): Promise<void>;
 }
 //# sourceMappingURL=CourseController.d.ts.map

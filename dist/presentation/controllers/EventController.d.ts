@@ -10,46 +10,60 @@ import { Request, Response } from "express";
 import { BaseController } from "./BaseController";
 import { DIContainer } from "../../infrastructure/DIContainer";
 /**
- * Controlador para gestión de eventos
- * Maneja todas las operaciones CRUD y funcionalidades relacionadas con eventos
+ * Event Controller - Presentation Layer
+ *
+ * ✅ SRP: Responsabilidad única - Manejo de HTTP requests/responses para eventos
+ * - Delega validaciones a EventValidator
+ * - Delega lógica de negocio a EventService
+ * - Delega transformaciones a EventDTOTransformer
  */
 export declare class EventController extends BaseController {
-    private container;
+    private eventService;
     constructor(container: DIContainer);
     /**
      * GET /api/events
-     * Get all events (based on original obtenerEventos function)
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
     getEvents(req: Request, res: Response): Promise<void>;
     /**
      * GET /api/events/:id
-     * Get event by ID (based on original obtenerEventoPorId function)
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
     getEventById(req: Request, res: Response): Promise<void>;
     /**
      * POST /api/events
-     * Create new event (based on original crearEvento function)
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
     createEvent(req: Request, res: Response): Promise<void>;
     /**
-     * GET /api/eventos (Legacy route for frontend compatibility)
-     * Get all events with admin details
+     * PUT /api/events/:id
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
+     */
+    updateEvent(req: Request, res: Response): Promise<void>;
+    /**
+     * DELETE /api/events/:id
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
+     */
+    deleteEvent(req: Request, res: Response): Promise<void>;
+    /**
+     * POST /api/events/:id/close
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
+     */
+    closeEvent(req: Request, res: Response): Promise<void>;
+    /**
+     * GET /api/eventos (Admin)
+     * ✅ SRP: Solo maneja HTTP request/response para admin, delega todo lo demás
      */
     getEventosAdmin(req: AuthenticatedRequest, res: Response): Promise<void>;
     /**
-     * PUT /api/eventos/:id
-     * Update existing event (Admin only)
+     * GET /api/events/available
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
-    updateEvent(req: AuthenticatedRequest, res: Response): Promise<void>;
+    getAvailableEvents(req: Request, res: Response): Promise<void>;
     /**
-     * DELETE /api/eventos/:id
-     * Delete event (Admin only)
+     * GET /api/events/my-events
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
-    deleteEvent(req: AuthenticatedRequest, res: Response): Promise<void>;
-    /**
-     * PUT /api/eventos/:id/cerrar
-     * Close event (Admin only)
-     */
-    closeEvent(req: AuthenticatedRequest, res: Response): Promise<void>;
+    getMyEvents(req: AuthenticatedRequest, res: Response): Promise<void>;
 }
 //# sourceMappingURL=EventController.d.ts.map

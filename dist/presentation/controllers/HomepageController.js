@@ -2,768 +2,277 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HomepageController = void 0;
 const BaseController_1 = require("./BaseController");
+const HomepageDTO_1 = require("../dto/HomepageDTO");
+const HomepageService_1 = require("../../application/services/HomepageService");
 class HomepageController extends BaseController_1.BaseController {
     constructor(container) {
         super();
         this.container = container;
+        this.homepageRepository = container.getHomepageRepository();
+        this.homepageService = new HomepageService_1.HomepageService(container);
     }
     /**
      * GET /api/homepage/content
-     * Obtener contenido de la página principal
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
     async getContent(req, res) {
-        try {
-            const prisma = this.container.getPrismaClient();
-            // Buscar el primer registro o crear uno por defecto
-            let paginaPrincipal = await prisma.paginaPrincipal.findFirst();
-            if (!paginaPrincipal) {
-                // Crear registro por defecto
-                paginaPrincipal = await prisma.paginaPrincipal.create({
-                    data: {
-                        titulo_hero: 'FISEI - SIGEC',
-                        subtitulo_hero: 'Sistema Integral de Gestión de Eventos y Cursos',
-                        descripcion_hero: 'Facultad de Ingeniería en Sistemas, Electrónica e Industrial - Universidad Técnica de Ambato',
-                        titulo_ofrecemos: '¿Qué Ofrecemos?',
-                        subtitulo_ofrecemos: 'Descubre todas las oportunidades de crecimiento académico y profesional que tenemos para ti',
-                        titulo_seccion1: 'Cursos Especializados',
-                        descripcion_seccion1: 'En FISEIIIIIIIIIIIIIIII ofrecemos una amplia variedad de cursos técnicos y académicos diseñados específicamente para potenciar tu desarrollo profesional. Nuestros programas están actualizados con las últimas tendencias tecnológicas y metodologías de enseñanza, garantizando una formación de calidad que te prepare para los desafíos del mundo laboral moderno.',
-                        titulo_seccion2: 'Eventos Académicos',
-                        descripcion_seccion2: 'Participa en conferencias, seminarios y talleres que enriquecerán tu experiencia universitaria. Organizamos eventos con expertos de la industria, investigadores reconocidos y profesionales destacados que compartirán sus conocimientos y experiencias contigo, creando oportunidades únicas de networking y aprendizaje.',
-                        titulo_seccion3: 'Certificaciones Oficiales',
-                        descripcion_seccion3: 'Obtén certificados oficiales que validen tus conocimientos y habilidades adquiridas durante tu formación. Nuestras certificaciones están reconocidas por la industria y te brindarán una ventaja competitiva en el mercado laboral, demostrando tu competencia y compromiso con la excelencia académica.',
-                        titulo_seccion4: 'Comunidad Académica',
-                        descripcion_seccion4: 'Forma parte de una comunidad universitaria comprometida con la excelencia educativa y la innovación. En FISEI, fomentamos un ambiente colaborativo donde estudiantes, docentes e investigadores trabajamos juntos para crear soluciones innovadoras y contribuir al desarrollo tecnológico del país.',
-                        texto_footer1: 'Facultad de Ingeniería en Sistemas, Electrónica e Industrial',
-                        texto_footer2: 'Universidad Técnica de Ambato - Campus Huachi',
-                        texto_footer3: '© 2024 FISEI-UTA. Todos los derechos reservados.',
-                        fecha_creacion: new Date()
-                    },
-                    include: {
-                        ultimoEditor: true
-                    }
-                });
+        await this.execute(req, res, async () => {
+            // ✅ SRP: Delegar lógica de negocio al servicio
+            const result = await this.homepageService.getHomepageContent();
+            // ✅ SRP: Si no es exitoso, lanzar error para manejo del BaseController
+            if (!result.success) {
+                const error = new Error(result.message);
+                error.name = "HomepageError";
+                throw error;
             }
-            else {
-                // Incluir información del último editor
-                paginaPrincipal = await prisma.paginaPrincipal.findUnique({
-                    where: { id_pag: paginaPrincipal.id_pag },
-                    include: {
-                        ultimoEditor: true
-                    }
-                });
-            }
-            // Convertir imágenes a URLs del servidor
-            const contenidoConImagenes = {
-                ...paginaPrincipal,
-                imagen_hero: paginaPrincipal.imagen_hero ? `/api/homepage/image/imagen_hero?t=${Date.now()}` : null,
-                imagen_seccion1: paginaPrincipal.imagen_seccion1 ? `/api/homepage/image/imagen_seccion1?t=${Date.now()}` : null,
-                imagen_seccion2: paginaPrincipal.imagen_seccion2 ? `/api/homepage/image/imagen_seccion2?t=${Date.now()}` : null,
-                imagen_seccion3: paginaPrincipal.imagen_seccion3 ? `/api/homepage/image/imagen_seccion3?t=${Date.now()}` : null,
-                imagen_seccion4: paginaPrincipal.imagen_seccion4 ? `/api/homepage/image/imagen_seccion4?t=${Date.now()}` : null,
-            };
-            res.json({
-                success: true,
-                data: contenidoConImagenes
-            });
-        }
-        catch (error) {
-            console.error('[getContent] Error:', error);
-            res.status(500).json({
-                success: false,
-                message: error.message
-            });
-        }
+            // ✅ SRP: Retornar datos para el BaseController
+            return result.data;
+        });
     }
     /**
      * PUT /api/homepage/content
-     * Actualizar contenido de la página principal
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
     async updateContent(req, res) {
-        try {
+        await this.execute(req, res, async () => {
             const usuarioId = req.usuario?.id_usu;
-            const data = req.body;
+            const contentDTO = req.body;
+            // ✅ SRP: Validaciones básicas
             if (!usuarioId) {
-                res.status(401).json({
-                    success: false,
-                    message: 'Usuario no autenticado'
-                });
-                return;
+                const error = new Error("Usuario no autenticado");
+                error.name = "AuthenticationError";
+                throw error;
             }
-            if (!data) {
-                res.status(400).json({
-                    success: false,
-                    message: 'Datos requeridos'
-                });
-                return;
+            if (!contentDTO) {
+                const error = new Error("Datos requeridos");
+                error.name = "ValidationError";
+                throw error;
             }
-            const prisma = this.container.getPrismaClient();
-            // Buscar el registro existente
-            let paginaPrincipal = await prisma.paginaPrincipal.findFirst();
-            const updateData = {
-                ...data,
-                fecha_ultima_actualizacion: new Date(),
-                id_usuario_ultima_edicion: usuarioId
+            // ✅ SRP: Validar campos básicos del DTO
+            HomepageDTO_1.HomepageDTOTransformer.validateBasicFields(contentDTO);
+            // ✅ SRP: Convertir DTO a formato del servicio
+            const contentRequest = {
+                ...HomepageDTO_1.HomepageDTOTransformer.fromContentRequestDTO(contentDTO),
+                editor_id: usuarioId,
             };
-            if (paginaPrincipal) {
-                // Actualizar registro existente
-                paginaPrincipal = await prisma.paginaPrincipal.update({
-                    where: { id_pag: paginaPrincipal.id_pag },
-                    data: updateData,
-                    include: {
-                        ultimoEditor: true
-                    }
-                });
+            // ✅ SRP: Delegar lógica de negocio al servicio
+            const result = await this.homepageService.updateHomepageContent(contentRequest);
+            // ✅ SRP: Si no es exitoso, lanzar error para manejo del BaseController
+            if (!result.success) {
+                const error = new Error(result.message);
+                error.name = "HomepageError";
+                throw error;
             }
-            else {
-                // Crear nuevo registro si no existe
-                paginaPrincipal = await prisma.paginaPrincipal.create({
-                    data: {
-                        ...updateData,
-                        fecha_creacion: new Date()
-                    },
-                    include: {
-                        ultimoEditor: true
-                    }
-                });
-            }
-            res.json({
-                success: true,
-                message: 'Contenido actualizado exitosamente',
-                data: paginaPrincipal
-            });
-        }
-        catch (error) {
-            console.error('[updateContent] Error:', error);
-            res.status(500).json({
-                success: false,
-                message: error.message
-            });
-        }
+            // ✅ SRP: Retornar resultado exitoso
+            return {
+                message: result.message,
+                data: result.data,
+            };
+        });
     }
     /**
-     * POST /api/homepage/image/:imageType (o /api/pagina-principal/imagen/:tipoImagen)
-     * Subir imagen específica
+     * POST /api/homepage/image/:imageType
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
     async uploadImage(req, res) {
-        try {
+        await this.execute(req, res, async () => {
+            const usuarioId = req.usuario?.id_usu;
             // Compatibilidad con ambos parámetros: imageType (nuevo) y tipoImagen (legacy)
             const imageType = req.params.imageType || req.params.tipoImagen;
-            const usuarioId = req.usuario?.id_usu;
+            // ✅ SRP: Validaciones básicas
             if (!usuarioId) {
-                res.status(401).json({
-                    success: false,
-                    message: 'Usuario no autenticado'
-                });
-                return;
+                const error = new Error("Usuario no autenticado");
+                error.name = "AuthenticationError";
+                throw error;
             }
             if (!req.file) {
-                res.status(400).json({
-                    success: false,
-                    message: 'No se ha proporcionado ninguna imagen'
-                });
-                return;
+                const error = new Error("No se ha proporcionado ninguna imagen");
+                error.name = "ValidationError";
+                throw error;
             }
             if (!imageType) {
-                res.status(400).json({
-                    success: false,
-                    message: 'Tipo de imagen requerido'
-                });
-                return;
+                const error = new Error("Tipo de imagen requerido");
+                error.name = "ValidationError";
+                throw error;
             }
-            // Validar tipo de imagen
-            const tiposPermitidos = ['imagen_hero', 'imagen_seccion1', 'imagen_seccion2', 'imagen_seccion3', 'imagen_seccion4'];
-            if (!tiposPermitidos.includes(imageType)) {
-                res.status(400).json({
-                    success: false,
-                    message: 'Tipo de imagen no válido'
-                });
-                return;
+            // ✅ SRP: Normalizar nombre del tipo de imagen para compatibilidad
+            let normalizedType = imageType;
+            if (imageType === "imagen_hero")
+                normalizedType = "hero";
+            else if (imageType.startsWith("imagen_")) {
+                normalizedType = imageType.replace("imagen_", "");
             }
-            const prisma = this.container.getPrismaClient();
-            let paginaPrincipal = await prisma.paginaPrincipal.findFirst();
-            if (!paginaPrincipal) {
-                res.status(404).json({
-                    success: false,
-                    message: 'No se encontró configuración de página principal'
-                });
-                return;
-            }
-            // Actualizar la imagen específica
-            const updateData = {
-                fecha_ultima_actualizacion: new Date(),
-                id_usuario_ultima_edicion: usuarioId
+            // ✅ SRP: Crear DTO de imagen
+            const imageDTO = {
+                imageType: normalizedType,
+                imageFile: {
+                    buffer: req.file.buffer,
+                    mimetype: req.file.mimetype,
+                    size: req.file.size,
+                },
             };
-            updateData[imageType] = req.file.buffer;
-            const resultado = await prisma.paginaPrincipal.update({
-                where: { id_pag: paginaPrincipal.id_pag },
-                data: updateData,
-                include: {
-                    ultimoEditor: true
-                }
-            });
-            res.json({
-                success: true,
-                message: 'Imagen subida exitosamente',
-                data: resultado
-            });
-        }
-        catch (error) {
-            console.error('[uploadImage] Error:', error);
-            res.status(500).json({
-                success: false,
-                message: error.message
-            });
-        }
+            // ✅ SRP: Validar campos básicos
+            HomepageDTO_1.HomepageDTOTransformer.validateBasicFields(imageDTO);
+            // ✅ SRP: Convertir DTO a formato del servicio
+            const imageRequest = {
+                ...HomepageDTO_1.HomepageDTOTransformer.fromImageRequestDTO(imageDTO),
+                editor_id: usuarioId,
+            };
+            // ✅ SRP: Delegar lógica de negocio al servicio
+            const result = await this.homepageService.updateHomepageImage(imageRequest);
+            // ✅ SRP: Si no es exitoso, lanzar error para manejo del BaseController
+            if (!result.success) {
+                const error = new Error(result.message);
+                error.name = "HomepageError";
+                throw error;
+            }
+            // ✅ SRP: Retornar resultado exitoso
+            return {
+                message: result.message,
+                imageUrl: `/api/homepage/image/${normalizedType}?t=${Date.now()}`,
+            };
+        });
     }
     /**
-     * GET /api/homepage/image/:imageType (o /api/pagina-principal/imagen/:tipoImagen)
-     * Obtener imagen específica
+     * GET /api/homepage/image/:imageType
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
     async getImage(req, res) {
         try {
             // Compatibilidad con ambos parámetros: imageType (nuevo) y tipoImagen (legacy)
-            const imageType = req.params.imageType || req.params.tipoImagen;
-            const prisma = this.container.getPrismaClient();
-            const paginaPrincipal = await prisma.paginaPrincipal.findFirst();
-            if (!paginaPrincipal || !paginaPrincipal[imageType]) {
-                res.status(404).json({
+            let imageType = req.params.imageType || req.params.tipoImagen;
+            if (!imageType) {
+                res.status(400).json({
                     success: false,
-                    message: 'Imagen no encontrada'
+                    message: "Tipo de imagen requerido",
                 });
                 return;
             }
-            const imagenBuffer = paginaPrincipal[imageType];
-            if (!imagenBuffer) {
-                res.status(404).json({
+            // ✅ SRP: Normalizar nombre del tipo de imagen para compatibilidad
+            if (imageType === "imagen_hero")
+                imageType = "hero";
+            else if (imageType.startsWith("imagen_")) {
+                imageType = imageType.replace("imagen_", "");
+            }
+            // ✅ SRP: Delegar lógica de negocio al servicio
+            const result = await this.homepageService.getHomepageImage(imageType);
+            // ✅ SRP: Si no es exitoso, manejar error
+            if (!result.success) {
+                const statusCode = result.message?.includes("no encontrada")
+                    ? 404
+                    : 500;
+                res.status(statusCode).json({
                     success: false,
-                    message: 'Imagen no encontrada'
+                    message: result.message,
                 });
                 return;
             }
-            // Determinar tipo de contenido basado en los primeros bytes
-            let contentType = 'image/jpeg'; // default
-            // Detectar formato por magic numbers
-            if (imagenBuffer[0] === 0xFF && imagenBuffer[1] === 0xD8) {
-                contentType = 'image/jpeg';
+            // ✅ SRP: Determinar tipo de contenido (lógica simple mantenida en controller)
+            const buffer = result.data;
+            let contentType = "image/jpeg"; // default
+            // Detectar tipo por magic numbers
+            if (buffer[0] === 0xff && buffer[1] === 0xd8) {
+                contentType = "image/jpeg";
             }
-            else if (imagenBuffer[0] === 0x89 && imagenBuffer[1] === 0x50 && imagenBuffer[2] === 0x4E && imagenBuffer[3] === 0x47) {
-                contentType = 'image/png';
+            else if (buffer[0] === 0x89 &&
+                buffer[1] === 0x50 &&
+                buffer[2] === 0x4e &&
+                buffer[3] === 0x47) {
+                contentType = "image/png";
             }
-            else if (imagenBuffer[0] === 0x47 && imagenBuffer[1] === 0x49 && imagenBuffer[2] === 0x46) {
-                contentType = 'image/gif';
+            else if (buffer[0] === 0x47 &&
+                buffer[1] === 0x49 &&
+                buffer[2] === 0x46) {
+                contentType = "image/gif";
             }
-            else if (imagenBuffer[0] === 0x52 && imagenBuffer[1] === 0x49 && imagenBuffer[2] === 0x46 && imagenBuffer[3] === 0x46) {
-                contentType = 'image/webp';
+            else if (buffer[0] === 0x52 &&
+                buffer[1] === 0x49 &&
+                buffer[2] === 0x46 &&
+                buffer[3] === 0x46) {
+                contentType = "image/webp";
             }
-            res.set('Content-Type', contentType);
-            res.set('Cache-Control', 'public, max-age=31536000'); // Cache por 1 año
-            res.send(imagenBuffer);
+            // ✅ SRP: Configurar respuesta HTTP para imagen
+            res.set("Content-Type", contentType);
+            res.set("Cache-Control", "public, max-age=31536000"); // Cache por 1 año
+            res.send(buffer);
         }
         catch (error) {
-            console.error('[getImage] Error:', error);
+            console.error("[getImage] Error:", error);
             res.status(500).json({
                 success: false,
-                message: error.message
+                message: "Error interno del servidor",
             });
         }
     }
     /**
      * GET /api/homepage/public-content
-     * Obtener eventos y cursos para usuarios NO autenticados (Homepage sin login)
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
     async getPublicContent(req, res) {
-        try {
-            console.log('Obteniendo eventos y cursos para usuario no autenticado');
-            const prisma = this.container.getPrismaClient();
-            // Obtener todos los eventos activos
-            const eventos = await prisma.evento.findMany({
-                where: {
-                    estado: 'ACTIVO'
-                },
-                select: {
-                    id_eve: true,
-                    nom_eve: true,
-                    des_eve: true,
-                    fec_ini_eve: true,
-                    fec_fin_eve: true,
-                    hor_ini_eve: true,
-                    hor_fin_eve: true,
-                    ubi_eve: true,
-                    dur_eve: true,
-                    capacidad_max_eve: true,
-                    es_gratuito: true,
-                    precio: true,
-                    tipo_audiencia_eve: true,
-                    categoria: {
-                        select: {
-                            nom_cat: true
-                        }
-                    },
-                    eventosPorCarrera: {
-                        select: {
-                            carrera: {
-                                select: {
-                                    nom_car: true
-                                }
-                            }
-                        }
-                    },
-                    inscripciones: {
-                        where: {
-                            estado_pago: 'APROBADO'
-                        },
-                        select: {
-                            id_ins: true
-                        }
-                    }
-                },
-                orderBy: {
-                    fec_ini_eve: 'asc'
-                },
-                take: 8
-            });
-            // Obtener todos los cursos activos
-            const cursos = await prisma.curso.findMany({
-                where: {
-                    estado: 'ACTIVO'
-                },
-                select: {
-                    id_cur: true,
-                    nom_cur: true,
-                    des_cur: true,
-                    fec_ini_cur: true,
-                    fec_fin_cur: true,
-                    dur_cur: true,
-                    capacidad_max_cur: true,
-                    es_gratuito: true,
-                    precio: true,
-                    tipo_audiencia_cur: true,
-                    requiere_verificacion_docs: true,
-                    categoria: {
-                        select: {
-                            nom_cat: true
-                        }
-                    },
-                    cursosPorCarrera: {
-                        select: {
-                            carrera: {
-                                select: {
-                                    nom_car: true
-                                }
-                            }
-                        }
-                    },
-                    inscripcionesCurso: {
-                        where: {
-                            estado_pago_cur: 'APROBADO'
-                        },
-                        select: {
-                            id_ins_cur: true
-                        }
-                    }
-                },
-                orderBy: {
-                    fec_ini_cur: 'asc'
-                },
-                take: 8
-            });
-            console.log(`Eventos públicos encontrados: ${eventos.length}`);
-            console.log(`Cursos públicos encontrados: ${cursos.length}`);
-            res.json({
+        await this.execute(req, res, async () => {
+            // ✅ SRP: Delegar lógica de negocio al servicio
+            const result = await this.homepageService.getPublicContent();
+            // ✅ SRP: Si no es exitoso, lanzar error para manejo del BaseController
+            if (!result.success) {
+                const error = new Error(result.message);
+                error.name = "HomepageError";
+                throw error;
+            }
+            // ✅ SRP: Retornar datos en el formato que espera el frontend (eventos y cursos en la raíz)
+            return {
                 success: true,
-                eventos,
-                cursos
-            });
-        }
-        catch (error) {
-            console.error('[getPublicContent] Error:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Error al obtener eventos y cursos'
-            });
-        }
+                ...result.data,
+            };
+        });
     }
     /**
      * GET /api/homepage/student-content
-     * Obtener eventos y cursos para ESTUDIANTES (por carrera + públicos)
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
     async getStudentContent(req, res) {
-        try {
+        await this.execute(req, res, async () => {
             const userId = req.uid;
-            console.log('ID de usuario ESTUDIANTE:', userId);
+            // ✅ SRP: Validación básica
             if (!userId) {
-                res.status(401).json({
-                    success: false,
-                    message: 'Usuario no autenticado'
-                });
-                return;
+                const error = new Error("Usuario no autenticado");
+                error.name = "AuthenticationError";
+                throw error;
             }
-            const prisma = this.container.getPrismaClient();
-            // Obtener la carrera del usuario
-            const usuario = await prisma.usuario.findUnique({
-                where: { id_usu: userId },
-                select: {
-                    id_car_per: true,
-                    carrera: {
-                        select: {
-                            nom_car: true
-                        }
-                    }
-                }
-            });
-            console.log('Datos del usuario:', usuario);
-            // Si el usuario no tiene carrera asignada, mostrar solo contenido público
-            if (!usuario || !usuario.id_car_per) {
-                console.log('Usuario sin carrera asignada, mostrando contenido público y para todas las carreras');
-                // Obtener eventos públicos y para todas las carreras
-                const eventosPublicos = await prisma.evento.findMany({
-                    where: {
-                        estado: 'ACTIVO',
-                        OR: [
-                            { tipo_audiencia_eve: 'PUBLICO_GENERAL' },
-                            { tipo_audiencia_eve: 'TODAS_CARRERAS' } // ✅ Agregar eventos para todas las carreras
-                        ],
-                        fec_fin_eve: {
-                            gte: new Date()
-                        }
-                    },
-                    include: {
-                        categoria: {
-                            select: {
-                                nom_cat: true
-                            }
-                        }
-                    },
-                    orderBy: { fec_ini_eve: 'asc' }
-                });
-                // Obtener cursos públicos y para todas las carreras
-                const cursosPublicos = await prisma.curso.findMany({
-                    where: {
-                        estado: 'ACTIVO',
-                        OR: [
-                            { tipo_audiencia_cur: 'PUBLICO_GENERAL' },
-                            { tipo_audiencia_cur: 'TODAS_CARRERAS' } // ✅ Agregar cursos para todas las carreras
-                        ],
-                        fec_fin_cur: {
-                            gte: new Date()
-                        }
-                    },
-                    include: {
-                        categoria: {
-                            select: {
-                                nom_cat: true
-                            }
-                        }
-                    },
-                    orderBy: { fec_ini_cur: 'asc' }
-                });
-                res.json({
-                    success: true,
-                    eventos: eventosPublicos.map(evento => ({
-                        id_eve: evento.id_eve,
-                        nom_eve: evento.nom_eve,
-                        des_eve: evento.des_eve,
-                        fec_ini_eve: evento.fec_ini_eve,
-                        fec_fin_eve: evento.fec_fin_eve,
-                        hor_ini_eve: evento.hor_ini_eve,
-                        hor_fin_eve: evento.hor_fin_eve,
-                        ubi_eve: evento.ubi_eve,
-                        capacidad_max_eve: evento.capacidad_max_eve,
-                        es_gratuito: evento.es_gratuito,
-                        precio: evento.precio,
-                        categoria: evento.categoria?.nom_cat,
-                        tipo_audiencia: evento.tipo_audiencia_eve
-                    })),
-                    cursos: cursosPublicos.map(curso => ({
-                        id_cur: curso.id_cur,
-                        nom_cur: curso.nom_cur,
-                        des_cur: curso.des_cur,
-                        fec_ini_cur: curso.fec_ini_cur,
-                        fec_fin_cur: curso.fec_fin_cur,
-                        dur_cur: curso.dur_cur,
-                        capacidad_max_cur: curso.capacidad_max_cur,
-                        es_gratuito: curso.es_gratuito,
-                        precio: curso.precio,
-                        categoria: curso.categoria?.nom_cat,
-                        tipo_audiencia: curso.tipo_audiencia_cur
-                    })),
-                    carrera: null,
-                    mensaje: 'Mostrando contenido público y para todas las carreras (usuario sin carrera asignada)'
-                });
-                return;
+            // ✅ SRP: Delegar lógica de negocio al servicio
+            const result = await this.homepageService.getStudentContent(userId);
+            // ✅ SRP: Si no es exitoso, lanzar error para manejo del BaseController
+            if (!result.success) {
+                const error = new Error(result.message);
+                error.name = "HomepageError";
+                throw error;
             }
-            // Obtener eventos para el estudiante
-            const eventos = await prisma.evento.findMany({
-                where: {
-                    estado: 'ACTIVO',
-                    OR: [
-                        // Eventos públicos para todos
-                        { tipo_audiencia_eve: 'PUBLICO_GENERAL' },
-                        // Eventos para todas las carreras
-                        { tipo_audiencia_eve: 'TODAS_CARRERAS' },
-                        // Eventos específicos para mi carrera
-                        {
-                            AND: [
-                                { tipo_audiencia_eve: 'CARRERA_ESPECIFICA' },
-                                {
-                                    eventosPorCarrera: {
-                                        some: {
-                                            id_car_per: usuario.id_car_per
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    ]
-                },
-                select: {
-                    id_eve: true,
-                    nom_eve: true,
-                    des_eve: true,
-                    fec_ini_eve: true,
-                    fec_fin_eve: true,
-                    hor_ini_eve: true,
-                    hor_fin_eve: true,
-                    ubi_eve: true,
-                    dur_eve: true,
-                    capacidad_max_eve: true,
-                    es_gratuito: true,
-                    precio: true,
-                    tipo_audiencia_eve: true,
-                    categoria: {
-                        select: {
-                            nom_cat: true
-                        }
-                    },
-                    eventosPorCarrera: {
-                        select: {
-                            carrera: {
-                                select: {
-                                    nom_car: true
-                                }
-                            }
-                        }
-                    },
-                    inscripciones: {
-                        where: {
-                            estado_pago: 'APROBADO'
-                        },
-                        select: {
-                            id_ins: true
-                        }
-                    }
-                },
-                orderBy: {
-                    fec_ini_eve: 'asc'
-                }
-            });
-            // Obtener cursos para el estudiante
-            const cursos = await prisma.curso.findMany({
-                where: {
-                    estado: 'ACTIVO',
-                    OR: [
-                        // Cursos públicos para todos
-                        { tipo_audiencia_cur: 'PUBLICO_GENERAL' },
-                        // Cursos para todas las carreras
-                        { tipo_audiencia_cur: 'TODAS_CARRERAS' },
-                        // Cursos específicos para mi carrera
-                        {
-                            AND: [
-                                { tipo_audiencia_cur: 'CARRERA_ESPECIFICA' },
-                                {
-                                    cursosPorCarrera: {
-                                        some: {
-                                            id_car_per: usuario.id_car_per
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    ]
-                },
-                select: {
-                    id_cur: true,
-                    nom_cur: true,
-                    des_cur: true,
-                    fec_ini_cur: true,
-                    fec_fin_cur: true,
-                    dur_cur: true,
-                    capacidad_max_cur: true,
-                    es_gratuito: true,
-                    precio: true,
-                    tipo_audiencia_cur: true,
-                    requiere_verificacion_docs: true,
-                    categoria: {
-                        select: {
-                            nom_cat: true
-                        }
-                    },
-                    cursosPorCarrera: {
-                        select: {
-                            carrera: {
-                                select: {
-                                    nom_car: true
-                                }
-                            }
-                        }
-                    },
-                    inscripcionesCurso: {
-                        where: {
-                            estado_pago_cur: 'APROBADO'
-                        },
-                        select: {
-                            id_ins_cur: true
-                        }
-                    }
-                },
-                orderBy: {
-                    fec_ini_cur: 'asc'
-                }
-            });
-            console.log(`Eventos encontrados para estudiante: ${eventos.length}`);
-            console.log(`Cursos encontrados para estudiante: ${cursos.length}`);
-            res.json({
+            // ✅ SRP: Retornar datos en el formato que espera el frontend (eventos y cursos en la raíz)
+            return {
                 success: true,
-                eventos,
-                cursos,
-                carrera: usuario.carrera?.nom_car
-            });
-        }
-        catch (error) {
-            console.error('[getStudentContent] Error:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Error al obtener eventos y cursos'
-            });
-        }
+                ...result.data,
+            };
+        });
     }
     /**
      * GET /api/homepage/external-content
-     * Obtener eventos y cursos para USUARIOS EXTERNOS (solo públicos)
+     * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
      */
     async getExternalContent(req, res) {
-        try {
-            console.log('Obteniendo eventos y cursos para USUARIO EXTERNO (incluyendo TODAS_CARRERAS)');
-            const prisma = this.container.getPrismaClient();
-            // Eventos públicos y para todas las carreras para usuarios externos
-            const eventos = await prisma.evento.findMany({
-                where: {
-                    estado: 'ACTIVO',
-                    OR: [
-                        { tipo_audiencia_eve: 'PUBLICO_GENERAL' },
-                        { tipo_audiencia_eve: 'TODAS_CARRERAS' } // ✅ Agregar eventos para todas las carreras
-                    ],
-                    fec_ini_eve: {
-                        gte: new Date() // Solo eventos futuros
-                    }
-                },
-                select: {
-                    id_eve: true,
-                    nom_eve: true,
-                    des_eve: true,
-                    fec_ini_eve: true,
-                    fec_fin_eve: true,
-                    hor_ini_eve: true,
-                    hor_fin_eve: true,
-                    ubi_eve: true,
-                    dur_eve: true,
-                    capacidad_max_eve: true,
-                    es_gratuito: true,
-                    precio: true,
-                    tipo_audiencia_eve: true,
-                    categoria: {
-                        select: {
-                            nom_cat: true
-                        }
-                    },
-                    eventosPorCarrera: {
-                        select: {
-                            carrera: {
-                                select: {
-                                    nom_car: true
-                                }
-                            }
-                        }
-                    },
-                    inscripciones: {
-                        where: {
-                            estado_pago: 'APROBADO'
-                        },
-                        select: {
-                            id_ins: true
-                        }
-                    }
-                },
-                orderBy: {
-                    fec_ini_eve: 'asc'
-                }
-            });
-            // Cursos públicos y para todas las carreras para usuarios externos
-            const cursos = await prisma.curso.findMany({
-                where: {
-                    estado: 'ACTIVO',
-                    OR: [
-                        { tipo_audiencia_cur: 'PUBLICO_GENERAL' },
-                        { tipo_audiencia_cur: 'TODAS_CARRERAS' } // ✅ Agregar cursos para todas las carreras
-                    ],
-                    fec_ini_cur: {
-                        gte: new Date() // Solo cursos futuros
-                    }
-                },
-                select: {
-                    id_cur: true,
-                    nom_cur: true,
-                    des_cur: true,
-                    fec_ini_cur: true,
-                    fec_fin_cur: true,
-                    dur_cur: true,
-                    capacidad_max_cur: true,
-                    es_gratuito: true,
-                    precio: true,
-                    tipo_audiencia_cur: true,
-                    requiere_verificacion_docs: true,
-                    categoria: {
-                        select: {
-                            nom_cat: true
-                        }
-                    },
-                    cursosPorCarrera: {
-                        select: {
-                            carrera: {
-                                select: {
-                                    nom_car: true
-                                }
-                            }
-                        }
-                    },
-                    inscripcionesCurso: {
-                        where: {
-                            estado_pago_cur: 'APROBADO'
-                        },
-                        select: {
-                            id_ins_cur: true
-                        }
-                    }
-                },
-                orderBy: {
-                    fec_ini_cur: 'asc'
-                }
-            });
-            console.log(`Eventos públicos encontrados para usuario externo: ${eventos.length}`);
-            console.log(`Cursos públicos encontrados para usuario externo: ${cursos.length}`);
-            res.json({
+        await this.execute(req, res, async () => {
+            // ✅ SRP: Delegar lógica de negocio al servicio
+            const result = await this.homepageService.getExternalContent();
+            // ✅ SRP: Si no es exitoso, lanzar error para manejo del BaseController
+            if (!result.success) {
+                const error = new Error(result.message);
+                error.name = "HomepageError";
+                throw error;
+            }
+            // ✅ SRP: Retornar datos en el formato que espera el frontend (eventos y cursos en la raíz)
+            return {
                 success: true,
-                eventos,
-                cursos
-            });
-        }
-        catch (error) {
-            console.error('[getExternalContent] Error:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Error al obtener eventos y cursos'
-            });
-        }
+                ...result.data,
+            };
+        });
     }
 }
 exports.HomepageController = HomepageController;

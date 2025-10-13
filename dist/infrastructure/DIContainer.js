@@ -15,6 +15,14 @@ const PrismaDeveloperRepository_1 = require("./repositories/PrismaDeveloperRepos
 const PrismaChangeRequestRepository_1 = require("./repositories/PrismaChangeRequestRepository");
 const PrismaAuthenticationRepository_1 = require("./repositories/PrismaAuthenticationRepository");
 const EmailServiceImpl_1 = require("./external/EmailServiceImpl");
+// ✅ Nuevas implementaciones
+const PrismaOrganizerRepository_1 = require("./repositories/PrismaOrganizerRepository");
+const PrismaCategoryRepository_1 = require("./repositories/PrismaCategoryRepository");
+const PrismaParticipationRepository_1 = require("./repositories/PrismaParticipationRepository");
+const PrismaDocumentRepository_1 = require("./repositories/PrismaDocumentRepository");
+const PrismaReportRepository_1 = require("./repositories/PrismaReportRepository");
+const PrismaCareerRepository_1 = require("./repositories/PrismaCareerRepository");
+const PrismaHomepageRepository_1 = require("./repositories/PrismaHomepageRepository");
 /**
  * SOLID Dependency Injection Container
  * Implementa DIP (Dependency Inversion Principle)
@@ -84,6 +92,49 @@ class DIContainer {
         }
         return this.emailService;
     }
+    // ✅ NUEVOS REPOSITORIOS IMPLEMENTADOS
+    getOrganizerRepository() {
+        if (!this.organizerRepository) {
+            this.organizerRepository = new PrismaOrganizerRepository_1.PrismaOrganizerRepository(this.prisma);
+        }
+        return this.organizerRepository;
+    }
+    getCategoryRepository() {
+        if (!this.categoryRepository) {
+            this.categoryRepository = new PrismaCategoryRepository_1.PrismaCategoryRepository(this.prisma);
+        }
+        return this.categoryRepository;
+    }
+    getParticipationRepository() {
+        if (!this.participationRepository) {
+            this.participationRepository = new PrismaParticipationRepository_1.PrismaParticipationRepository(this.prisma);
+        }
+        return this.participationRepository;
+    }
+    getDocumentRepository() {
+        if (!this.documentRepository) {
+            this.documentRepository = new PrismaDocumentRepository_1.PrismaDocumentRepository(this.prisma);
+        }
+        return this.documentRepository;
+    }
+    getReportRepository() {
+        if (!this.reportRepository) {
+            this.reportRepository = new PrismaReportRepository_1.PrismaReportRepository(this.prisma);
+        }
+        return this.reportRepository;
+    }
+    getCareerRepository() {
+        if (!this.careerRepository) {
+            this.careerRepository = new PrismaCareerRepository_1.PrismaCareerRepository(this.prisma);
+        }
+        return this.careerRepository;
+    }
+    getHomepageRepository() {
+        if (!this.homepageRepository) {
+            this.homepageRepository = new PrismaHomepageRepository_1.PrismaHomepageRepository(this.prisma);
+        }
+        return this.homepageRepository;
+    }
     // ⚠️ LEGACY: Solo para compatibilidad temporal
     getPrismaClient() {
         return this.prisma;
@@ -95,7 +146,7 @@ class DIContainer {
         return {
             generateJWT: jwtHelper_1.generateJWT,
             generateAdminJWT: jwtHelper_1.generateAdminJWT,
-            generateVerificationJWT: jwtHelper_1.generateVerificationJWT
+            generateVerificationJWT: jwtHelper_1.generateVerificationJWT,
         };
     }
     // Cleanup method for graceful shutdown

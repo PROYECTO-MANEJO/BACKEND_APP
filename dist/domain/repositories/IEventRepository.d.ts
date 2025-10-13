@@ -1,11 +1,12 @@
+import { EventData } from "../entities/Event";
 export interface IEventRepository {
-    findById(id: string): Promise<any | null>;
-    findAll(): Promise<any[]>;
-    create(eventData: any): Promise<any>;
-    update(id: string, eventData: any): Promise<any | null>;
+    findById(id: string): Promise<EventData | null>;
+    findAll(): Promise<EventData[]>;
+    create(eventData: EventData): Promise<EventData>;
+    update(id: string, eventData: Partial<EventData>): Promise<EventData | null>;
     delete(id: string): Promise<void>;
-    findByCategory(categoryId: string): Promise<any[]>;
-    findByOrganizer(organizerId: string): Promise<any[]>;
+    findByCategory(categoryId: number): Promise<EventData[]>;
+    findByOrganizer(organizerId: string): Promise<EventData[]>;
 }
 export interface EventFilters {
     category?: number;

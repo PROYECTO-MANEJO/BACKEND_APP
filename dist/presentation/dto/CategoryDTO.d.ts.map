@@ -1,0 +1,1 @@
+{"version":3,"file":"CategoryDTO.d.ts","sourceRoot":"","sources":["../../../src/presentation/dto/CategoryDTO.ts"],"names":[],"mappings":"AAAA,MAAM,WAAW,WAAW;IAC1B,OAAO,EAAE,MAAM,CAAC;IAChB,OAAO,CAAC,EAAE,MAAM,CAAC;CAClB;AAED,MAAM,WAAW,mBAAmB;IAClC,MAAM,EAAE,MAAM,CAAC;IACf,OAAO,EAAE,MAAM,CAAC;IAChB,OAAO,CAAC,EAAE,MAAM,CAAC;CAClB"}
