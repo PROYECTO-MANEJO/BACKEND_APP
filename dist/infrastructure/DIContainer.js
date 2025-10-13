@@ -13,6 +13,8 @@ const PrismaCertificateRepository_1 = require("./repositories/PrismaCertificateR
 const PrismaEnrollmentRepository_1 = require("./repositories/PrismaEnrollmentRepository");
 const PrismaDeveloperRepository_1 = require("./repositories/PrismaDeveloperRepository");
 const PrismaChangeRequestRepository_1 = require("./repositories/PrismaChangeRequestRepository");
+const PrismaAuthenticationRepository_1 = require("./repositories/PrismaAuthenticationRepository");
+const EmailServiceImpl_1 = require("./external/EmailServiceImpl");
 /**
  * SOLID Dependency Injection Container
  * Implementa DIP (Dependency Inversion Principle)
@@ -69,6 +71,18 @@ class DIContainer {
             this.changeRequestRepository = new PrismaChangeRequestRepository_1.PrismaChangeRequestRepository(this.prisma);
         }
         return this.changeRequestRepository;
+    }
+    getAuthenticationRepository() {
+        if (!this.authenticationRepository) {
+            this.authenticationRepository = new PrismaAuthenticationRepository_1.PrismaAuthenticationRepository(this.prisma);
+        }
+        return this.authenticationRepository;
+    }
+    getEmailService() {
+        if (!this.emailService) {
+            this.emailService = new EmailServiceImpl_1.EmailServiceImpl();
+        }
+        return this.emailService;
     }
     // ⚠️ LEGACY: Solo para compatibilidad temporal
     getPrismaClient() {

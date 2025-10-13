@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import { BaseController } from "./BaseController";
 import { DIContainer } from "../../infrastructure/DIContainer";
 import { generateRecoveryToken } from "../../infrastructure/helpers/recoveryTokenHelper";
-import { sendRecoveryEmail } from "../../infrastructure/external/emailService";
 
 export class PasswordRecoveryController extends BaseController {
   private container: DIContainer;
@@ -30,6 +29,7 @@ export class PasswordRecoveryController extends BaseController {
       }
 
       const prisma = this.container.getPrismaClient();
+      const emailService = this.container.getEmailService();
 
       // Buscar la cuenta y su usuario asociado
       const cuenta = await prisma.cuenta.findFirst({
@@ -61,7 +61,7 @@ export class PasswordRecoveryController extends BaseController {
       });
 
       // Enviar correo al usuario con el enlace que incluye el token en texto plano
-      await sendRecoveryEmail(email, token);
+      await emailService.sendPasswordResetEmail(email, token);
 
       res.json({
         success: true,

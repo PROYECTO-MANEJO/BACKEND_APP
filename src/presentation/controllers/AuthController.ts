@@ -12,39 +12,22 @@ export class AuthController extends BaseController {
 
   /**
    * POST /api/auth/login
-   * User login - REAL implementation from auth.js
+   * User login - CLEAN ARCHITECTURE implementation
    */
   public async login(req: Request, res: Response): Promise<void> {
     try {
       const { email, password } = req.body;
       
-      // ✅ SOLID: Usar repository en lugar de Prisma directo
-      const userRepository = this.container.getUserRepository();
-      const prisma = this.container.getPrismaClient(); // Solo para queries complejas de cuenta
+      // ✅ SOLID: Usar solo repositories
+      const authRepository = this.container.getAuthenticationRepository();
       const bcrypt = this.container.getBcrypt();
       const { generateJWT, generateAdminJWT } = this.container.getJwtHelpers();
 
-      // Find account by email with complete user information
-      const cuenta = await prisma.cuenta.findFirst({
-        where: {
-          cor_cue: email
-        },
-        include: {
-          usuario: {
-            include: {
-              carrera: {
-                select: {
-                  id_car: true,
-                  nom_car: true
-                }
-              }
-            }
-          }
-        }
-      });
+      // Find complete account information by email
+      const authData = await authRepository.findCompleteByEmail(email);
 
       // Check if account exists
-      if (!cuenta) {
+      if (!authData) {
         res.status(400).json({
           success: false,
           message: 'Email not found'
@@ -52,17 +35,8 @@ export class AuthController extends BaseController {
         return;
       }
 
-      // Check if user exists
-      if (!cuenta.usuario) {
-        res.status(400).json({
-          success: false,
-          message: 'User not found'
-        });
-        return;
-      }
-
       // Check if account is verified (temporarily disabled for testing)
-      // if (!cuenta.isVerified) {
+      // if (!authData.account.isVerified) {
       //   return res.status(400).json({
       //     success: false,
       //     message: 'Your account has not been verified yet. Check your email.'
@@ -70,7 +44,7 @@ export class AuthController extends BaseController {
       // }
 
       // Verify password
-      const validPassword = await bcrypt.compare(password, cuenta.usuario.pas_usu || '');
+      const validPassword = await bcrypt.compare(password, authData.user.password || '');
       if (!validPassword) {
         res.status(400).json({
           success: false,
@@ -81,42 +55,42 @@ export class AuthController extends BaseController {
 
       // Generate JWT token based on role
       let token;
-      if (cuenta.rol_cue === 'ADMINISTRADOR' || cuenta.rol_cue === 'MASTER') {
-        token = await generateAdminJWT(cuenta.usuario.id_usu);
+      if (authData.account.role === 'ADMINISTRADOR' || authData.account.role === 'MASTER') {
+        token = await generateAdminJWT(authData.user.id);
       } else {
-        token = await generateJWT(cuenta.usuario.id_usu);
+        token = await generateJWT(authData.user.id);
       }
 
-      const user = cuenta.usuario;
-      const isEstudiante = cuenta.rol_cue === 'ESTUDIANTE';
+      const user = authData.user;
+      const isEstudiante = authData.account.role === 'ESTUDIANTE';
 
       // Format complete response including document status
       const userProfile = {
-        id_usu: user.id_usu,
-        ced_usu: user.ced_usu,
-        nom_usu1: user.nom_usu1,
-        nom_usu2: user.nom_usu2,
-        ape_usu1: user.ape_usu1,
-        ape_usu2: user.ape_usu2,
-        fec_nac_usu: user.fec_nac_usu,
-        num_tel_usu: user.num_tel_usu,
-        id_car_per: user.id_car_per,
-        email: cuenta.cor_cue,
-        rol: cuenta.rol_cue,
-        carrera: user.carrera ? {
-          id_car: user.carrera.id_car,
-          nom_car: user.carrera.nom_car
+        id_usu: user.id,
+        ced_usu: user.cedula,
+        nom_usu1: user.firstName,
+        nom_usu2: user.firstName2,
+        ape_usu1: user.lastName,
+        ape_usu2: user.lastName2,
+        fec_nac_usu: user.birthDate,
+        num_tel_usu: user.phone,
+        id_car_per: user.careerId,
+        email: authData.account.email,
+        rol: authData.account.role,
+        carrera: authData.career ? {
+          id_car: authData.career.id,
+          nom_car: authData.career.name
         } : null,
         // Include document status
         documentos: {
-          cedula_subida: !!user.enl_ced_pdf,
-          matricula_subida: !!user.enl_mat_pdf,
+          cedula_subida: !!user.cedulaFileUrl,
+          matricula_subida: !!user.matriculaFileUrl,
           matricula_requerida: isEstudiante,
-          documentos_verificados: user.documentos_verificados,
-          fecha_verificacion: user.fec_verificacion_docs,
+          documentos_verificados: user.documentsVerified,
+          fecha_verificacion: user.verificationDate,
           archivos_completos: isEstudiante
-            ? (!!user.enl_ced_pdf && !!user.enl_mat_pdf)
-            : !!user.enl_ced_pdf
+            ? (!!user.cedulaFileUrl && !!user.matriculaFileUrl)
+            : !!user.cedulaFileUrl
         }
       };
 
@@ -136,25 +110,21 @@ export class AuthController extends BaseController {
 
   /**
    * POST /api/auth/register
-   * Register new user - REAL implementation from auth.js
+   * Register new user - CLEAN ARCHITECTURE implementation
    */
   public async register(req: Request, res: Response): Promise<void> {
     try {
       const { email, password, nombre, nombre2, apellido, apellido2, ced_usu, fec_nac_usu, carrera } = req.body;
       
-      // ✅ SOLID: Usar repository en lugar de Prisma directo
+      // ✅ SOLID: Usar solo repositories
       const userRepository = this.container.getUserRepository();
-      const prisma = this.container.getPrismaClient(); // Solo para validaciones complejas y transacciones
+      const authRepository = this.container.getAuthenticationRepository();
       const bcrypt = this.container.getBcrypt();
+      const prisma = this.container.getPrismaClient(); // Solo para transacciones complejas
 
       // Check if account already exists with this email
-      const existingAccount = await prisma.cuenta.findFirst({
-        where: {
-          cor_cue: email
-        }
-      });
-
-      if (existingAccount) {
+      const existingAccountByEmail = await authRepository.isEmailTaken(email);
+      if (existingAccountByEmail) {
         res.status(400).json({
           success: false,
           message: 'An account with this email already exists'
@@ -162,9 +132,8 @@ export class AuthController extends BaseController {
         return;
       }
 
-      // ✅ SOLID: Check if user already exists with this cedula using repository
-      const existingUserByCedula = await userRepository.findByCedula(ced_usu);
-
+      // Check if user already exists with this cedula
+      const existingUserByCedula = await authRepository.isCedulaTaken(ced_usu);
       if (existingUserByCedula) {
         res.status(400).json({
           success: false,

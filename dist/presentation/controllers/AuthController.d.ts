@@ -6,12 +6,12 @@ export declare class AuthController extends BaseController {
     constructor(container: DIContainer);
     /**
      * POST /api/auth/login
-     * User login - REAL implementation from auth.js
+     * User login - CLEAN ARCHITECTURE implementation
      */
     login(req: Request, res: Response): Promise<void>;
     /**
      * POST /api/auth/register
-     * Register new user - REAL implementation from auth.js
+     * Register new user - CLEAN ARCHITECTURE implementation
      */
     register(req: Request, res: Response): Promise<void>;
     /**

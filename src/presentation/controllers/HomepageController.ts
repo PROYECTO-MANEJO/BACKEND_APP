@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import { BaseController } from "./BaseController";
 import { DIContainer } from "../../infrastructure/DIContainer";
+import { IHomepageRepository } from "../../domain/repositories/IHomepageRepository";
+import { HomepageContentDTO, HomepageResponseDTO } from "../dto/HomepageDTO";
 
 export interface AuthenticatedRequest extends Request {
   usuario?: {
@@ -12,11 +14,11 @@ export interface AuthenticatedRequest extends Request {
 }
 
 export class HomepageController extends BaseController {
-  private container: DIContainer;
+  private homepageRepository: IHomepageRepository;
 
-  constructor(container: DIContainer) {
+  constructor(private container: DIContainer) {
     super();
-    this.container = container;
+    this.homepageRepository = container.getHomepageRepository();
   }
 
   /**
@@ -25,66 +27,71 @@ export class HomepageController extends BaseController {
    */
   public async getContent(req: Request, res: Response): Promise<void> {
     try {
-      const prisma = this.container.getPrismaClient();
+      // Buscar contenido o crear por defecto usando el repositorio
+      let homepageContent = await this.homepageRepository.getContent();
 
-      // Buscar el primer registro o crear uno por defecto
-      let paginaPrincipal = await prisma.paginaPrincipal.findFirst();
-
-      if (!paginaPrincipal) {
-        // Crear registro por defecto
-        paginaPrincipal = await prisma.paginaPrincipal.create({
-          data: {
-            titulo_hero: 'FISEI - SIGEC',
-            subtitulo_hero: 'Sistema Integral de Gestión de Eventos y Cursos',
-            descripcion_hero: 'Facultad de Ingeniería en Sistemas, Electrónica e Industrial - Universidad Técnica de Ambato',
-            titulo_ofrecemos: '¿Qué Ofrecemos?',
-            subtitulo_ofrecemos: 'Descubre todas las oportunidades de crecimiento académico y profesional que tenemos para ti',
-            titulo_seccion1: 'Cursos Especializados',
-            descripcion_seccion1: 'En FISEIIIIIIIIIIIIIIII ofrecemos una amplia variedad de cursos técnicos y académicos diseñados específicamente para potenciar tu desarrollo profesional. Nuestros programas están actualizados con las últimas tendencias tecnológicas y metodologías de enseñanza, garantizando una formación de calidad que te prepare para los desafíos del mundo laboral moderno.',
-            titulo_seccion2: 'Eventos Académicos',
-            descripcion_seccion2: 'Participa en conferencias, seminarios y talleres que enriquecerán tu experiencia universitaria. Organizamos eventos con expertos de la industria, investigadores reconocidos y profesionales destacados que compartirán sus conocimientos y experiencias contigo, creando oportunidades únicas de networking y aprendizaje.',
-            titulo_seccion3: 'Certificaciones Oficiales',
-            descripcion_seccion3: 'Obtén certificados oficiales que validen tus conocimientos y habilidades adquiridas durante tu formación. Nuestras certificaciones están reconocidas por la industria y te brindarán una ventaja competitiva en el mercado laboral, demostrando tu competencia y compromiso con la excelencia académica.',
-            titulo_seccion4: 'Comunidad Académica',
-            descripcion_seccion4: 'Forma parte de una comunidad universitaria comprometida con la excelencia educativa y la innovación. En FISEI, fomentamos un ambiente colaborativo donde estudiantes, docentes e investigadores trabajamos juntos para crear soluciones innovadoras y contribuir al desarrollo tecnológico del país.',
-            texto_footer1: 'Facultad de Ingeniería en Sistemas, Electrónica e Industrial',
-            texto_footer2: 'Universidad Técnica de Ambato - Campus Huachi',
-            texto_footer3: '© 2024 FISEI-UTA. Todos los derechos reservados.',
-            fecha_creacion: new Date()
-          },
-          include: {
-            ultimoEditor: true
-          }
-        });
-      } else {
-        // Incluir información del último editor
-        paginaPrincipal = await prisma.paginaPrincipal.findUnique({
-          where: { id_pag: paginaPrincipal.id_pag },
-          include: {
-            ultimoEditor: true
-          }
-        });
+      if (!homepageContent) {
+        homepageContent = await this.homepageRepository.createDefaultContent();
       }
 
-      // Convertir imágenes a URLs del servidor
-      const contenidoConImagenes = {
-        ...paginaPrincipal,
-        imagen_hero: paginaPrincipal!.imagen_hero ? `/api/homepage/image/imagen_hero?t=${Date.now()}` : null,
-        imagen_seccion1: paginaPrincipal!.imagen_seccion1 ? `/api/homepage/image/imagen_seccion1?t=${Date.now()}` : null,
-        imagen_seccion2: paginaPrincipal!.imagen_seccion2 ? `/api/homepage/image/imagen_seccion2?t=${Date.now()}` : null,
-        imagen_seccion3: paginaPrincipal!.imagen_seccion3 ? `/api/homepage/image/imagen_seccion3?t=${Date.now()}` : null,
-        imagen_seccion4: paginaPrincipal!.imagen_seccion4 ? `/api/homepage/image/imagen_seccion4?t=${Date.now()}` : null,
+      // Convertir entidad del dominio a respuesta HTTP
+      const sections = homepageContent.getSections();
+      const footerTexts = homepageContent.getFooterTexts();
+      const images = homepageContent.getImages();
+      const lastEditor = homepageContent.getLastEditor();
+
+      const response: HomepageResponseDTO = {
+        id_pag: parseInt(homepageContent.getId()),
+        titulo_hero: homepageContent.getHeroTitle(),
+        subtitulo_hero: homepageContent.getHeroSubtitle(),
+        descripcion_hero: homepageContent.getHeroDescription(),
+        titulo_ofrecemos: homepageContent.getOfferTitle(),
+        subtitulo_ofrecemos: homepageContent.getOfferSubtitle(),
+        titulo_seccion1: sections[0]?.title || "",
+        descripcion_seccion1: sections[0]?.description || "",
+        titulo_seccion2: sections[1]?.title || "",
+        descripcion_seccion2: sections[1]?.description || "",
+        titulo_seccion3: sections[2]?.title || "",
+        descripcion_seccion3: sections[2]?.description || "",
+        titulo_seccion4: sections[3]?.title || "",
+        descripcion_seccion4: sections[3]?.description || "",
+        texto_footer1: footerTexts.text1,
+        texto_footer2: footerTexts.text2,
+        texto_footer3: footerTexts.text3,
+        imagen_hero: images.hero
+          ? `/api/homepage/image/hero?t=${Date.now()}`
+          : undefined,
+        imagen_seccion1: images.seccion1
+          ? `/api/homepage/image/seccion1?t=${Date.now()}`
+          : undefined,
+        imagen_seccion2: images.seccion2
+          ? `/api/homepage/image/seccion2?t=${Date.now()}`
+          : undefined,
+        imagen_seccion3: images.seccion3
+          ? `/api/homepage/image/seccion3?t=${Date.now()}`
+          : undefined,
+        imagen_seccion4: images.seccion4
+          ? `/api/homepage/image/seccion4?t=${Date.now()}`
+          : undefined,
+        ultimoEditor: lastEditor.name
+          ? {
+              nom_usu1: lastEditor.name.split(" ")[0] || "",
+              ape_usu1: lastEditor.name.split(" ")[1] || "",
+            }
+          : undefined,
+        fecha_actualizacion: homepageContent.getLastUpdateDate(),
+        fecha_creacion: homepageContent.getCreatedAt(),
       };
 
       res.json({
         success: true,
-        data: contenidoConImagenes
+        data: response,
       });
     } catch (error: any) {
-      console.error('[getContent] Error:', error);
+      console.error("[getContent] Error:", error);
       res.status(500).json({
         success: false,
-        message: error.message
+        message: "Error interno del servidor",
       });
     }
   }
@@ -93,15 +100,18 @@ export class HomepageController extends BaseController {
    * PUT /api/homepage/content
    * Actualizar contenido de la página principal
    */
-  public async updateContent(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async updateContent(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const usuarioId = req.usuario?.id_usu;
-      const data = req.body;
+      const data: HomepageContentDTO = req.body;
 
       if (!usuarioId) {
         res.status(401).json({
           success: false,
-          message: 'Usuario no autenticado'
+          message: "Usuario no autenticado",
         });
         return;
       }
@@ -109,54 +119,119 @@ export class HomepageController extends BaseController {
       if (!data) {
         res.status(400).json({
           success: false,
-          message: 'Datos requeridos'
+          message: "Datos requeridos",
         });
         return;
       }
 
-      const prisma = this.container.getPrismaClient();
-
-      // Buscar el registro existente
-      let paginaPrincipal = await prisma.paginaPrincipal.findFirst();
-
-      const updateData = {
-        ...data,
-        fecha_ultima_actualizacion: new Date(),
-        id_usuario_ultima_edicion: usuarioId
+      // Mapear datos del DTO al formato del dominio
+      const contentData = {
+        heroTitle: data.titulo_hero,
+        heroSubtitle: data.subtitulo_hero,
+        heroDescription: data.descripcion_hero,
+        offerTitle: data.titulo_ofrecemos,
+        offerSubtitle: data.subtitulo_ofrecemos,
+        footerText1: data.texto_footer1,
+        footerText2: data.texto_footer2,
+        footerText3: data.texto_footer3,
+        // Mapear secciones si están presentes
+        sections: [
+          {
+            id: "1",
+            title: data.titulo_seccion1 || "",
+            description: data.descripcion_seccion1 || "",
+            order: 1,
+            isVisible: true,
+          },
+          {
+            id: "2",
+            title: data.titulo_seccion2 || "",
+            description: data.descripcion_seccion2 || "",
+            order: 2,
+            isVisible: true,
+          },
+          {
+            id: "3",
+            title: data.titulo_seccion3 || "",
+            description: data.descripcion_seccion3 || "",
+            order: 3,
+            isVisible: true,
+          },
+          {
+            id: "4",
+            title: data.titulo_seccion4 || "",
+            description: data.descripcion_seccion4 || "",
+            order: 4,
+            isVisible: true,
+          },
+        ].filter((section) => section.title || section.description),
       };
 
-      if (paginaPrincipal) {
-        // Actualizar registro existente
-        paginaPrincipal = await prisma.paginaPrincipal.update({
-          where: { id_pag: paginaPrincipal.id_pag },
-          data: updateData,
-          include: {
-            ultimoEditor: true
-          }
-        });
-      } else {
-        // Crear nuevo registro si no existe
-        paginaPrincipal = await prisma.paginaPrincipal.create({
-          data: {
-            ...updateData,
-            fecha_creacion: new Date()
-          },
-          include: {
-            ultimoEditor: true
-          }
-        });
-      }
+      // Actualizar usando el repositorio
+      const updatedContent = await this.homepageRepository.updateContent(
+        contentData,
+        usuarioId
+      );
+
+      // Convertir entidad del dominio a respuesta HTTP
+      const sections = updatedContent.getSections();
+      const footerTexts = updatedContent.getFooterTexts();
+      const images = updatedContent.getImages();
+      const lastEditor = updatedContent.getLastEditor();
+
+      const response: HomepageResponseDTO = {
+        id_pag: parseInt(updatedContent.getId()),
+        titulo_hero: updatedContent.getHeroTitle(),
+        subtitulo_hero: updatedContent.getHeroSubtitle(),
+        descripcion_hero: updatedContent.getHeroDescription(),
+        titulo_ofrecemos: updatedContent.getOfferTitle(),
+        subtitulo_ofrecemos: updatedContent.getOfferSubtitle(),
+        titulo_seccion1: sections[0]?.title || "",
+        descripcion_seccion1: sections[0]?.description || "",
+        titulo_seccion2: sections[1]?.title || "",
+        descripcion_seccion2: sections[1]?.description || "",
+        titulo_seccion3: sections[2]?.title || "",
+        descripcion_seccion3: sections[2]?.description || "",
+        titulo_seccion4: sections[3]?.title || "",
+        descripcion_seccion4: sections[3]?.description || "",
+        texto_footer1: footerTexts.text1,
+        texto_footer2: footerTexts.text2,
+        texto_footer3: footerTexts.text3,
+        imagen_hero: images.hero
+          ? `/api/homepage/image/hero?t=${Date.now()}`
+          : undefined,
+        imagen_seccion1: images.seccion1
+          ? `/api/homepage/image/seccion1?t=${Date.now()}`
+          : undefined,
+        imagen_seccion2: images.seccion2
+          ? `/api/homepage/image/seccion2?t=${Date.now()}`
+          : undefined,
+        imagen_seccion3: images.seccion3
+          ? `/api/homepage/image/seccion3?t=${Date.now()}`
+          : undefined,
+        imagen_seccion4: images.seccion4
+          ? `/api/homepage/image/seccion4?t=${Date.now()}`
+          : undefined,
+        ultimoEditor: lastEditor.name
+          ? {
+              nom_usu1: lastEditor.name.split(" ")[0] || "",
+              ape_usu1: lastEditor.name.split(" ")[1] || "",
+            }
+          : undefined,
+        fecha_actualizacion: updatedContent.getLastUpdateDate(),
+        fecha_creacion: updatedContent.getCreatedAt(),
+      };
 
       res.json({
         success: true,
-        message: 'Contenido actualizado exitosamente',
-        data: paginaPrincipal
+        message: "Contenido actualizado exitosamente",
+        data: response,
       });
     } catch (error: any) {
-      console.error('[updateContent] Error:', error);
+      console.error("[updateContent] Error:", error);
       res.status(500).json({
         success: false,
-        message: error.message
+        message: error.message,
       });
     }
   }
@@ -165,7 +240,10 @@ export class HomepageController extends BaseController {
    * POST /api/homepage/image/:imageType (o /api/pagina-principal/imagen/:tipoImagen)
    * Subir imagen específica
    */
-  public async uploadImage(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async uploadImage(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       // Compatibilidad con ambos parámetros: imageType (nuevo) y tipoImagen (legacy)
       const imageType = req.params.imageType || req.params.tipoImagen;
@@ -174,7 +252,7 @@ export class HomepageController extends BaseController {
       if (!usuarioId) {
         res.status(401).json({
           success: false,
-          message: 'Usuario no autenticado'
+          message: "Usuario no autenticado",
         });
         return;
       }
@@ -182,7 +260,7 @@ export class HomepageController extends BaseController {
       if (!req.file) {
         res.status(400).json({
           success: false,
-          message: 'No se ha proporcionado ninguna imagen'
+          message: "No se ha proporcionado ninguna imagen",
         });
         return;
       }
@@ -190,58 +268,60 @@ export class HomepageController extends BaseController {
       if (!imageType) {
         res.status(400).json({
           success: false,
-          message: 'Tipo de imagen requerido'
+          message: "Tipo de imagen requerido",
         });
         return;
       }
 
       // Validar tipo de imagen
-      const tiposPermitidos = ['imagen_hero', 'imagen_seccion1', 'imagen_seccion2', 'imagen_seccion3', 'imagen_seccion4'];
+      const tiposPermitidos = [
+        "imagen_hero",
+        "imagen_seccion1",
+        "imagen_seccion2",
+        "imagen_seccion3",
+        "imagen_seccion4",
+      ];
       if (!tiposPermitidos.includes(imageType)) {
         res.status(400).json({
           success: false,
-          message: 'Tipo de imagen no válido'
+          message: "Tipo de imagen no válido",
         });
         return;
       }
 
-      const prisma = this.container.getPrismaClient();
+      // Normalizar nombre del tipo de imagen
+      let normalizedType = imageType;
+      if (imageType === "imagen_hero") normalizedType = "hero";
+      else if (imageType.startsWith("imagen_"))
+        normalizedType = imageType.replace("imagen_", "");
 
-      let paginaPrincipal = await prisma.paginaPrincipal.findFirst();
-
-      if (!paginaPrincipal) {
-        res.status(404).json({
+      // Validar tipo de archivo
+      if (!req.file.mimetype.startsWith("image/")) {
+        res.status(400).json({
           success: false,
-          message: 'No se encontró configuración de página principal'
+          message: "El archivo debe ser una imagen",
         });
         return;
       }
 
-      // Actualizar la imagen específica
-      const updateData: any = {
-        fecha_ultima_actualizacion: new Date(),
-        id_usuario_ultima_edicion: usuarioId
-      };
-      updateData[imageType as string] = req.file.buffer;
-
-      const resultado = await prisma.paginaPrincipal.update({
-        where: { id_pag: paginaPrincipal.id_pag },
-        data: updateData,
-        include: {
-          ultimoEditor: true
-        }
-      });
+      // Actualizar imagen usando el repositorio
+      await this.homepageRepository.updateImage(
+        normalizedType,
+        req.file.buffer,
+        req.file.mimetype,
+        usuarioId
+      );
 
       res.json({
         success: true,
-        message: 'Imagen subida exitosamente',
-        data: resultado
+        message: "Imagen subida exitosamente",
+        imageUrl: `/api/homepage/image/${normalizedType}?t=${Date.now()}`,
       });
     } catch (error: any) {
-      console.error('[uploadImage] Error:', error);
+      console.error("[uploadImage] Error:", error);
       res.status(500).json({
         success: false,
-        message: error.message
+        message: error.message,
       });
     }
   }
@@ -253,51 +333,73 @@ export class HomepageController extends BaseController {
   public async getImage(req: Request, res: Response): Promise<void> {
     try {
       // Compatibilidad con ambos parámetros: imageType (nuevo) y tipoImagen (legacy)
-      const imageType = req.params.imageType || req.params.tipoImagen;
-      const prisma = this.container.getPrismaClient();
+      let imageType = req.params.imageType || req.params.tipoImagen;
 
-      const paginaPrincipal = await prisma.paginaPrincipal.findFirst();
-
-      if (!paginaPrincipal || !paginaPrincipal[imageType as keyof typeof paginaPrincipal]) {
-        res.status(404).json({
+      if (!imageType) {
+        res.status(400).json({
           success: false,
-          message: 'Imagen no encontrada'
+          message: "Tipo de imagen requerido",
         });
         return;
       }
 
-      const imagenBuffer = paginaPrincipal[imageType as keyof typeof paginaPrincipal] as Buffer;
+      // Normalizar nombre del tipo de imagen
+      if (imageType === "imagen_hero") imageType = "hero";
+      else if (imageType.startsWith("imagen_"))
+        imageType = imageType.replace("imagen_", "");
 
-      if (!imagenBuffer) {
+      // Obtener imagen usando el repositorio
+      const imageSection = await this.homepageRepository.getImageByType(
+        imageType
+      );
+
+      if (!imageSection || !imageSection.buffer) {
         res.status(404).json({
           success: false,
-          message: 'Imagen no encontrada'
+          message: "Imagen no encontrada",
         });
         return;
       }
 
       // Determinar tipo de contenido basado en los primeros bytes
-      let contentType = 'image/jpeg'; // default
+      let contentType = imageSection.mimeType || "image/jpeg"; // usar el tipo almacenado o default
 
-      // Detectar formato por magic numbers
-      if (imagenBuffer[0] === 0xFF && imagenBuffer[1] === 0xD8) {
-        contentType = 'image/jpeg';
-      } else if (imagenBuffer[0] === 0x89 && imagenBuffer[1] === 0x50 && imagenBuffer[2] === 0x4E && imagenBuffer[3] === 0x47) {
-        contentType = 'image/png';
-      } else if (imagenBuffer[0] === 0x47 && imagenBuffer[1] === 0x49 && imagenBuffer[2] === 0x46) {
-        contentType = 'image/gif';
-      } else if (imagenBuffer[0] === 0x52 && imagenBuffer[1] === 0x49 && imagenBuffer[2] === 0x46 && imagenBuffer[3] === 0x46) {
-        contentType = 'image/webp';
+      // Si no hay mimeType almacenado, detectar por magic numbers
+      if (!imageSection.mimeType) {
+        const buffer = imageSection.buffer;
+        if (buffer[0] === 0xff && buffer[1] === 0xd8) {
+          contentType = "image/jpeg";
+        } else if (
+          buffer[0] === 0x89 &&
+          buffer[1] === 0x50 &&
+          buffer[2] === 0x4e &&
+          buffer[3] === 0x47
+        ) {
+          contentType = "image/png";
+        } else if (
+          buffer[0] === 0x47 &&
+          buffer[1] === 0x49 &&
+          buffer[2] === 0x46
+        ) {
+          contentType = "image/gif";
+        } else if (
+          buffer[0] === 0x52 &&
+          buffer[1] === 0x49 &&
+          buffer[2] === 0x46 &&
+          buffer[3] === 0x46
+        ) {
+          contentType = "image/webp";
+        }
       }
 
-      res.set('Content-Type', contentType);
-      res.set('Cache-Control', 'public, max-age=31536000'); // Cache por 1 año
-      res.send(imagenBuffer);
+      res.set("Content-Type", contentType);
+      res.set("Cache-Control", "public, max-age=31536000"); // Cache por 1 año
+      res.send(imageSection.buffer);
     } catch (error: any) {
-      console.error('[getImage] Error:', error);
+      console.error("[getImage] Error:", error);
       res.status(500).json({
         success: false,
-        message: error.message
+        message: "Error interno del servidor",
       });
     }
   }
@@ -308,13 +410,13 @@ export class HomepageController extends BaseController {
    */
   public async getPublicContent(req: Request, res: Response): Promise<void> {
     try {
-      console.log('Obteniendo eventos y cursos para usuario no autenticado');
+      console.log("Obteniendo eventos y cursos para usuario no autenticado");
       const prisma = this.container.getPrismaClient();
 
       // Obtener todos los eventos activos
       const eventos = await prisma.evento.findMany({
         where: {
-          estado: 'ACTIVO'
+          estado: "ACTIVO",
         },
         select: {
           id_eve: true,
@@ -332,37 +434,37 @@ export class HomepageController extends BaseController {
           tipo_audiencia_eve: true,
           categoria: {
             select: {
-              nom_cat: true
-            }
+              nom_cat: true,
+            },
           },
           eventosPorCarrera: {
             select: {
               carrera: {
                 select: {
-                  nom_car: true
-                }
-              }
-            }
+                  nom_car: true,
+                },
+              },
+            },
           },
           inscripciones: {
             where: {
-              estado_pago: 'APROBADO'
+              estado_pago: "APROBADO",
             },
             select: {
-              id_ins: true
-            }
-          }
+              id_ins: true,
+            },
+          },
         },
         orderBy: {
-          fec_ini_eve: 'asc'
+          fec_ini_eve: "asc",
         },
-        take: 8
+        take: 8,
       });
 
       // Obtener todos los cursos activos
       const cursos = await prisma.curso.findMany({
         where: {
-          estado: 'ACTIVO'
+          estado: "ACTIVO",
         },
         select: {
           id_cur: true,
@@ -378,31 +480,31 @@ export class HomepageController extends BaseController {
           requiere_verificacion_docs: true,
           categoria: {
             select: {
-              nom_cat: true
-            }
+              nom_cat: true,
+            },
           },
           cursosPorCarrera: {
             select: {
               carrera: {
                 select: {
-                  nom_car: true
-                }
-              }
-            }
+                  nom_car: true,
+                },
+              },
+            },
           },
           inscripcionesCurso: {
             where: {
-              estado_pago_cur: 'APROBADO'
+              estado_pago_cur: "APROBADO",
             },
             select: {
-              id_ins_cur: true
-            }
-          }
+              id_ins_cur: true,
+            },
+          },
         },
         orderBy: {
-          fec_ini_cur: 'asc'
+          fec_ini_cur: "asc",
         },
-        take: 8
+        take: 8,
       });
 
       console.log(`Eventos públicos encontrados: ${eventos.length}`);
@@ -411,13 +513,13 @@ export class HomepageController extends BaseController {
       res.json({
         success: true,
         eventos,
-        cursos
+        cursos,
       });
     } catch (error: any) {
-      console.error('[getPublicContent] Error:', error);
+      console.error("[getPublicContent] Error:", error);
       res.status(500).json({
         success: false,
-        message: 'Error al obtener eventos y cursos'
+        message: "Error al obtener eventos y cursos",
       });
     }
   }
@@ -426,15 +528,18 @@ export class HomepageController extends BaseController {
    * GET /api/homepage/student-content
    * Obtener eventos y cursos para ESTUDIANTES (por carrera + públicos)
    */
-  public async getStudentContent(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async getStudentContent(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const userId = req.uid;
-      console.log('ID de usuario ESTUDIANTE:', userId);
+      console.log("ID de usuario ESTUDIANTE:", userId);
 
       if (!userId) {
         res.status(401).json({
           success: false,
-          message: 'Usuario no autenticado'
+          message: "Usuario no autenticado",
         });
         return;
       }
@@ -444,69 +549,71 @@ export class HomepageController extends BaseController {
       // Obtener la carrera del usuario
       const usuario = await prisma.usuario.findUnique({
         where: { id_usu: userId },
-        select: { 
+        select: {
           id_car_per: true,
           carrera: {
             select: {
-              nom_car: true
-            }
-          }
-        }
+              nom_car: true,
+            },
+          },
+        },
       });
 
-      console.log('Datos del usuario:', usuario);
+      console.log("Datos del usuario:", usuario);
 
       // Si el usuario no tiene carrera asignada, mostrar solo contenido público
       if (!usuario || !usuario.id_car_per) {
-        console.log('Usuario sin carrera asignada, mostrando contenido público y para todas las carreras');
-        
+        console.log(
+          "Usuario sin carrera asignada, mostrando contenido público y para todas las carreras"
+        );
+
         // Obtener eventos públicos y para todas las carreras
         const eventosPublicos = await prisma.evento.findMany({
           where: {
-            estado: 'ACTIVO',
+            estado: "ACTIVO",
             OR: [
-              { tipo_audiencia_eve: 'PUBLICO_GENERAL' },
-              { tipo_audiencia_eve: 'TODAS_CARRERAS' } // ✅ Agregar eventos para todas las carreras
+              { tipo_audiencia_eve: "PUBLICO_GENERAL" },
+              { tipo_audiencia_eve: "TODAS_CARRERAS" }, // ✅ Agregar eventos para todas las carreras
             ],
             fec_fin_eve: {
-              gte: new Date()
-            }
+              gte: new Date(),
+            },
           },
           include: {
             categoria: {
               select: {
-                nom_cat: true
-              }
-            }
+                nom_cat: true,
+              },
+            },
           },
-          orderBy: { fec_ini_eve: 'asc' }
+          orderBy: { fec_ini_eve: "asc" },
         });
 
         // Obtener cursos públicos y para todas las carreras
         const cursosPublicos = await prisma.curso.findMany({
           where: {
-            estado: 'ACTIVO',
+            estado: "ACTIVO",
             OR: [
-              { tipo_audiencia_cur: 'PUBLICO_GENERAL' },
-              { tipo_audiencia_cur: 'TODAS_CARRERAS' } // ✅ Agregar cursos para todas las carreras
+              { tipo_audiencia_cur: "PUBLICO_GENERAL" },
+              { tipo_audiencia_cur: "TODAS_CARRERAS" }, // ✅ Agregar cursos para todas las carreras
             ],
             fec_fin_cur: {
-              gte: new Date()
-            }
+              gte: new Date(),
+            },
           },
           include: {
             categoria: {
               select: {
-                nom_cat: true
-              }
-            }
+                nom_cat: true,
+              },
+            },
           },
-          orderBy: { fec_ini_cur: 'asc' }
+          orderBy: { fec_ini_cur: "asc" },
         });
 
         res.json({
           success: true,
-          eventos: eventosPublicos.map(evento => ({
+          eventos: eventosPublicos.map((evento) => ({
             id_eve: evento.id_eve,
             nom_eve: evento.nom_eve,
             des_eve: evento.des_eve,
@@ -519,9 +626,9 @@ export class HomepageController extends BaseController {
             es_gratuito: evento.es_gratuito,
             precio: evento.precio,
             categoria: evento.categoria?.nom_cat,
-            tipo_audiencia: evento.tipo_audiencia_eve
+            tipo_audiencia: evento.tipo_audiencia_eve,
           })),
-          cursos: cursosPublicos.map(curso => ({
+          cursos: cursosPublicos.map((curso) => ({
             id_cur: curso.id_cur,
             nom_cur: curso.nom_cur,
             des_cur: curso.des_cur,
@@ -532,10 +639,11 @@ export class HomepageController extends BaseController {
             es_gratuito: curso.es_gratuito,
             precio: curso.precio,
             categoria: curso.categoria?.nom_cat,
-            tipo_audiencia: curso.tipo_audiencia_cur
+            tipo_audiencia: curso.tipo_audiencia_cur,
           })),
           carrera: null,
-          mensaje: 'Mostrando contenido público y para todas las carreras (usuario sin carrera asignada)'
+          mensaje:
+            "Mostrando contenido público y para todas las carreras (usuario sin carrera asignada)",
         });
         return;
       }
@@ -543,26 +651,26 @@ export class HomepageController extends BaseController {
       // Obtener eventos para el estudiante
       const eventos = await prisma.evento.findMany({
         where: {
-          estado: 'ACTIVO',
+          estado: "ACTIVO",
           OR: [
             // Eventos públicos para todos
-            { tipo_audiencia_eve: 'PUBLICO_GENERAL' },
+            { tipo_audiencia_eve: "PUBLICO_GENERAL" },
             // Eventos para todas las carreras
-            { tipo_audiencia_eve: 'TODAS_CARRERAS' },
+            { tipo_audiencia_eve: "TODAS_CARRERAS" },
             // Eventos específicos para mi carrera
             {
               AND: [
-                { tipo_audiencia_eve: 'CARRERA_ESPECIFICA' },
+                { tipo_audiencia_eve: "CARRERA_ESPECIFICA" },
                 {
                   eventosPorCarrera: {
                     some: {
-                      id_car_per: usuario.id_car_per
-                    }
-                  }
-                }
-              ]
-            }
-          ]
+                      id_car_per: usuario.id_car_per,
+                    },
+                  },
+                },
+              ],
+            },
+          ],
         },
         select: {
           id_eve: true,
@@ -580,55 +688,55 @@ export class HomepageController extends BaseController {
           tipo_audiencia_eve: true,
           categoria: {
             select: {
-              nom_cat: true
-            }
+              nom_cat: true,
+            },
           },
           eventosPorCarrera: {
             select: {
               carrera: {
                 select: {
-                  nom_car: true
-                }
-              }
-            }
+                  nom_car: true,
+                },
+              },
+            },
           },
           inscripciones: {
             where: {
-              estado_pago: 'APROBADO'
+              estado_pago: "APROBADO",
             },
             select: {
-              id_ins: true
-            }
-          }
+              id_ins: true,
+            },
+          },
         },
         orderBy: {
-          fec_ini_eve: 'asc'
-        }
+          fec_ini_eve: "asc",
+        },
       });
 
       // Obtener cursos para el estudiante
       const cursos = await prisma.curso.findMany({
         where: {
-          estado: 'ACTIVO',
+          estado: "ACTIVO",
           OR: [
             // Cursos públicos para todos
-            { tipo_audiencia_cur: 'PUBLICO_GENERAL' },
+            { tipo_audiencia_cur: "PUBLICO_GENERAL" },
             // Cursos para todas las carreras
-            { tipo_audiencia_cur: 'TODAS_CARRERAS' },
+            { tipo_audiencia_cur: "TODAS_CARRERAS" },
             // Cursos específicos para mi carrera
             {
               AND: [
-                { tipo_audiencia_cur: 'CARRERA_ESPECIFICA' },
+                { tipo_audiencia_cur: "CARRERA_ESPECIFICA" },
                 {
                   cursosPorCarrera: {
                     some: {
-                      id_car_per: usuario.id_car_per
-                    }
-                  }
-                }
-              ]
-            }
-          ]
+                      id_car_per: usuario.id_car_per,
+                    },
+                  },
+                },
+              ],
+            },
+          ],
         },
         select: {
           id_cur: true,
@@ -644,30 +752,30 @@ export class HomepageController extends BaseController {
           requiere_verificacion_docs: true,
           categoria: {
             select: {
-              nom_cat: true
-            }
+              nom_cat: true,
+            },
           },
           cursosPorCarrera: {
             select: {
               carrera: {
                 select: {
-                  nom_car: true
-                }
-              }
-            }
+                  nom_car: true,
+                },
+              },
+            },
           },
           inscripcionesCurso: {
             where: {
-              estado_pago_cur: 'APROBADO'
+              estado_pago_cur: "APROBADO",
             },
             select: {
-              id_ins_cur: true
-            }
-          }
+              id_ins_cur: true,
+            },
+          },
         },
         orderBy: {
-          fec_ini_cur: 'asc'
-        }
+          fec_ini_cur: "asc",
+        },
       });
 
       console.log(`Eventos encontrados para estudiante: ${eventos.length}`);
@@ -677,13 +785,13 @@ export class HomepageController extends BaseController {
         success: true,
         eventos,
         cursos,
-        carrera: usuario.carrera?.nom_car
+        carrera: usuario.carrera?.nom_car,
       });
     } catch (error: any) {
-      console.error('[getStudentContent] Error:', error);
+      console.error("[getStudentContent] Error:", error);
       res.status(500).json({
         success: false,
-        message: 'Error al obtener eventos y cursos'
+        message: "Error al obtener eventos y cursos",
       });
     }
   }
@@ -694,20 +802,22 @@ export class HomepageController extends BaseController {
    */
   public async getExternalContent(req: Request, res: Response): Promise<void> {
     try {
-      console.log('Obteniendo eventos y cursos para USUARIO EXTERNO (incluyendo TODAS_CARRERAS)');
+      console.log(
+        "Obteniendo eventos y cursos para USUARIO EXTERNO (incluyendo TODAS_CARRERAS)"
+      );
       const prisma = this.container.getPrismaClient();
 
       // Eventos públicos y para todas las carreras para usuarios externos
       const eventos = await prisma.evento.findMany({
         where: {
-          estado: 'ACTIVO',
+          estado: "ACTIVO",
           OR: [
-            { tipo_audiencia_eve: 'PUBLICO_GENERAL' },
-            { tipo_audiencia_eve: 'TODAS_CARRERAS' } // ✅ Agregar eventos para todas las carreras
+            { tipo_audiencia_eve: "PUBLICO_GENERAL" },
+            { tipo_audiencia_eve: "TODAS_CARRERAS" }, // ✅ Agregar eventos para todas las carreras
           ],
           fec_ini_eve: {
-            gte: new Date() // Solo eventos futuros
-          }
+            gte: new Date(), // Solo eventos futuros
+          },
         },
         select: {
           id_eve: true,
@@ -725,43 +835,43 @@ export class HomepageController extends BaseController {
           tipo_audiencia_eve: true,
           categoria: {
             select: {
-              nom_cat: true
-            }
+              nom_cat: true,
+            },
           },
           eventosPorCarrera: {
             select: {
               carrera: {
                 select: {
-                  nom_car: true
-                }
-              }
-            }
+                  nom_car: true,
+                },
+              },
+            },
           },
           inscripciones: {
             where: {
-              estado_pago: 'APROBADO'
+              estado_pago: "APROBADO",
             },
             select: {
-              id_ins: true
-            }
-          }
+              id_ins: true,
+            },
+          },
         },
         orderBy: {
-          fec_ini_eve: 'asc'
-        }
+          fec_ini_eve: "asc",
+        },
       });
 
       // Cursos públicos y para todas las carreras para usuarios externos
       const cursos = await prisma.curso.findMany({
         where: {
-          estado: 'ACTIVO',
+          estado: "ACTIVO",
           OR: [
-            { tipo_audiencia_cur: 'PUBLICO_GENERAL' },
-            { tipo_audiencia_cur: 'TODAS_CARRERAS' } // ✅ Agregar cursos para todas las carreras
+            { tipo_audiencia_cur: "PUBLICO_GENERAL" },
+            { tipo_audiencia_cur: "TODAS_CARRERAS" }, // ✅ Agregar cursos para todas las carreras
           ],
           fec_ini_cur: {
-            gte: new Date() // Solo cursos futuros
-          }
+            gte: new Date(), // Solo cursos futuros
+          },
         },
         select: {
           id_cur: true,
@@ -777,45 +887,49 @@ export class HomepageController extends BaseController {
           requiere_verificacion_docs: true,
           categoria: {
             select: {
-              nom_cat: true
-            }
+              nom_cat: true,
+            },
           },
           cursosPorCarrera: {
             select: {
               carrera: {
                 select: {
-                  nom_car: true
-                }
-              }
-            }
+                  nom_car: true,
+                },
+              },
+            },
           },
           inscripcionesCurso: {
             where: {
-              estado_pago_cur: 'APROBADO'
+              estado_pago_cur: "APROBADO",
             },
             select: {
-              id_ins_cur: true
-            }
-          }
+              id_ins_cur: true,
+            },
+          },
         },
         orderBy: {
-          fec_ini_cur: 'asc'
-        }
+          fec_ini_cur: "asc",
+        },
       });
 
-      console.log(`Eventos públicos encontrados para usuario externo: ${eventos.length}`);
-      console.log(`Cursos públicos encontrados para usuario externo: ${cursos.length}`);
+      console.log(
+        `Eventos públicos encontrados para usuario externo: ${eventos.length}`
+      );
+      console.log(
+        `Cursos públicos encontrados para usuario externo: ${cursos.length}`
+      );
 
       res.json({
         success: true,
         eventos,
-        cursos
+        cursos,
       });
     } catch (error: any) {
-      console.error('[getExternalContent] Error:', error);
+      console.error("[getExternalContent] Error:", error);
       res.status(500).json({
         success: false,
-        message: 'Error al obtener eventos y cursos'
+        message: "Error al obtener eventos y cursos",
       });
     }
   }

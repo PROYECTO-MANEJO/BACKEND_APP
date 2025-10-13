@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.VerificationController = void 0;
 const BaseController_1 = require("./BaseController");
-const emailService_1 = require("../../infrastructure/external/emailService");
 const jwtHelper_1 = require("../../infrastructure/helpers/jwtHelper");
 class VerificationController extends BaseController_1.BaseController {
     constructor(container) {
@@ -24,6 +23,7 @@ class VerificationController extends BaseController_1.BaseController {
                 return;
             }
             const prisma = this.container.getPrismaClient();
+            const emailService = this.container.getEmailService();
             // Verificar que el usuario existe
             const usuario = await prisma.usuario.findUnique({
                 where: { id_usu: userId }
@@ -56,7 +56,7 @@ class VerificationController extends BaseController_1.BaseController {
             // Generar token de verificación
             const token = await (0, jwtHelper_1.generateVerificationJWT)(userId);
             // Enviar correo de verificación
-            await (0, emailService_1.sendVerificationEmail)(email, token);
+            await emailService.sendVerificationEmail(email, token);
             res.json({
                 success: true,
                 message: 'Correo de verificación enviado exitosamente'
@@ -157,6 +157,7 @@ class VerificationController extends BaseController_1.BaseController {
                 return;
             }
             const prisma = this.container.getPrismaClient();
+            const emailService = this.container.getEmailService();
             // Buscar cuenta por email
             const cuenta = await prisma.cuenta.findFirst({
                 where: { cor_cue: email },
@@ -179,7 +180,7 @@ class VerificationController extends BaseController_1.BaseController {
             // Generar nuevo token de verificación
             const token = await (0, jwtHelper_1.generateVerificationJWT)(cuenta.usuario.id_usu);
             // Enviar correo de verificación
-            await (0, emailService_1.sendVerificationEmail)(email, token);
+            await emailService.sendVerificationEmail(email, token);
             res.json({
                 success: true,
                 message: 'Correo de verificación reenviado exitosamente'

@@ -1,5 +1,7 @@
-import { Request, Response } from 'express';
-import { DIContainer } from '../../infrastructure/DIContainer';
+import { Request, Response } from "express";
+import { DIContainer } from "../../infrastructure/DIContainer";
+import { IOrganizerRepository } from "../../domain/repositories/IOrganizerRepository";
+import { Organizador } from "../../domain/entities/Organizador";
 
 interface AuthenticatedRequest extends Request {
   usuario?: {
@@ -10,41 +12,42 @@ interface AuthenticatedRequest extends Request {
 }
 
 export class OrganizerController {
-  constructor(private container: DIContainer) {}
+  private organizerRepository: IOrganizerRepository;
+
+  constructor(private container: DIContainer) {
+    this.organizerRepository = container.getOrganizerRepository();
+  }
 
   /**
    * GET /api/organizadores
    * Obtener todos los organizadores
    */
-  public async getOrganizadores(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async getOrganizadores(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
-      const prisma = this.container.getPrismaClient();
-
-      const organizadores = await prisma.organizador.findMany({
-        orderBy: [
-          { ape_org1: 'asc' },
-          { nom_org1: 'asc' }
-        ]
-      });
+      const organizadores = await this.organizerRepository.findAll();
 
       res.json({
         success: true,
-        organizadores: organizadores.map(org => ({
-          ced_org: org.ced_org,
-          nom_org1: org.nom_org1,
-          nom_org2: org.nom_org2,
-          ape_org1: org.ape_org1,
-          ape_org2: org.ape_org2,
-          tit_aca_org: org.tit_aca_org,
-          nombre_completo: `${org.nom_org1} ${org.nom_org2 || ''} ${org.ape_org1} ${org.ape_org2 || ''}`.trim()
-        }))
+        organizadores: organizadores.map((org) => ({
+          ced_org: org.cedula,
+          nom_org1: org.firstName,
+          nom_org2: org.secondName,
+          ape_org1: org.lastName,
+          ape_org2: org.secondLastName,
+          tit_aca_org: org.academicTitle,
+          nombre_completo: `${org.firstName} ${org.secondName || ""} ${
+            org.lastName
+          } ${org.secondLastName || ""}`.trim(),
+        })),
       });
-
     } catch (error: any) {
-      console.error('[getOrganizadores] Error:', error);
+      console.error("[getOrganizadores] Error:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor'
+        message: "Error interno del servidor",
       });
     }
   }
@@ -53,58 +56,243 @@ export class OrganizerController {
    * POST /api/organizadores
    * Crear nuevo organizador (Admin only)
    */
-  public async createOrganizador(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async createOrganizador(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
-      const { 
-        ced_org, 
-        nom_org1, 
-        nom_org2, 
-        ape_org1, 
-        ape_org2, 
-        tit_aca_org 
-      } = req.body;
-      const prisma = this.container.getPrismaClient();
+      const { ced_org, nom_org1, nom_org2, ape_org1, ape_org2, tit_aca_org } =
+        req.body;
 
       // Validaciones básicas
       if (!ced_org || !nom_org1 || !ape_org1) {
         res.status(400).json({
           success: false,
-          message: 'Cédula, primer nombre y primer apellido son obligatorios'
+          message: "Cédula, primer nombre y primer apellido son obligatorios",
         });
         return;
       }
 
-      const nuevoOrganizador = await prisma.organizador.create({
-        data: {
-          ced_org: ced_org.trim(),
-          nom_org1: nom_org1.trim(),
-          nom_org2: nom_org2?.trim() || '',
-          ape_org1: ape_org1.trim(),
-          ape_org2: ape_org2?.trim() || '',
-          tit_aca_org: tit_aca_org?.trim() || null
-        }
-      });
+      // Verificar si ya existe un organizador con esa cédula
+      const existingOrganizer = await this.organizerRepository.existsByCedula(
+        ced_org.trim()
+      );
+      if (existingOrganizer) {
+        res.status(400).json({
+          success: false,
+          message: "Ya existe un organizador con esa cédula",
+        });
+        return;
+      }
+
+      // Crear objeto del dominio para el nuevo organizador
+      const organizadorData: Partial<Organizador> = {
+        cedula: ced_org.trim(),
+        firstName: nom_org1.trim(),
+        secondName: nom_org2?.trim() || undefined,
+        lastName: ape_org1.trim(),
+        secondLastName: ape_org2?.trim() || undefined,
+        academicTitle: tit_aca_org?.trim() || undefined,
+      };
+
+      const nuevoOrganizador = await this.organizerRepository.create(
+        organizadorData
+      );
 
       res.status(201).json({
         success: true,
-        message: 'Organizador creado exitosamente',
-        organizador: nuevoOrganizador
+        message: "Organizador creado exitosamente",
+        organizador: {
+          ced_org: nuevoOrganizador.cedula,
+          nom_org1: nuevoOrganizador.firstName,
+          nom_org2: nuevoOrganizador.secondName,
+          ape_org1: nuevoOrganizador.lastName,
+          ape_org2: nuevoOrganizador.secondLastName,
+          tit_aca_org: nuevoOrganizador.academicTitle,
+        },
       });
-
     } catch (error: any) {
-      console.error('[createOrganizador] Error:', error);
-      
-      if (error.code === 'P2002') {
+      console.error("[createOrganizador] Error:", error);
+
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor",
+      });
+    }
+  }
+
+  /**
+   * GET /api/organizadores/:cedula
+   * Obtener organizador por cédula
+   */
+  public async getOrganizadorByCedula(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      const { cedula } = req.params;
+
+      if (!cedula) {
         res.status(400).json({
           success: false,
-          message: 'Ya existe un organizador con esa cédula'
+          message: "Cédula es requerida",
         });
         return;
       }
-      
+
+      const organizador = await this.organizerRepository.findByCedula(cedula);
+
+      if (!organizador) {
+        res.status(404).json({
+          success: false,
+          message: "Organizador no encontrado",
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        organizador: {
+          ced_org: organizador.cedula,
+          nom_org1: organizador.firstName,
+          nom_org2: organizador.secondName,
+          ape_org1: organizador.lastName,
+          ape_org2: organizador.secondLastName,
+          tit_aca_org: organizador.academicTitle,
+          nombre_completo: `${organizador.firstName} ${
+            organizador.secondName || ""
+          } ${organizador.lastName} ${organizador.secondLastName || ""}`.trim(),
+        },
+      });
+    } catch (error: any) {
+      console.error("[getOrganizadorByCedula] Error:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor'
+        message: "Error interno del servidor",
+      });
+    }
+  }
+
+  /**
+   * PUT /api/organizadores/:cedula
+   * Actualizar organizador (Admin only)
+   */
+  public async updateOrganizador(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      const { cedula } = req.params;
+      const { nom_org1, nom_org2, ape_org1, ape_org2, tit_aca_org } = req.body;
+
+      if (!cedula) {
+        res.status(400).json({
+          success: false,
+          message: "Cédula es requerida",
+        });
+        return;
+      }
+
+      // Verificar que el organizador existe
+      const existingOrganizer = await this.organizerRepository.findByCedula(
+        cedula
+      );
+      if (!existingOrganizer) {
+        res.status(404).json({
+          success: false,
+          message: "Organizador no encontrado",
+        });
+        return;
+      }
+
+      // Crear objeto de actualización
+      const updateData: Partial<Organizador> = {};
+
+      if (nom_org1 !== undefined) updateData.firstName = nom_org1.trim();
+      if (nom_org2 !== undefined)
+        updateData.secondName = nom_org2?.trim() || undefined;
+      if (ape_org1 !== undefined) updateData.lastName = ape_org1.trim();
+      if (ape_org2 !== undefined)
+        updateData.secondLastName = ape_org2?.trim() || undefined;
+      if (tit_aca_org !== undefined)
+        updateData.academicTitle = tit_aca_org?.trim() || undefined;
+
+      const organizadorActualizado = await this.organizerRepository.update(
+        cedula,
+        updateData
+      );
+
+      if (!organizadorActualizado) {
+        res.status(500).json({
+          success: false,
+          message: "Error al actualizar el organizador",
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        message: "Organizador actualizado exitosamente",
+        organizador: {
+          ced_org: organizadorActualizado.cedula,
+          nom_org1: organizadorActualizado.firstName,
+          nom_org2: organizadorActualizado.secondName,
+          ape_org1: organizadorActualizado.lastName,
+          ape_org2: organizadorActualizado.secondLastName,
+          tit_aca_org: organizadorActualizado.academicTitle,
+        },
+      });
+    } catch (error: any) {
+      console.error("[updateOrganizador] Error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor",
+      });
+    }
+  }
+
+  /**
+   * DELETE /api/organizadores/:cedula
+   * Eliminar organizador (Admin only)
+   */
+  public async deleteOrganizador(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      const { cedula } = req.params;
+
+      if (!cedula) {
+        res.status(400).json({
+          success: false,
+          message: "Cédula es requerida",
+        });
+        return;
+      }
+
+      // Verificar que el organizador existe
+      const existingOrganizer = await this.organizerRepository.findByCedula(
+        cedula
+      );
+      if (!existingOrganizer) {
+        res.status(404).json({
+          success: false,
+          message: "Organizador no encontrado",
+        });
+        return;
+      }
+
+      await this.organizerRepository.delete(cedula);
+
+      res.json({
+        success: true,
+        message: "Organizador eliminado exitosamente",
+      });
+    } catch (error: any) {
+      console.error("[deleteOrganizador] Error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor",
       });
     }
   }

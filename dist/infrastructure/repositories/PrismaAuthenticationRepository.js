@@ -236,6 +236,74 @@ class PrismaAuthenticationRepository {
             where: { id_cue: accountId },
         });
     }
+    // ===== BÚSQUEDAS COMPLETAS PARA LOGIN =====
+    async findCompleteByEmail(email) {
+        const cuenta = await this.prisma.cuenta.findFirst({
+            where: { cor_cue: email },
+            include: {
+                usuario: {
+                    include: {
+                        carrera: {
+                            select: {
+                                id_car: true,
+                                nom_car: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        if (!cuenta || !cuenta.usuario)
+            return null;
+        return this.mapToCompleteAuthData(cuenta);
+    }
+    async findCompleteById(userId) {
+        const usuario = await this.prisma.usuario.findUnique({
+            where: { id_usu: userId },
+            include: {
+                cuentas: true,
+                carrera: {
+                    select: {
+                        id_car: true,
+                        nom_car: true
+                    }
+                }
+            }
+        });
+        if (!usuario || !usuario.cuentas || usuario.cuentas.length === 0)
+            return null;
+        const cuenta = usuario.cuentas[0]; // Tomar la primera cuenta
+        return this.mapToCompleteAuthData({ ...cuenta, usuario });
+    }
+    // ===== UTILITY METHODS =====
+    mapToCompleteAuthData(cuenta) {
+        const user = cuenta.usuario;
+        return {
+            user: {
+                id: user.id_usu,
+                cedula: user.ced_usu,
+                firstName: user.nom_usu1,
+                lastName: user.ape_usu1,
+                firstName2: user.nom_usu2 || undefined,
+                lastName2: user.ape_usu2 || undefined,
+                birthDate: user.fec_nac_usu || undefined,
+                phone: user.num_tel_usu || undefined,
+                careerId: user.id_car_per || undefined,
+                password: user.pas_usu || undefined,
+                cedulaFileUrl: user.enl_ced_pdf || undefined,
+                matriculaFileUrl: user.enl_mat_pdf || undefined,
+                documentsVerified: user.documentos_verificados || false,
+                verificationDate: user.fec_verificacion_docs || undefined,
+                resetToken: user.resetToken || undefined,
+                resetTokenExpiry: user.resetTokenExpiry || undefined,
+            },
+            account: this.mapToAccountData(cuenta),
+            career: user.carrera ? {
+                id: user.carrera.id_car,
+                name: user.carrera.nom_car
+            } : undefined
+        };
+    }
     // ===== UTILITY METHODS =====
     mapToAccountData(cuenta) {
         return {

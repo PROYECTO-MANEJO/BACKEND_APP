@@ -7,7 +7,7 @@ import { ChangeRequestRoutes } from "./changeRequestRoutes";
 import { DeveloperRoutes } from "./developerRoutes";
 import { InscriptionRoutes } from "./inscriptionRoutes";
 import { ParticipationRoutes } from "./participationRoutes";
-import { HomepageRoutes } from "./homepageRoutes";
+import { homepageRoutes } from "./homepageRoutes";
 import { CareerRoutes } from "./careerRoutes";
 
 export class AppRoutes {
@@ -52,8 +52,7 @@ export class AppRoutes {
     this.router.use("/participations", participationRoutes.getRouter());
 
     // Rutas de página principal
-    const homepageRoutes = new HomepageRoutes();
-    this.router.use("/homepage", homepageRoutes.getRouter());
+    this.router.use("/homepage", homepageRoutes);
 
     // Rutas de carreras
     const careerRoutes = new CareerRoutes();

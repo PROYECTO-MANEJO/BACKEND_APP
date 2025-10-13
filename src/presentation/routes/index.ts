@@ -20,5 +20,5 @@ export { ChangeRequestRoutes } from "./changeRequestRoutes";
 export { DeveloperRoutes } from "./developerRoutes";
 export { InscriptionRoutes } from "./inscriptionRoutes";
 export { ParticipationRoutes } from "./participationRoutes";
-export { HomepageRoutes } from "./homepageRoutes";
+export { homepageRoutes } from "./homepageRoutes";
 export { CareerRoutes } from "./careerRoutes";

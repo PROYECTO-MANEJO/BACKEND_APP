@@ -5,26 +5,8 @@
  * Maneja operaciones básicas según el esquema Prisma real
  */
 import { PrismaClient } from "@prisma/client";
-export interface AccountData {
-    id?: string;
-    email: string;
-    role: string;
-    isVerified: boolean;
-    userId: string;
-    emailVerificationToken?: string;
-    emailVerificationExpiry?: Date;
-}
-export interface AuthenticationData {
-    user: {
-        id: string;
-        cedula: string;
-        firstName: string;
-        lastName: string;
-        password?: string;
-    };
-    account: AccountData;
-}
-export declare class PrismaAuthenticationRepository {
+import { IAuthenticationRepository, AccountData, AuthenticationData, CompleteAuthData } from "../../domain/repositories/IAuthenticationRepository";
+export declare class PrismaAuthenticationRepository implements IAuthenticationRepository {
     private prisma;
     constructor(prisma: PrismaClient);
     createAccount(accountData: AccountData): Promise<AccountData>;
@@ -46,6 +28,9 @@ export declare class PrismaAuthenticationRepository {
         byRole: Record<string, number>;
     }>;
     deleteAccount(accountId: string): Promise<void>;
+    findCompleteByEmail(email: string): Promise<CompleteAuthData | null>;
+    findCompleteById(userId: string): Promise<CompleteAuthData | null>;
+    private mapToCompleteAuthData;
     private mapToAccountData;
 }
 //# sourceMappingURL=PrismaAuthenticationRepository.d.ts.map

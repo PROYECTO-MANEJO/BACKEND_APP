@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PasswordRecoveryController = void 0;
 const BaseController_1 = require("./BaseController");
 const recoveryTokenHelper_1 = require("../../infrastructure/helpers/recoveryTokenHelper");
-const emailService_1 = require("../../infrastructure/external/emailService");
 class PasswordRecoveryController extends BaseController_1.BaseController {
     constructor(container) {
         super();
@@ -25,6 +24,7 @@ class PasswordRecoveryController extends BaseController_1.BaseController {
                 return;
             }
             const prisma = this.container.getPrismaClient();
+            const emailService = this.container.getEmailService();
             // Buscar la cuenta y su usuario asociado
             const cuenta = await prisma.cuenta.findFirst({
                 where: { cor_cue: email },
@@ -51,7 +51,7 @@ class PasswordRecoveryController extends BaseController_1.BaseController {
                 }
             });
             // Enviar correo al usuario con el enlace que incluye el token en texto plano
-            await (0, emailService_1.sendRecoveryEmail)(email, token);
+            await emailService.sendPasswordResetEmail(email, token);
             res.json({
                 success: true,
                 message: 'Si existe una cuenta con ese correo, se enviarán instrucciones para restablecer la contraseña.'

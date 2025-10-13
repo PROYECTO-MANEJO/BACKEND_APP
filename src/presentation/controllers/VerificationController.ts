@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { BaseController } from "./BaseController";
 import { DIContainer } from "../../infrastructure/DIContainer";
-import { sendVerificationEmail } from "../../infrastructure/external/emailService";
 import { generateVerificationJWT, verifyVerificationJWT } from "../../infrastructure/helpers/jwtHelper";
 
 export class VerificationController extends BaseController {
@@ -29,6 +28,7 @@ export class VerificationController extends BaseController {
       }
 
       const prisma = this.container.getPrismaClient();
+      const emailService = this.container.getEmailService();
 
       // Verificar que el usuario existe
       const usuario = await prisma.usuario.findUnique({
@@ -68,7 +68,7 @@ export class VerificationController extends BaseController {
       const token = await generateVerificationJWT(userId);
 
       // Enviar correo de verificación
-      await sendVerificationEmail(email, token);
+      await emailService.sendVerificationEmail(email, token);
 
       res.json({
         success: true,
@@ -184,6 +184,7 @@ export class VerificationController extends BaseController {
       }
 
       const prisma = this.container.getPrismaClient();
+      const emailService = this.container.getEmailService();
 
       // Buscar cuenta por email
       const cuenta = await prisma.cuenta.findFirst({
@@ -211,7 +212,7 @@ export class VerificationController extends BaseController {
       const token = await generateVerificationJWT(cuenta.usuario.id_usu);
 
       // Enviar correo de verificación
-      await sendVerificationEmail(email, token);
+      await emailService.sendVerificationEmail(email, token);
 
       res.json({
         success: true,

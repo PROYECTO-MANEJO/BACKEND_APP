@@ -7,6 +7,8 @@ import { ICertificateRepository } from '../domain/repositories/ICertificateRepos
 import { IEnrollmentRepository } from '../domain/repositories/IEnrollmentRepository';
 import { DeveloperRepository } from '../domain/repositories/IDeveloperRepository';
 import { ChangeRequestRepository } from '../domain/repositories/IChangeRequestRepository';
+import { IAuthenticationRepository } from '../domain/repositories/IAuthenticationRepository';
+import { IEmailService } from '../domain/repositories/IEmailService';
 /**
  * SOLID Dependency Injection Container
  * Implementa DIP (Dependency Inversion Principle)
@@ -21,6 +23,8 @@ export declare class DIContainer {
     private enrollmentRepository?;
     private developerRepository?;
     private changeRequestRepository?;
+    private authenticationRepository?;
+    private emailService?;
     private constructor();
     static getInstance(): DIContainer;
     getUserRepository(): IUserRepository;
@@ -30,6 +34,8 @@ export declare class DIContainer {
     getEnrollmentRepository(): IEnrollmentRepository;
     getDeveloperRepository(): DeveloperRepository;
     getChangeRequestRepository(): ChangeRequestRepository;
+    getAuthenticationRepository(): IAuthenticationRepository;
+    getEmailService(): IEmailService;
     getPrismaClient(): PrismaClient;
     getBcrypt(): typeof bcrypt;
     getJwtHelpers(): {
