@@ -4,7 +4,7 @@ export interface AuthenticatedRequest extends Request {
     rol: string;
     ced_usu: string;
   };
-  uid?: string; // ID del usuario desde JWT middleware
+  uid?: string;  // ID del usuario desde JWT middleware
 }
 
 import { Request, Response } from "express";
@@ -15,19 +15,17 @@ import { CourseDTOTransformer, CreateCourseDTO } from "../dto/CourseDTO";
 
 /**
  * Course Controller - Presentation Layer
- *
+ * 
  * ✅ SRP: Responsabilidad única - Manejo de HTTP requests/responses para cursos
  * - Delega validaciones a CourseValidator
- * - Delega lógica de negocio a CourseService
+ * - Delega lógica de negocio a CourseService  
  * - Delega transformaciones a CourseDTOTransformer
  */
 export class CourseController extends BaseController {
   private courseService: CourseService;
-  private container: DIContainer;
 
   constructor(container: DIContainer) {
     super();
-    this.container = container;
     this.courseService = new CourseService(container);
   }
 
@@ -37,56 +35,11 @@ export class CourseController extends BaseController {
    */
   public async getCourses(req: Request, res: Response): Promise<void> {
     await this.execute(req, res, async () => {
-      // Para el listado completo, necesitamos información adicional de categorías y organizadores
-      const prisma = this.container.getPrismaClient();
+      // ✅ SRP: Delegar lógica de negocio al servicio
+      const courses = await this.courseService.getAllCourses();
 
-      const cursosCompletos = await prisma.curso.findMany({
-        include: {
-          categoria: true,
-          organizador: true,
-          cursosPorCarrera: {
-            include: {
-              carrera: true,
-            },
-          },
-        },
-      });
-
-      // Transformar a formato de respuesta
-      const cursosFormateados = cursosCompletos.map((curso) => ({
-        id_cur: curso.id_cur,
-        nom_cur: curso.nom_cur,
-        des_cur: curso.des_cur,
-        dur_cur: curso.dur_cur,
-        fec_ini_cur: curso.fec_ini_cur ? curso.fec_ini_cur.toISOString() : "",
-        fec_fin_cur: curso.fec_fin_cur ? curso.fec_fin_cur.toISOString() : "",
-        id_cat_cur: curso.id_cat_cur,
-        ced_org_cur: curso.ced_org_cur,
-        capacidad_max_cur: curso.capacidad_max_cur,
-        precio: curso.precio?.toString() || null,
-        es_gratuito: curso.es_gratuito,
-        tipo_audiencia_cur: curso.tipo_audiencia_cur,
-        requiere_verificacion_docs: curso.requiere_verificacion_docs,
-        porcentaje_asistencia_aprobacion:
-          curso.porcentaje_asistencia_aprobacion,
-        nota_minima_aprobacion: curso.nota_minima_aprobacion,
-        estado: curso.estado,
-        categoria: curso.categoria
-          ? {
-              id_cat: curso.categoria.id_cat,
-              nom_cat: curso.categoria.nom_cat,
-            }
-          : null,
-        organizador: curso.organizador
-          ? {
-              ced_org: curso.organizador.ced_org,
-              nom_org1: curso.organizador.nom_org1,
-              nom_org2: curso.organizador.nom_org2,
-              ape_org1: curso.organizador.ape_org1,
-              ape_org2: curso.organizador.ape_org2,
-            }
-          : null,
-      }));
+      // ✅ SRP: Delegar transformación al DTOTransformer
+      const cursosFormateados = CourseDTOTransformer.toResponseDTOList(courses);
 
       return {
         cursos: cursosFormateados,
@@ -129,7 +82,7 @@ export class CourseController extends BaseController {
       // ✅ SRP: Validar estructura básica del request (responsabilidad del controlador)
       const requiredFields = [
         "nom_cur",
-        "des_cur",
+        "des_cur", 
         "dur_cur",
         "fec_ini_cur",
         "fec_fin_cur",
@@ -138,7 +91,7 @@ export class CourseController extends BaseController {
         "capacidad_max_cur",
         "tipo_audiencia_cur",
         "porcentaje_asistencia_aprobacion",
-        "nota_minima_aprobacion",
+        "nota_minima_aprobacion"
       ];
 
       for (const field of requiredFields) {
@@ -159,7 +112,7 @@ export class CourseController extends BaseController {
       // ✅ SRP: Delegar lógica de negocio al servicio
       const createdCourse = await this.courseService.createCourse({
         ...courseData,
-        carreras: createCourseDTO.carreras_seleccionadas,
+        carreras: createCourseDTO.carreras_seleccionadas
       });
 
       // ✅ SRP: Delegar transformación de respuesta al DTOTransformer
@@ -265,19 +218,16 @@ export class CourseController extends BaseController {
       // TODO: Implementar lógica para obtener cursos disponibles
       // Por ahora, devolver todos los cursos activos
       const courses = await this.courseService.getAllCourses();
-
+      
       // Filtrar cursos activos y futuros
       const now = new Date();
-      const availableCourses = courses.filter((course) => {
+      const availableCourses = courses.filter(course => {
         const courseData = course.toPlainObject();
-        return (
-          courseData.estado_cur === "ACTIVO" &&
-          new Date(courseData.fec_ini_cur) >= now
-        );
+        return courseData.estado_cur === 'ACTIVO' && 
+               new Date(courseData.fec_ini_cur) >= now;
       });
 
-      const cursosFormateados =
-        CourseDTOTransformer.toResponseDTOList(availableCourses);
+      const cursosFormateados = CourseDTOTransformer.toResponseDTOList(availableCourses);
 
       return {
         cursos: cursosFormateados,
@@ -290,10 +240,7 @@ export class CourseController extends BaseController {
    * GET /api/courses/my-courses
    * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
    */
-  public async getMyCourses(
-    req: AuthenticatedRequest,
-    res: Response
-  ): Promise<void> {
+  public async getMyCourses(req: AuthenticatedRequest, res: Response): Promise<void> {
     await this.execute(req, res, async () => {
       // TODO: Implementar lógica para obtener cursos del usuario
       // Por ahora, devolver array vacío hasta implementar inscripciones

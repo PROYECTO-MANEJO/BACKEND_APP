@@ -10,7 +10,7 @@ export * from "./user/UserDTO";
 export * from "./user/UserManagementTypes";
 
 // Course Management DTOs
-export * from "./course/CourseDTO";
+export * from "./CourseDTO";
 
 // Event Management DTOs
 export * from "./EventDTO";

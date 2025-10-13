@@ -195,9 +195,7 @@ export class EventValidator {
   /**
    * Validar tipo de audiencia
    */
-  public static validateAudienceType(
-    tipoAudiencia: string | undefined
-  ): void {
+  public static validateAudienceType(tipoAudiencia: string | undefined): void {
     const tiposValidos = [
       "CARRERA_ESPECIFICA",
       "TODAS_CARRERAS",

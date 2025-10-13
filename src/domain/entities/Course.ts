@@ -32,7 +32,7 @@ export interface CourseData {
   categoria?: any;
   organizador?: any;
   inscripciones?: any[];
-  carreras?: number[];
+  carreras?: string[];
 }
 
 export class Course {

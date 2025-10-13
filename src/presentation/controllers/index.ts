@@ -10,13 +10,6 @@ export { AdminController } from "./AdminController";
 
 // Exportar tipos de DTOs desde nueva estructura
 export * from "../dto/user/UserDTO";
-export * from "../dto/course/CourseDTO";
-export type {
-  CreateEventRequestDTO,
-  UpdateEventRequestDTO,
-  EventResponseDTO,
-  EventListResponseDTO,
-  EnrollEventRequestDTO,
-  EventEnrollmentResponseDTO,
-} from "../dto/event/EventDTO";
+export * from "../dto/CourseDTO";
+
 export * from "../dto/admin/CertificateDTO";

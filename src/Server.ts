@@ -310,6 +310,15 @@ export class Server {
       this.courseController.getCourses.bind(this.courseController)
     );
     this.app.get(
+      "/api/courses/available",
+      this.courseController.getAvailableCourses.bind(this.courseController)
+    );
+    this.app.get(
+      "/api/courses/my-courses",
+      validateJWT,
+      this.courseController.getMyCourses.bind(this.courseController)
+    );
+    this.app.get(
       "/api/courses/:id",
       this.courseController.getCourseById.bind(this.courseController)
     );
