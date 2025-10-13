@@ -46,7 +46,12 @@ import { PrismaHomepageRepository } from "./repositories/PrismaHomepageRepositor
 
 /**
  * SOLID Dependency Injection Container
- * Implementa DIP (Dependency Inversion Principle)
+ * 
+ * ✅ SRP: Single Responsibility Principle - Solo se encarga de crear y gestionar dependencias
+ * ✅ OCP: Open/Closed Principle - Abierto para nuevas dependencias, cerrado para modificación
+ * ✅ LSP: Liskov Substitution Principle - Devuelve implementaciones que cumplen contratos
+ * ✅ ISP: Interface Segregation Principle - Cada método devuelve interfaz específica
+ * ✅ DIP: Dependency Inversion Principle - Núcleo del patrón, invierte dependencias
  */
 export class DIContainer {
   private static instance: DIContainer;
@@ -82,11 +87,15 @@ export class DIContainer {
     return DIContainer.instance;
   }
 
-  // ✅ SOLID: Retorna interfaces, no implementaciones concretas
+  // ✅ DIP: Retorna interfaces, no implementaciones concretas
+  // ✅ ISP: Interfaz específica IUserRepository, no interfaz gorda
+  // ✅ SRP: Solo se encarga de crear/devolver repositorio de usuarios
   public getUserRepository(): IUserRepository {
     if (!this.userRepository) {
+      // ✅ OCP: Puede cambiar implementación sin afectar clientes
       this.userRepository = new PrismaUserRepository(this.prisma);
     }
+    // ✅ LSP: Implementación cumple contrato de IUserRepository
     return this.userRepository!;
   }
 

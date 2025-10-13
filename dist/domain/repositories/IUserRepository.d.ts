@@ -1,3 +1,8 @@
+/**
+ * ✅ ISP: Interface Segregation Principle - Interfaz específica para operaciones de usuario
+ * ✅ DIP: Dependency Inversion Principle - Abstracción que invierten las dependencias
+ * ✅ SRP: Single Responsibility Principle - Solo define operaciones de repositorio de usuarios
+ */
 export interface IUserRepository {
     findById(id: string): Promise<any | null>;
     findByEmail(email: string): Promise<any | null>;

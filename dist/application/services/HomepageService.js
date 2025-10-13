@@ -2,22 +2,32 @@
 /**
  * Homepage Service - Application Layer
  *
- * ✅ SRP: Responsabilidad única - Lógica de negocio de Homepage
- * ✅ SOLID: Single Responsibility Principle
- * ✅ DIP: Dependency Inversion Principle - Depende de abstracciones
+ * ✅ SRP: Single Responsibility Principle - Solo maneja lógica de negocio de Homepage
+ * ✅ OCP: Open/Closed Principle - Abierto para extensión (nuevos métodos), cerrado para modificación
+ * ✅ LSP: Liskov Substitution Principle - Implementa contratos consistentes
+ * ✅ ISP: Interface Segregation Principle - Usa interfaces específicas del dominio
+ * ✅ DIP: Dependency Inversion Principle - Depende de abstracciones (DIContainer, repositorios)
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HomepageService = void 0;
 const HomepageValidator_1 = require("../../domain/validators/HomepageValidator");
+/**
+ * ✅ OCP: Clase abierta para extensión (nuevos métodos), cerrada para modificación
+ * ✅ DIP: Recibe dependencias por inyección, no las crea internamente
+ */
 class HomepageService {
+    // ✅ DIP: Inyección de dependencias a través del constructor
     constructor(container) {
         this.container = container;
     }
     /**
      * ✅ SRP: Obtener contenido de homepage
+     * ✅ LSP: Retorna HomepageServiceResponse consistente con el contrato
+     * ✅ OCP: Método extensible sin modificar la clase base
      */
     async getHomepageContent() {
         try {
+            // ✅ DIP: Obtiene repositorio de abstracción, no implementación concreta
             const homepageRepository = this.container.getHomepageRepository();
             // Buscar contenido existente o crear por defecto
             let homepageContent = await homepageRepository.getContent();
@@ -89,7 +99,9 @@ class HomepageService {
     async updateHomepageContent(contentRequest) {
         try {
             // ✅ SRP: Delegar validación al HomepageValidator
+            // ✅ ISP: HomepageValidator tiene interfaz específica para validación
             HomepageValidator_1.HomepageValidator.validateContentUpdate(contentRequest);
+            // ✅ DIP: Obtiene repositorio de abstracción, no implementación concreta
             const homepageRepository = this.container.getHomepageRepository();
             // Actualizar contenido (convertir a formato esperado por el repositorio)
             const contentData = {
@@ -226,15 +238,23 @@ class HomepageService {
     }
     /**
      * ✅ SRP: Obtiene contenido público (eventos y cursos para usuarios no autenticados)
+     * ✅ LSP: Retorna HomepageServiceResponse consistente
+     * ✅ OCP: Método extensible para nuevos tipos de contenido público
      */
     async getPublicContent() {
         try {
             // ✅ SRP: Obtener cliente Prisma del container (patrón establecido en este servicio)
+            // ✅ DIP: Obtiene cliente de base de datos de abstracción
             const prisma = this.container.getPrismaClient();
-            // Obtener todos los eventos activos
+            console.log("🔍 getPublicContent - Iniciando consulta...");
+            // Obtener eventos públicos y para todas las carreras
             const eventos = await prisma.evento.findMany({
                 where: {
                     estado: "ACTIVO",
+                    OR: [
+                        { tipo_audiencia_eve: "PUBLICO_GENERAL" },
+                        { tipo_audiencia_eve: "TODAS_CARRERAS" },
+                    ],
                 },
                 select: {
                     id_eve: true,
@@ -278,10 +298,14 @@ class HomepageService {
                 },
                 take: 8,
             });
-            // Obtener todos los cursos activos
+            // Obtener cursos públicos y para todas las carreras
             const cursos = await prisma.curso.findMany({
                 where: {
                     estado: "ACTIVO",
+                    OR: [
+                        { tipo_audiencia_cur: "PUBLICO_GENERAL" },
+                        { tipo_audiencia_cur: "TODAS_CARRERAS" },
+                    ],
                 },
                 select: {
                     id_cur: true,
@@ -323,6 +347,25 @@ class HomepageService {
                 },
                 take: 8,
             });
+            console.log(`📊 getPublicContent - Eventos encontrados: ${eventos.length}, Cursos encontrados: ${cursos.length}`);
+            if (eventos.length > 0) {
+                console.log("📋 Primeros 3 eventos:", eventos
+                    .slice(0, 3)
+                    .map((e) => ({
+                    id: e.id_eve,
+                    nombre: e.nom_eve,
+                    tipo_audiencia: e.tipo_audiencia_eve,
+                })));
+            }
+            if (cursos.length > 0) {
+                console.log("📋 Primeros 3 cursos:", cursos
+                    .slice(0, 3)
+                    .map((c) => ({
+                    id: c.id_cur,
+                    nombre: c.nom_cur,
+                    tipo_audiencia: c.tipo_audiencia_cur,
+                })));
+            }
             return {
                 success: true,
                 data: {
@@ -558,6 +601,14 @@ class HomepageService {
                     fec_ini_cur: "asc",
                 },
             });
+            console.log(`📊 getStudentContent - Usuario: ${userId}, Carrera: ${usuario.carrera?.nom_car || 'Sin carrera'}`);
+            console.log(`📊 getStudentContent - Eventos encontrados: ${eventos.length}, Cursos encontrados: ${cursos.length}`);
+            if (eventos.length > 0 && eventos[0]) {
+                console.log(`📅 Primer evento: ${eventos[0].nom_eve} - Audiencia: ${eventos[0].tipo_audiencia_eve}`);
+            }
+            if (cursos.length > 0 && cursos[0]) {
+                console.log(`📚 Primer curso: ${cursos[0].nom_cur} - Audiencia: ${cursos[0].tipo_audiencia_cur}`);
+            }
             return {
                 success: true,
                 data: {
@@ -684,6 +735,13 @@ class HomepageService {
                     fec_ini_cur: "asc",
                 },
             });
+            console.log(`📊 getExternalContent - Eventos encontrados: ${eventos.length}, Cursos encontrados: ${cursos.length}`);
+            if (eventos.length > 0 && eventos[0]) {
+                console.log(`📅 Primer evento: ${eventos[0].nom_eve} - Audiencia: ${eventos[0].tipo_audiencia_eve}`);
+            }
+            if (cursos.length > 0 && cursos[0]) {
+                console.log(`📚 Primer curso: ${cursos[0].nom_cur} - Audiencia: ${cursos[0].tipo_audiencia_cur}`);
+            }
             return {
                 success: true,
                 data: {

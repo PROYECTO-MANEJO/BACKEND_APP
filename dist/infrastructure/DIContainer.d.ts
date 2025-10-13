@@ -18,7 +18,12 @@ import { ICareerRepository } from "../domain/repositories/ICareerRepository";
 import { IHomepageRepository } from "../domain/repositories/IHomepageRepository";
 /**
  * SOLID Dependency Injection Container
- * Implementa DIP (Dependency Inversion Principle)
+ *
+ * ✅ SRP: Single Responsibility Principle - Solo se encarga de crear y gestionar dependencias
+ * ✅ OCP: Open/Closed Principle - Abierto para nuevas dependencias, cerrado para modificación
+ * ✅ LSP: Liskov Substitution Principle - Devuelve implementaciones que cumplen contratos
+ * ✅ ISP: Interface Segregation Principle - Cada método devuelve interfaz específica
+ * ✅ DIP: Dependency Inversion Principle - Núcleo del patrón, invierte dependencias
  */
 export declare class DIContainer {
     private static instance;

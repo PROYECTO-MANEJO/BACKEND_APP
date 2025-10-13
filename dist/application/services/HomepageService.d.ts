@@ -1,9 +1,11 @@
 /**
  * Homepage Service - Application Layer
  *
- * ✅ SRP: Responsabilidad única - Lógica de negocio de Homepage
- * ✅ SOLID: Single Responsibility Principle
- * ✅ DIP: Dependency Inversion Principle - Depende de abstracciones
+ * ✅ SRP: Single Responsibility Principle - Solo maneja lógica de negocio de Homepage
+ * ✅ OCP: Open/Closed Principle - Abierto para extensión (nuevos métodos), cerrado para modificación
+ * ✅ LSP: Liskov Substitution Principle - Implementa contratos consistentes
+ * ✅ ISP: Interface Segregation Principle - Usa interfaces específicas del dominio
+ * ✅ DIP: Dependency Inversion Principle - Depende de abstracciones (DIContainer, repositorios)
  */
 import { DIContainer } from "../../infrastructure/DIContainer";
 export interface HomepageContentRequest {
@@ -35,11 +37,17 @@ export interface HomepageServiceResponse {
     message?: string;
     data?: any;
 }
+/**
+ * ✅ OCP: Clase abierta para extensión (nuevos métodos), cerrada para modificación
+ * ✅ DIP: Recibe dependencias por inyección, no las crea internamente
+ */
 export declare class HomepageService {
     private container;
     constructor(container: DIContainer);
     /**
      * ✅ SRP: Obtener contenido de homepage
+     * ✅ LSP: Retorna HomepageServiceResponse consistente con el contrato
+     * ✅ OCP: Método extensible sin modificar la clase base
      */
     getHomepageContent(): Promise<HomepageServiceResponse>;
     /**
@@ -56,6 +64,8 @@ export declare class HomepageService {
     getHomepageImage(imageType: string): Promise<HomepageServiceResponse>;
     /**
      * ✅ SRP: Obtiene contenido público (eventos y cursos para usuarios no autenticados)
+     * ✅ LSP: Retorna HomepageServiceResponse consistente
+     * ✅ OCP: Método extensible para nuevos tipos de contenido público
      */
     getPublicContent(): Promise<HomepageServiceResponse>;
     /**

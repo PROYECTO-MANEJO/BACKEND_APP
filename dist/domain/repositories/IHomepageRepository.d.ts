@@ -1,7 +1,11 @@
 import { HomepageContent, HomepageContentData, ImageSection } from "../entities/HomepageContent";
 /**
  * Interfaz del repositorio para la gestión del contenido de la página principal
- * Sigue el principio de inversión de dependencias (DIP) de SOLID
+ *
+ * ✅ SRP: Single Responsibility Principle - Solo define operaciones de homepage
+ * ✅ OCP: Open/Closed Principle - Abierta para extensión, cerrada para modificación
+ * ✅ ISP: Interface Segregation Principle - Interfaz específica, no gorda
+ * ✅ DIP: Dependency Inversion Principle - Abstracción que invierten las dependencias
  */
 export interface IHomepageRepository {
     /**

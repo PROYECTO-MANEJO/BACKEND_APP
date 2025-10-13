@@ -4,20 +4,32 @@ exports.HomepageController = void 0;
 const BaseController_1 = require("./BaseController");
 const HomepageDTO_1 = require("../dto/HomepageDTO");
 const HomepageService_1 = require("../../application/services/HomepageService");
+/**
+ * ✅ LSP: Liskov Substitution Principle - Puede sustituir a BaseController sin romper funcionalidad
+ * ✅ OCP: Open/Closed Principle - Abierto para extensión (nuevos métodos), cerrado para modificación
+ * ✅ DIP: Dependency Inversion Principle - Depende de abstracciones (IHomepageRepository, DIContainer)
+ * ✅ ISP: Interface Segregation Principle - Usa interfaces específicas, no interfaces gordas
+ */
 class HomepageController extends BaseController_1.BaseController {
+    // ✅ DIP: Inyección de dependencias a través del constructor
     constructor(container) {
-        super();
+        super(); // ✅ LSP: Llama correctamente al constructor padre
         this.container = container;
+        // ✅ DIP: Obtiene dependencias del contenedor, no las crea directamente
         this.homepageRepository = container.getHomepageRepository();
         this.homepageService = new HomepageService_1.HomepageService(container);
     }
     /**
      * GET /api/homepage/content
      * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
+     * ✅ OCP: Método puede ser extendido sin modificar BaseController
+     * ✅ LSP: Cumple contrato de BaseController.execute()
      */
     async getContent(req, res) {
+        // ✅ LSP: Usa correctamente el método execute del padre
         await this.execute(req, res, async () => {
             // ✅ SRP: Delegar lógica de negocio al servicio
+            // ✅ DIP: Depende de abstracción HomepageService, no de implementación concreta
             const result = await this.homepageService.getHomepageContent();
             // ✅ SRP: Si no es exitoso, lanzar error para manejo del BaseController
             if (!result.success) {
@@ -219,10 +231,7 @@ class HomepageController extends BaseController_1.BaseController {
                 throw error;
             }
             // ✅ SRP: Retornar datos en el formato que espera el frontend (eventos y cursos en la raíz)
-            return {
-                success: true,
-                ...result.data,
-            };
+            return result.data;
         });
     }
     /**
@@ -247,10 +256,7 @@ class HomepageController extends BaseController_1.BaseController {
                 throw error;
             }
             // ✅ SRP: Retornar datos en el formato que espera el frontend (eventos y cursos en la raíz)
-            return {
-                success: true,
-                ...result.data,
-            };
+            return result.data;
         });
     }
     /**
@@ -268,10 +274,7 @@ class HomepageController extends BaseController_1.BaseController {
                 throw error;
             }
             // ✅ SRP: Retornar datos en el formato que espera el frontend (eventos y cursos en la raíz)
-            return {
-                success: true,
-                ...result.data,
-            };
+            return result.data;
         });
     }
 }

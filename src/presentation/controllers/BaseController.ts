@@ -1,8 +1,20 @@
 import { Request, Response } from "express";
 
+/**
+ * BaseController - Controlador base que implementa principios SOLID
+ * 
+ * ✅ SRP: Single Responsibility Principle - Solo maneja respuestas HTTP y manejo de errores
+ * ✅ OCP: Open/Closed Principle - Abierto para extensión (herencia), cerrado para modificación
+ * ✅ LSP: Liskov Substitution Principle - Define contrato que deben cumplir las subclases
+ * ✅ ISP: Interface Segregation Principle - Proporciona métodos específicos para cada tipo de respuesta
+ * ✅ DIP: Dependency Inversion Principle - Las subclases dependen de esta abstracción
+ */
 export abstract class BaseController {
   /**
    * Ejecuta un caso de uso y maneja la respuesta HTTP
+   * ✅ SRP: Solo se encarga de ejecutar y manejar respuesta HTTP
+   * ✅ OCP: Template method pattern - extensible sin modificar
+   * ✅ LSP: Contrato que deben cumplir todas las subclases
    */
   protected async execute(
     req: Request,
@@ -11,14 +23,18 @@ export abstract class BaseController {
   ): Promise<void> {
     try {
       const result = await useCase();
+      // ✅ ISP: Método específico para respuesta exitosa
       this.ok(res, result);
     } catch (error) {
+      // ✅ SRP: Delega manejo de errores a método específico
       this.handleError(res, error);
     }
   }
 
   /**
    * Respuesta exitosa (200)
+   * ✅ ISP: Método específico para un tipo de respuesta HTTP
+   * ✅ SRP: Solo se encarga de formatear respuesta exitosa
    */
   protected ok(res: Response, data?: any): void {
     if (data) {

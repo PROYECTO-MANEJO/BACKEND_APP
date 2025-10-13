@@ -9,6 +9,12 @@ export interface AuthenticatedRequest extends Request {
     };
     uid?: string;
 }
+/**
+ * ✅ LSP: Liskov Substitution Principle - Puede sustituir a BaseController sin romper funcionalidad
+ * ✅ OCP: Open/Closed Principle - Abierto para extensión (nuevos métodos), cerrado para modificación
+ * ✅ DIP: Dependency Inversion Principle - Depende de abstracciones (IHomepageRepository, DIContainer)
+ * ✅ ISP: Interface Segregation Principle - Usa interfaces específicas, no interfaces gordas
+ */
 export declare class HomepageController extends BaseController {
     private container;
     private homepageRepository;
@@ -17,6 +23,8 @@ export declare class HomepageController extends BaseController {
     /**
      * GET /api/homepage/content
      * ✅ SRP: Solo maneja HTTP request/response, delega todo lo demás
+     * ✅ OCP: Método puede ser extendido sin modificar BaseController
+     * ✅ LSP: Cumple contrato de BaseController.execute()
      */
     getContent(req: Request, res: Response): Promise<void>;
     /**

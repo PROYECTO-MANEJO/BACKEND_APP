@@ -296,9 +296,19 @@ class CertificateController extends BaseController_1.BaseController {
                 fecha_certificado: part.fec_cer_par_cur
             }));
             const todasParticipaciones = [...eventosFormateados, ...cursosFormateados];
+            console.log(`📊 getCompletedParticipations - Usuario: ${userId}`);
+            console.log(`📊 Participaciones encontradas: ${todasParticipaciones.length}`);
+            console.log(`📊 Eventos: ${eventosFormateados.length}, Cursos: ${cursosFormateados.length}`);
+            // Log de participaciones para depuración
+            todasParticipaciones.forEach(p => {
+                console.log(`📋 ${p.tipo}: ${p.nombre} - Aprobado: ${p.aprobado}`);
+            });
             res.json({
                 success: true,
-                participaciones: todasParticipaciones,
+                participaciones: {
+                    eventos: eventosFormateados,
+                    cursos: cursosFormateados
+                },
                 total: todasParticipaciones.length
             });
         }
@@ -319,6 +329,26 @@ class CertificateController extends BaseController_1.BaseController {
             const { idParticipacion } = req.params;
             const userId = req.usuario?.id_usu || req.uid;
             const prisma = this.container.getPrismaClient();
+            console.log(`🔍 generateEventCertificate - idParticipacion: "${idParticipacion}", userId: "${userId}"`);
+            // Validar que idParticipacion exista
+            if (!idParticipacion) {
+                console.error(`❌ ID de participación no proporcionado`);
+                res.status(400).json({
+                    success: false,
+                    message: 'ID de participación es requerido'
+                });
+                return;
+            }
+            // Validar que idParticipacion sea un UUID válido
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+            if (!uuidRegex.test(idParticipacion)) {
+                console.error(`❌ ID de participación inválido: "${idParticipacion}"`);
+                res.status(400).json({
+                    success: false,
+                    message: 'ID de participación inválido'
+                });
+                return;
+            }
             // Buscar la participación
             const participacion = await prisma.participacion.findFirst({
                 where: {
@@ -405,6 +435,26 @@ class CertificateController extends BaseController_1.BaseController {
             const { idParticipacion } = req.params;
             const userId = req.usuario?.id_usu || req.uid;
             const prisma = this.container.getPrismaClient();
+            console.log(`🔍 generateCourseCertificate - idParticipacion: "${idParticipacion}", userId: "${userId}"`);
+            // Validar que idParticipacion exista
+            if (!idParticipacion) {
+                console.error(`❌ ID de participación no proporcionado`);
+                res.status(400).json({
+                    success: false,
+                    message: 'ID de participación es requerido'
+                });
+                return;
+            }
+            // Validar que idParticipacion sea un UUID válido
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+            if (!uuidRegex.test(idParticipacion)) {
+                console.error(`❌ ID de participación inválido: "${idParticipacion}"`);
+                res.status(400).json({
+                    success: false,
+                    message: 'ID de participación inválido'
+                });
+                return;
+            }
             // Buscar la participación
             const participacion = await prisma.participacionCurso.findFirst({
                 where: {

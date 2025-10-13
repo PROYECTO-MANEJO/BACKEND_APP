@@ -712,9 +712,12 @@ class ParticipationManagementController extends BaseController_1.BaseController 
                 return {
                     inscripcionId: inscripcion.id_ins_cur,
                     usuario: {
-                        id: inscripcion.usuario.id_usu,
-                        cedula: inscripcion.usuario.ced_usu,
-                        nombre: `${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.nom_usu2 || ''} ${inscripcion.usuario.ape_usu1} ${inscripcion.usuario.ape_usu2 || ''}`.trim()
+                        id_usu: inscripcion.usuario.id_usu,
+                        ced_usu: inscripcion.usuario.ced_usu,
+                        nom_usu1: inscripcion.usuario.nom_usu1,
+                        nom_usu2: inscripcion.usuario.nom_usu2,
+                        ape_usu1: inscripcion.usuario.ape_usu1,
+                        ape_usu2: inscripcion.usuario.ape_usu2
                     },
                     estadoPago: inscripcion.estado_pago_cur,
                     participacion: participacion ? {
@@ -920,9 +923,12 @@ class ParticipationManagementController extends BaseController_1.BaseController 
                 return {
                     inscripcionId: inscripcion.id_ins,
                     usuario: {
-                        id: inscripcion.usuario.id_usu,
-                        cedula: inscripcion.usuario.ced_usu,
-                        nombre: `${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.nom_usu2 || ''} ${inscripcion.usuario.ape_usu1} ${inscripcion.usuario.ape_usu2 || ''}`.trim()
+                        id_usu: inscripcion.usuario.id_usu,
+                        ced_usu: inscripcion.usuario.ced_usu,
+                        nom_usu1: inscripcion.usuario.nom_usu1,
+                        nom_usu2: inscripcion.usuario.nom_usu2,
+                        ape_usu1: inscripcion.usuario.ape_usu1,
+                        ape_usu2: inscripcion.usuario.ape_usu2
                     },
                     estadoPago: inscripcion.estado_pago,
                     participacion: participacion ? {
