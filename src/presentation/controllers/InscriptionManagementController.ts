@@ -740,4 +740,542 @@ export class InscriptionManagementController extends BaseController {
       });
     }
   }
+
+  /**
+   * GET /api/administracion/cursos-eventos
+   * Obtener todos los cursos y eventos administrables (que no han terminado)
+   * Incluye estadísticas de inscripciones para cada uno
+   */
+  public async getCoursesAndEventsForManagement(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const prisma = this.container.getPrismaClient();
+      const fechaActual = new Date();
+      
+      // Obtener eventos que aún no han terminado
+      const eventos = await prisma.evento.findMany({
+        where: {
+          fec_fin_eve: { gte: fechaActual }
+        },
+        include: {
+          categoria: {
+            select: {
+              nom_cat: true,
+              des_cat: true
+            }
+          },
+          organizador: {
+            select: {
+              nom_org1: true,
+              nom_org2: true,
+              ape_org1: true,
+              ape_org2: true
+            }
+          },
+          _count: {
+            select: {
+              inscripciones: true
+            }
+          }
+        },
+        orderBy: [
+          { fec_ini_eve: 'desc' }
+        ]
+      });
+
+      // Obtener cursos que aún no han terminado
+      const cursos = await prisma.curso.findMany({
+        where: {
+          fec_fin_cur: { gte: fechaActual }
+        },
+        include: {
+          categoria: {
+            select: {
+              nom_cat: true,
+              des_cat: true
+            }
+          },
+          organizador: {
+            select: {
+              nom_org1: true,
+              nom_org2: true,
+              ape_org1: true,
+              ape_org2: true
+            }
+          },
+          _count: {
+            select: {
+              inscripcionesCurso: true
+            }
+          }
+        },
+        orderBy: [
+          { fec_ini_cur: 'desc' }
+        ]
+      });
+
+      // Obtener estadísticas adicionales para eventos
+      const eventosConEstadisticas = await Promise.all(
+        eventos.map(async (evento) => {
+          const estadisticas = await prisma.inscripcion.groupBy({
+            by: ['estado_pago'],
+            where: { id_eve_ins: evento.id_eve },
+            _count: true
+          });
+
+          const stats = {
+            total: evento._count.inscripciones,
+            aprobadas: 0,
+            pendientes: 0,
+            rechazadas: 0,
+            disponibles: evento.capacidad_max_eve - evento._count.inscripciones
+          };
+
+          estadisticas.forEach(stat => {
+            switch(stat.estado_pago.toLowerCase()) {
+              case 'aprobado':
+                stats.aprobadas = stat._count;
+                break;
+              case 'pendiente':
+                stats.pendientes = stat._count;
+                break;
+              case 'rechazado':
+                stats.rechazadas = stat._count;
+                break;
+            }
+          });
+
+          return {
+            tipo: 'EVENTO',
+            id_eve: evento.id_eve,
+            nom_eve: evento.nom_eve,
+            des_eve: evento.des_eve,
+            fec_ini_eve: evento.fec_ini_eve,
+            fec_fin_eve: evento.fec_fin_eve,
+            ubi_eve: evento.ubi_eve,
+            precio: evento.precio,
+            es_gratuito: evento.es_gratuito,
+            capacidad_max_eve: evento.capacidad_max_eve,
+            categoria_nombre: evento.categoria?.nom_cat || 'Sin categoría',
+            organizador_nombre: `${evento.organizador?.nom_org1 || ''} ${evento.organizador?.ape_org1 || ''}`.trim() || 'Sin organizador',
+            estadisticas: stats
+          };
+        })
+      );
+
+      // Obtener estadísticas adicionales para cursos
+      const cursosConEstadisticas = await Promise.all(
+        cursos.map(async (curso) => {
+          const estadisticas = await prisma.inscripcionCurso.groupBy({
+            by: ['estado_pago_cur'],
+            where: { id_cur_ins: curso.id_cur },
+            _count: true
+          });
+
+          const stats = {
+            total: curso._count.inscripcionesCurso,
+            aprobadas: 0,
+            pendientes: 0,
+            rechazadas: 0,
+            disponibles: curso.capacidad_max_cur - curso._count.inscripcionesCurso
+          };
+
+          estadisticas.forEach(stat => {
+            switch(stat.estado_pago_cur.toLowerCase()) {
+              case 'aprobado':
+                stats.aprobadas = stat._count;
+                break;
+              case 'pendiente':
+                stats.pendientes = stat._count;
+                break;
+              case 'rechazado':
+                stats.rechazadas = stat._count;
+                break;
+            }
+          });
+
+          return {
+            tipo: 'CURSO',
+            id_cur: curso.id_cur,
+            nom_cur: curso.nom_cur,
+            des_cur: curso.des_cur,
+            fec_ini_cur: curso.fec_ini_cur,
+            fec_fin_cur: curso.fec_fin_cur,
+            // Los cursos no tienen ubicación física en el modelo
+            ubi_cur: 'Virtual/Por definir',
+            precio: curso.precio,
+            es_gratuito: curso.es_gratuito,
+            capacidad_max_cur: curso.capacidad_max_cur,
+            categoria_nombre: curso.categoria?.nom_cat || 'Sin categoría',
+            organizador_nombre: `${curso.organizador?.nom_org1 || ''} ${curso.organizador?.ape_org1 || ''}`.trim() || 'Sin organizador',
+            estadisticas: stats
+          };
+        })
+      );
+
+      // Combinar todos los items
+      const allItems = [...eventosConEstadisticas, ...cursosConEstadisticas];
+
+      // Calcular estadísticas generales
+      const totalItems = allItems.length;
+      const totalEventos = eventosConEstadisticas.length;
+      const totalCursos = cursosConEstadisticas.length;
+
+      res.json({
+        success: true,
+        data: {
+          items: allItems,
+          total: totalItems,
+          eventos: totalEventos,
+          cursos: totalCursos
+        }
+      });
+
+    } catch (error: any) {
+      console.error('[getCoursesAndEventsForManagement] Error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+    }
+  }
+
+  /**
+   * GET /api/administracion/evento/:idEvento
+   * Obtener detalles completos de un evento con inscripciones
+   */
+  public async getEventDetailsForAdmin(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { idEvento } = req.params;
+      const prisma = this.container.getPrismaClient();
+
+      if (!idEvento) {
+        res.status(400).json({
+          success: false,
+          message: 'ID del evento es obligatorio'
+        });
+        return;
+      }
+
+      // Obtener evento con detalles completos
+      const evento = await prisma.evento.findUnique({
+        where: { id_eve: idEvento },
+        include: {
+          categoria: true,
+          organizador: true,
+          eventosPorCarrera: {
+            include: {
+              carrera: {
+                select: {
+                  id_car: true,
+                  nom_car: true,
+                  des_car: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      if (!evento) {
+        res.status(404).json({
+          success: false,
+          message: 'Evento no encontrado'
+        });
+        return;
+      }
+
+      // Obtener todas las inscripciones con detalles de usuarios
+      const inscripciones = await prisma.inscripcion.findMany({
+        where: { id_eve_ins: idEvento },
+        include: {
+          usuario: {
+            include: {
+              carrera: {
+                select: {
+                  nom_car: true
+                }
+              },
+              cuentas: {
+                select: {
+                  cor_cue: true,
+                  rol_cue: true
+                }
+              }
+            }
+          },
+          adminAprobador: {
+            select: {
+              nom_usu1: true,
+              ape_usu1: true,
+              cuentas: {
+                select: {
+                  cor_cue: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: [
+          { estado_pago: 'asc' }, // Pendientes primero
+          { fec_ins: 'desc' }
+        ]
+      });
+
+      // Formatear inscripciones con información adicional
+      const inscripcionesFormateadas = inscripciones.map(inscripcion => ({
+        id_inscripcion: inscripcion.id_ins,
+        fecha_inscripcion: inscripcion.fec_ins,
+        estado_pago: inscripcion.estado_pago,
+        valor: inscripcion.val_ins,
+        metodo_pago: inscripcion.met_pag_ins,
+        fecha_aprobacion: inscripcion.fec_aprobacion,
+        tiene_comprobante: !!inscripcion.comprobante_pago_pdf,
+        carta_motivacion: inscripcion.carta_motivacion,
+        comprobante_info: inscripcion.comprobante_pago_pdf ? {
+          filename: inscripcion.comprobante_filename,
+          size: inscripcion.comprobante_size,
+          fecha_subida: inscripcion.fec_subida_comprobante
+        } : null,
+        usuario: {
+          id: inscripcion.usuario.id_usu,
+          cedula: inscripcion.usuario.ced_usu,
+          nombre_completo: `${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.nom_usu2 || ''} ${inscripcion.usuario.ape_usu1} ${inscripcion.usuario.ape_usu2 || ''}`.trim(),
+          email: inscripcion.usuario.cuentas[0]?.cor_cue || 'No disponible',
+          telefono: inscripcion.usuario.num_tel_usu,
+          carrera: inscripcion.usuario.carrera?.nom_car || 'No especificada',
+          rol: inscripcion.usuario.cuentas[0]?.rol_cue || 'USUARIO'
+        },
+        admin_aprobador: inscripcion.adminAprobador ? {
+          nombre: `${inscripcion.adminAprobador.nom_usu1} ${inscripcion.adminAprobador.ape_usu1}`,
+          email: inscripcion.adminAprobador.cuentas[0]?.cor_cue
+        } : null
+      }));
+
+      // Calcular estadísticas
+      const estadisticas = {
+        total_inscripciones: inscripciones.length,
+        pendientes: inscripciones.filter(i => i.estado_pago === 'PENDIENTE').length,
+        aprobadas: inscripciones.filter(i => i.estado_pago === 'APROBADO').length,
+        rechazadas: inscripciones.filter(i => i.estado_pago === 'RECHAZADO').length,
+        disponibles: evento.capacidad_max_eve - inscripciones.filter(i => i.estado_pago === 'APROBADO').length
+      };
+
+      // Formatear respuesta del evento
+      const eventoFormateado = {
+        id_eve: evento.id_eve,
+        nom_eve: evento.nom_eve,
+        des_eve: evento.des_eve,
+        fec_ini_eve: evento.fec_ini_eve,
+        fec_fin_eve: evento.fec_fin_eve,
+        hor_ini_eve: evento.hor_ini_eve,
+        hor_fin_eve: evento.hor_fin_eve,
+        ubi_eve: evento.ubi_eve,
+        capacidad_max_eve: evento.capacidad_max_eve,
+        precio: evento.precio,
+        es_gratuito: evento.es_gratuito,
+        requiere_carta_motivacion: evento.requiere_carta_motivacion,
+        tipo_audiencia_eve: evento.tipo_audiencia_eve,
+        categoria: {
+          nom_cat: evento.categoria?.nom_cat || 'Sin categoría',
+          des_cat: evento.categoria?.des_cat || ''
+        },
+        organizador: {
+          nombre_completo: `${evento.organizador?.nom_org1 || ''} ${evento.organizador?.nom_org2 || ''} ${evento.organizador?.ape_org1 || ''} ${evento.organizador?.ape_org2 || ''}`.trim(),
+          cedula: evento.organizador?.ced_org || '',
+          titulo_academico: evento.organizador?.tit_aca_org || ''
+        },
+        carreras_asociadas: evento.eventosPorCarrera.map(epc => ({
+          id_car: epc.carrera.id_car,
+          nom_car: epc.carrera.nom_car,
+          des_car: epc.carrera.des_car
+        }))
+      };
+
+      res.json({
+        success: true,
+        data: {
+          evento: eventoFormateado,
+          inscripciones: inscripcionesFormateadas,
+          estadisticas
+        }
+      });
+
+    } catch (error: any) {
+      console.error('[getEventDetailsForAdmin] Error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+    }
+  }
+
+  /**
+   * GET /api/administracion/curso/:idCurso
+   * Obtener detalles completos de un curso con inscripciones
+   */
+  public async getCourseDetailsForAdmin(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { idCurso } = req.params;
+      const prisma = this.container.getPrismaClient();
+
+      if (!idCurso) {
+        res.status(400).json({
+          success: false,
+          message: 'ID del curso es obligatorio'
+        });
+        return;
+      }
+
+      // Obtener curso con detalles completos
+      const curso = await prisma.curso.findUnique({
+        where: { id_cur: idCurso },
+        include: {
+          categoria: true,
+          organizador: true,
+          cursosPorCarrera: {
+            include: {
+              carrera: {
+                select: {
+                  id_car: true,
+                  nom_car: true,
+                  des_car: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      if (!curso) {
+        res.status(404).json({
+          success: false,
+          message: 'Curso no encontrado'
+        });
+        return;
+      }
+
+      // Obtener todas las inscripciones con detalles de usuarios
+      const inscripciones = await prisma.inscripcionCurso.findMany({
+        where: { id_cur_ins: idCurso },
+        include: {
+          usuario: {
+            include: {
+              carrera: {
+                select: {
+                  nom_car: true
+                }
+              },
+              cuentas: {
+                select: {
+                  cor_cue: true,
+                  rol_cue: true
+                }
+              }
+            }
+          },
+          adminAprobador: {
+            select: {
+              nom_usu1: true,
+              ape_usu1: true,
+              cuentas: {
+                select: {
+                  cor_cue: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: [
+          { estado_pago_cur: 'asc' }, // Pendientes primero
+          { fec_ins_cur: 'desc' }
+        ]
+      });
+
+      // Formatear inscripciones con información adicional
+      const inscripcionesFormateadas = inscripciones.map(inscripcion => ({
+        id_inscripcion: inscripcion.id_ins_cur,
+        fecha_inscripcion: inscripcion.fec_ins_cur,
+        estado_pago: inscripcion.estado_pago_cur,
+        valor: inscripcion.val_ins_cur,
+        metodo_pago: inscripcion.met_pag_ins_cur,
+        fecha_aprobacion: inscripcion.fec_aprobacion_cur,
+        tiene_comprobante: !!inscripcion.comprobante_pago_pdf,
+        carta_motivacion: inscripcion.carta_motivacion,
+        comprobante_info: inscripcion.comprobante_pago_pdf ? {
+          filename: inscripcion.comprobante_filename,
+          size: inscripcion.comprobante_size,
+          fecha_subida: inscripcion.fec_subida_comprobante
+        } : null,
+        usuario: {
+          id: inscripcion.usuario.id_usu,
+          cedula: inscripcion.usuario.ced_usu,
+          nombre_completo: `${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.nom_usu2 || ''} ${inscripcion.usuario.ape_usu1} ${inscripcion.usuario.ape_usu2 || ''}`.trim(),
+          email: inscripcion.usuario.cuentas[0]?.cor_cue || 'No disponible',
+          telefono: inscripcion.usuario.num_tel_usu,
+          carrera: inscripcion.usuario.carrera?.nom_car || 'No especificada',
+          rol: inscripcion.usuario.cuentas[0]?.rol_cue || 'USUARIO'
+        },
+        admin_aprobador: inscripcion.adminAprobador ? {
+          nombre: `${inscripcion.adminAprobador.nom_usu1} ${inscripcion.adminAprobador.ape_usu1}`,
+          email: inscripcion.adminAprobador.cuentas[0]?.cor_cue
+        } : null
+      }));
+
+      // Calcular estadísticas
+      const estadisticas = {
+        total_inscripciones: inscripciones.length,
+        pendientes: inscripciones.filter(i => i.estado_pago_cur === 'PENDIENTE').length,
+        aprobadas: inscripciones.filter(i => i.estado_pago_cur === 'APROBADO').length,
+        rechazadas: inscripciones.filter(i => i.estado_pago_cur === 'RECHAZADO').length,
+        disponibles: curso.capacidad_max_cur - inscripciones.filter(i => i.estado_pago_cur === 'APROBADO').length
+      };
+
+      // Formatear respuesta del curso
+      const cursoFormateado = {
+        id_cur: curso.id_cur,
+        nom_cur: curso.nom_cur,
+        des_cur: curso.des_cur,
+        dur_cur: curso.dur_cur,
+        fec_ini_cur: curso.fec_ini_cur,
+        fec_fin_cur: curso.fec_fin_cur,
+        capacidad_max_cur: curso.capacidad_max_cur,
+        precio: curso.precio,
+        es_gratuito: curso.es_gratuito,
+        requiere_carta_motivacion: curso.requiere_carta_motivacion,
+        tipo_audiencia_cur: curso.tipo_audiencia_cur,
+        porcentaje_asistencia_aprobacion: curso.porcentaje_asistencia_aprobacion,
+        nota_minima_aprobacion: curso.nota_minima_aprobacion,
+        categoria: {
+          nom_cat: curso.categoria?.nom_cat || 'Sin categoría',
+          des_cat: curso.categoria?.des_cat || ''
+        },
+        organizador: {
+          nombre_completo: `${curso.organizador?.nom_org1 || ''} ${curso.organizador?.nom_org2 || ''} ${curso.organizador?.ape_org1 || ''} ${curso.organizador?.ape_org2 || ''}`.trim(),
+          cedula: curso.organizador?.ced_org || '',
+          titulo_academico: curso.organizador?.tit_aca_org || ''
+        },
+        carreras_asociadas: curso.cursosPorCarrera.map(cpc => ({
+          id_car: cpc.carrera.id_car,
+          nom_car: cpc.carrera.nom_car,
+          des_car: cpc.carrera.des_car
+        }))
+      };
+
+      res.json({
+        success: true,
+        data: {
+          curso: cursoFormateado,
+          inscripciones: inscripcionesFormateadas,
+          estadisticas
+        }
+      });
+
+    } catch (error: any) {
+      console.error('[getCourseDetailsForAdmin] Error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+    }
+  }
 }

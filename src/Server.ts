@@ -33,7 +33,7 @@ import {
   globalErrorHandler,
   healthCheck,
 } from "./presentation/middleware/securityMiddleware";
-import { validateJWT } from "./presentation/middleware/jwtMiddleware";
+import { validateJWT, validateRoles } from "./presentation/middleware/jwtMiddleware";
 import { requireVerifiedDocuments } from "./presentation/middleware";
 import multer from "multer";
 
@@ -247,6 +247,12 @@ export class Server {
       "/api/auth/refresh-token",
       this.authController.refreshToken.bind(this.authController)
     );
+    this.app.post(
+      "/api/auth/createAdmin",
+      validateJWT, // Requiere autenticación
+      validateRoles('MASTER'), // Solo MASTER puede crear administradores
+      this.authController.createAdmin.bind(this.authController)
+    );
   }
 
   /**
@@ -266,6 +272,12 @@ export class Server {
       "/api/users/profile",
       validateJWT,
       this.userController.updateUserProfile.bind(this.userController)
+    );
+    this.app.get(
+      "/api/users/admins",
+      validateJWT,
+      validateRoles('MASTER'), // Solo MASTER puede ver la lista de administradores
+      this.userController.getAdmins.bind(this.userController)
     );
   }
 
@@ -718,6 +730,63 @@ export class Server {
       validateJWT,
       this.changeRequestController.getMyStatistics.bind(this.changeRequestController)
     );
+
+    // RUTAS DE ADMINISTRACIÓN (ADMIN/MASTER)
+    // GET /api/solicitudes-cambio/admin/todas
+    this.app.get(
+      "/api/solicitudes-cambio/admin/todas",
+      validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
+      this.changeRequestController.getAllChangeRequests.bind(this.changeRequestController)
+    );
+
+    // GET /api/solicitudes-cambio/admin/desarrolladores  
+    this.app.get(
+      "/api/solicitudes-cambio/admin/desarrolladores",
+      validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
+      this.changeRequestController.getDevelopers.bind(this.changeRequestController)
+    );
+
+    // GET /api/solicitudes-cambio/admin/estadisticas
+    this.app.get(
+      "/api/solicitudes-cambio/admin/estadisticas",
+      validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
+      this.changeRequestController.getAdminStatistics.bind(this.changeRequestController)
+    );
+
+    // GET /api/solicitudes-cambio/admin/solicitud/:id - Obtener solicitud específica
+    this.app.get(
+      "/api/solicitudes-cambio/admin/solicitud/:id",
+      validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
+      this.changeRequestController.getChangeRequestById.bind(this.changeRequestController)
+    );
+
+    // PUT /api/solicitudes-cambio/admin/:id/aprobar - Aprobar solicitud
+    this.app.put(
+      "/api/solicitudes-cambio/admin/:id/aprobar",
+      validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
+      this.changeRequestController.approveChangeRequest.bind(this.changeRequestController)
+    );
+
+    // PUT /api/solicitudes-cambio/admin/:id/rechazar - Rechazar solicitud
+    this.app.put(
+      "/api/solicitudes-cambio/admin/:id/rechazar",
+      validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
+      this.changeRequestController.rejectChangeRequest.bind(this.changeRequestController)
+    );
+
+    // PUT /api/solicitudes-cambio/admin/:id/actualizar - Actualizar solicitud
+    this.app.put(
+      "/api/solicitudes-cambio/admin/:id/actualizar",
+      validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
+      this.changeRequestController.updateChangeRequestMaster.bind(this.changeRequestController)
+    );
   }
 
   /**
@@ -898,10 +967,35 @@ export class Server {
   private setupInscriptionManagementRoutes(): void {
     // RUTAS DE GESTIÓN DE INSCRIPCIONES - Requieren JWT y permisos admin
 
+    // GET /api/administracion/cursos-eventos - Obtener cursos y eventos administrables
+    this.app.get(
+      "/api/administracion/cursos-eventos",
+      validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
+      this.inscriptionManagementController.getCoursesAndEventsForManagement.bind(this.inscriptionManagementController)
+    );
+
+    // GET /api/administracion/evento/:idEvento - Detalles de evento para admin
+    this.app.get(
+      "/api/administracion/evento/:idEvento",
+      validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
+      this.inscriptionManagementController.getEventDetailsForAdmin.bind(this.inscriptionManagementController)
+    );
+
+    // GET /api/administracion/curso/:idCurso - Detalles de curso para admin
+    this.app.get(
+      "/api/administracion/curso/:idCurso",
+      validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
+      this.inscriptionManagementController.getCourseDetailsForAdmin.bind(this.inscriptionManagementController)
+    );
+
     // GET /api/admin/inscriptions/events/pending - Inscripciones de eventos pendientes
     this.app.get(
       "/api/admin/inscriptions/events/pending",
       validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
       this.inscriptionManagementController.getPendingEventInscriptions.bind(this.inscriptionManagementController)
     );
 
@@ -909,6 +1003,7 @@ export class Server {
     this.app.get(
       "/api/admin/inscriptions/courses/pending",
       validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
       this.inscriptionManagementController.getPendingCourseInscriptions.bind(this.inscriptionManagementController)
     );
 
@@ -916,6 +1011,7 @@ export class Server {
     this.app.put(
       "/api/admin/inscriptions/events/:id/approve",
       validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
       this.inscriptionManagementController.approveEventInscription.bind(this.inscriptionManagementController)
     );
 
@@ -923,6 +1019,7 @@ export class Server {
     this.app.put(
       "/api/admin/inscriptions/courses/:id/approve",
       validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
       this.inscriptionManagementController.approveCourseInscription.bind(this.inscriptionManagementController)
     );
 
@@ -930,6 +1027,7 @@ export class Server {
     this.app.put(
       "/api/admin/inscriptions/events/:id/reject",
       validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
       this.inscriptionManagementController.rejectEventInscription.bind(this.inscriptionManagementController)
     );
 
@@ -937,6 +1035,7 @@ export class Server {
     this.app.put(
       "/api/admin/inscriptions/courses/:id/reject",
       validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
       this.inscriptionManagementController.rejectCourseInscription.bind(this.inscriptionManagementController)
     );
 
@@ -944,6 +1043,7 @@ export class Server {
     this.app.get(
       "/api/admin/inscriptions/events/:id/receipt",
       validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
       this.inscriptionManagementController.downloadEventReceipt.bind(this.inscriptionManagementController)
     );
 
@@ -951,6 +1051,7 @@ export class Server {
     this.app.get(
       "/api/admin/inscriptions/courses/:id/receipt",
       validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
       this.inscriptionManagementController.downloadCourseReceipt.bind(this.inscriptionManagementController)
     );
 
@@ -958,10 +1059,43 @@ export class Server {
     this.app.get(
       "/api/admin/inscriptions/stats",
       validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
       this.inscriptionManagementController.getInscriptionStats.bind(this.inscriptionManagementController)
     );
 
     // RUTAS LEGACY PARA COMPATIBILIDAD
+
+    // PUT /api/administracion/evento/inscripcion/:idInscripcion/aprobar - Legacy route
+    this.app.put(
+      "/api/administracion/evento/inscripcion/:idInscripcion/aprobar",
+      validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
+      this.inscriptionManagementController.approveEventInscription.bind(this.inscriptionManagementController)
+    );
+
+    // PUT /api/administracion/evento/inscripcion/:idInscripcion/rechazar - Legacy route
+    this.app.put(
+      "/api/administracion/evento/inscripcion/:idInscripcion/rechazar",
+      validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
+      this.inscriptionManagementController.rejectEventInscription.bind(this.inscriptionManagementController)
+    );
+
+    // PUT /api/administracion/curso/inscripcion/:idInscripcion/aprobar - Legacy route
+    this.app.put(
+      "/api/administracion/curso/inscripcion/:idInscripcion/aprobar",
+      validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
+      this.inscriptionManagementController.approveCourseInscription.bind(this.inscriptionManagementController)
+    );
+
+    // PUT /api/administracion/curso/inscripcion/:idInscripcion/rechazar - Legacy route
+    this.app.put(
+      "/api/administracion/curso/inscripcion/:idInscripcion/rechazar",
+      validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
+      this.inscriptionManagementController.rejectCourseInscription.bind(this.inscriptionManagementController)
+    );
 
     // PUT /inscripciones/evento/aprobar-inscripcion/:id - Legacy route
     this.app.put(
@@ -983,6 +1117,38 @@ export class Server {
    */
   private setupParticipationManagementRoutes(): void {
     // RUTAS DE GESTIÓN DE PARTICIPACIONES - Requieren JWT y permisos admin
+
+    // GET /api/participaciones/cursos/:idCurso - Obtener participaciones de curso
+    this.app.get(
+      "/api/participaciones/cursos/:idCurso",
+      validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
+      this.participationManagementController.getCourseParticipations.bind(this.participationManagementController)
+    );
+
+    // PUT /api/participaciones/cursos/:idCurso/inscripcion/:idInscripcion - Actualizar participación de curso
+    this.app.put(
+      "/api/participaciones/cursos/:idCurso/inscripcion/:idInscripcion",
+      validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
+      this.participationManagementController.updateCourseParticipation.bind(this.participationManagementController)
+    );
+
+    // GET /api/participaciones/eventos/:idEvento - Obtener participaciones de evento
+    this.app.get(
+      "/api/participaciones/eventos/:idEvento",
+      validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
+      this.participationManagementController.getEventParticipations.bind(this.participationManagementController)
+    );
+
+    // PUT /api/participaciones/eventos/:idEvento/inscripcion/:idInscripcion - Actualizar participación de evento
+    this.app.put(
+      "/api/participaciones/eventos/:idEvento/inscripcion/:idInscripcion",
+      validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
+      this.participationManagementController.updateEventParticipation.bind(this.participationManagementController)
+    );
 
     // GET /api/admin/participations/events/:eventId/inscriptions - Inscripciones para participación
     this.app.get(
@@ -1218,6 +1384,7 @@ export class Server {
     this.app.post(
       "/api/reportes/finanzas/pdf",
       validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
       this.reportsController.generateFinancialReport.bind(this.reportsController)
     );
 
@@ -1225,6 +1392,7 @@ export class Server {
     this.app.post(
       "/api/reportes/usuarios/pdf",
       validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
       this.reportsController.generateUsersReport.bind(this.reportsController)
     );
 
@@ -1232,6 +1400,7 @@ export class Server {
     this.app.post(
       "/api/reportes/eventos/pdf",
       validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
       this.reportsController.generateEventsReport.bind(this.reportsController)
     );
 
@@ -1239,6 +1408,7 @@ export class Server {
     this.app.post(
       "/api/reportes/cursos/pdf",
       validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
       this.reportsController.generateCoursesReport.bind(this.reportsController)
     );
 
@@ -1246,6 +1416,7 @@ export class Server {
     this.app.post(
       "/api/reportes/solicitudes/estado/pdf",
       validateJWT,
+      validateRoles('MASTER'),
       this.reportsController.generateChangeRequestsStatusReport.bind(this.reportsController)
     );
 
@@ -1253,6 +1424,7 @@ export class Server {
     this.app.post(
       "/api/reportes/solicitudes/desarrollador/pdf",
       validateJWT,
+      validateRoles('MASTER'),
       this.reportsController.generateChangeRequestsDevelopersReport.bind(this.reportsController)
     );
 
@@ -1260,6 +1432,7 @@ export class Server {
     this.app.post(
       "/api/reportes/solicitudes/resumen/pdf",
       validateJWT,
+      validateRoles('MASTER'),
       this.reportsController.generateChangeRequestsSummaryReport.bind(this.reportsController)
     );
 
@@ -1267,6 +1440,7 @@ export class Server {
     this.app.get(
       "/api/reportes",
       validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
       this.reportsController.getReports.bind(this.reportsController)
     );
 
@@ -1274,6 +1448,7 @@ export class Server {
     this.app.get(
       "/api/reportes/download/:id",
       validateJWT,
+      validateRoles('ADMINISTRADOR', 'MASTER'),
       this.reportsController.downloadReport.bind(this.reportsController)
     );
   }

@@ -272,6 +272,292 @@ class EventController extends BaseController_1.BaseController {
             });
         }
     }
+    /**
+     * GET /api/eventos (Legacy route for frontend compatibility)
+     * Get all events with admin details
+     */
+    async getEventosAdmin(req, res) {
+        try {
+            const prisma = this.container.getPrismaClient();
+            const eventos = await prisma.evento.findMany({
+                include: {
+                    categoria: {
+                        select: { nom_cat: true }
+                    },
+                    organizador: {
+                        select: { nom_org1: true, nom_org2: true, ape_org1: true, ape_org2: true }
+                    },
+                    _count: {
+                        select: {
+                            inscripciones: true
+                        }
+                    }
+                },
+                orderBy: { fec_ini_eve: 'desc' }
+            });
+            const eventosFormateados = eventos.map(evento => ({
+                id_eve: evento.id_eve,
+                nom_eve: evento.nom_eve,
+                des_eve: evento.des_eve,
+                fec_ini_eve: evento.fec_ini_eve,
+                fec_fin_eve: evento.fec_fin_eve,
+                hor_ini_eve: evento.hor_ini_eve,
+                hor_fin_eve: evento.hor_fin_eve,
+                dur_eve: evento.dur_eve,
+                are_eve: evento.are_eve,
+                ubi_eve: evento.ubi_eve,
+                capacidad_max_eve: evento.capacidad_max_eve,
+                precio: evento.precio,
+                es_gratuito: evento.es_gratuito,
+                tipo_audiencia_eve: evento.tipo_audiencia_eve,
+                requiere_carta_motivacion: evento.requiere_carta_motivacion,
+                estado: evento.estado,
+                id_cat_eve: evento.id_cat_eve,
+                ced_org_eve: evento.ced_org_eve,
+                categoria_nombre: evento.categoria.nom_cat,
+                organizador_nombre: `${evento.organizador.nom_org1} ${evento.organizador.ape_org1}`,
+                total_inscripciones: evento._count.inscripciones
+            }));
+            res.json({
+                success: true,
+                eventos: eventosFormateados,
+                total: eventosFormateados.length
+            });
+        }
+        catch (error) {
+            console.error('[getEventosAdmin] Error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor'
+            });
+        }
+    }
+    /**
+     * PUT /api/eventos/:id
+     * Update existing event (Admin only)
+     */
+    async updateEvent(req, res) {
+        try {
+            const { id } = req.params;
+            const prisma = this.container.getPrismaClient();
+            // Verificar que el evento existe
+            const eventoExistente = await prisma.evento.findUnique({
+                where: { id_eve: id }
+            });
+            if (!eventoExistente) {
+                res.status(404).json({
+                    success: false,
+                    message: 'Evento no encontrado'
+                });
+                return;
+            }
+            // Preparar datos de actualización
+            const { nom_eve, des_eve, id_cat_eve, fec_ini_eve, fec_fin_eve, hor_ini_eve, hor_fin_eve, dur_eve, are_eve, ubi_eve, ced_org_eve, capacidad_max_eve, tipo_audiencia_eve, es_gratuito, precio, porcentaje_asistencia_aprobacion, carreras } = req.body;
+            // Helper function to convert time string to Date (igual que en createEvent)
+            const convertirHoraADate = (horaString) => {
+                if (!horaString)
+                    return null;
+                const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])(?::([0-5][0-9]))?$/;
+                if (!timeRegex.test(horaString)) {
+                    throw new Error('Invalid time format. Use HH:MM:SS or HH:MM');
+                }
+                const parts = horaString.split(':').map(Number);
+                const horas = parts[0] ?? 0;
+                const minutos = parts[1] ?? 0;
+                const segundos = parts[2] ?? 0;
+                if (horas < 0 || horas > 23 || minutos < 0 || minutos > 59) {
+                    throw new Error('Invalid time format');
+                }
+                const fecha = new Date('1970-01-01T00:00:00.000Z');
+                fecha.setUTCHours(horas, minutos, segundos, 0);
+                return fecha;
+            };
+            // Convert time strings to Date objects
+            let horaInicio, horaFin;
+            try {
+                horaInicio = convertirHoraADate(hor_ini_eve);
+                horaFin = hor_fin_eve ? convertirHoraADate(hor_fin_eve) : null;
+            }
+            catch (error) {
+                res.status(400).json({
+                    success: false,
+                    error: error.message
+                });
+                return;
+            }
+            const datosActualizacion = {
+                nom_eve,
+                des_eve,
+                id_cat_eve,
+                fec_ini_eve: new Date(fec_ini_eve),
+                fec_fin_eve: fec_fin_eve ? new Date(fec_fin_eve) : null,
+                hor_ini_eve: horaInicio,
+                hor_fin_eve: horaFin,
+                dur_eve: parseInt(dur_eve),
+                are_eve,
+                ubi_eve,
+                ced_org_eve,
+                capacidad_max_eve: parseInt(capacidad_max_eve),
+                tipo_audiencia_eve,
+                es_gratuito: Boolean(es_gratuito),
+                precio: es_gratuito ? null : (precio ? parseFloat(precio) : null),
+                porcentaje_asistencia_aprobacion: parseInt(porcentaje_asistencia_aprobacion)
+            };
+            console.log('Datos de actualización recibidos:', req.body);
+            console.log('Carreras recibidas:', carreras);
+            const eventoActualizado = await prisma.evento.update({
+                where: { id_eve: id },
+                data: datosActualizacion
+            });
+            // Manejar asociaciones con carreras
+            if (carreras && Array.isArray(carreras)) {
+                // Eliminar asociaciones existentes
+                await prisma.eventoPorCarrera.deleteMany({
+                    where: { id_eve_per: id }
+                });
+                // Crear nuevas asociaciones si hay carreras
+                if (carreras.length > 0) {
+                    const asociaciones = carreras.map((carreraId) => ({
+                        id_eve_per: id, // Asegurar que id es string
+                        id_car_per: carreraId
+                    }));
+                    await prisma.eventoPorCarrera.createMany({
+                        data: asociaciones,
+                        skipDuplicates: true
+                    });
+                    console.log(`Asociaciones creadas: ${carreras.length} carreras`);
+                }
+            }
+            // Obtener el evento actualizado con sus carreras
+            const eventoConCarreras = await prisma.evento.findUnique({
+                where: { id_eve: id },
+                include: {
+                    eventosPorCarrera: {
+                        include: {
+                            carrera: {
+                                select: {
+                                    id_car: true,
+                                    nom_car: true
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            res.json({
+                success: true,
+                message: 'Evento actualizado exitosamente',
+                evento: {
+                    ...eventoActualizado,
+                    carreras: eventoConCarreras?.eventosPorCarrera?.map(epc => ({
+                        id: epc.carrera.id_car,
+                        nombre: epc.carrera.nom_car
+                    })) || []
+                }
+            });
+        }
+        catch (error) {
+            console.error('[updateEvent] Error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor'
+            });
+        }
+    }
+    /**
+     * DELETE /api/eventos/:id
+     * Delete event (Admin only)
+     */
+    async deleteEvent(req, res) {
+        try {
+            const { id } = req.params;
+            const prisma = this.container.getPrismaClient();
+            // Verificar que el evento existe
+            const evento = await prisma.evento.findUnique({
+                where: { id_eve: id },
+                include: {
+                    _count: {
+                        select: {
+                            inscripciones: true
+                        }
+                    }
+                }
+            });
+            if (!evento) {
+                res.status(404).json({
+                    success: false,
+                    message: 'Evento no encontrado'
+                });
+                return;
+            }
+            // Verificar si tiene inscripciones
+            if (evento._count.inscripciones > 0) {
+                res.status(400).json({
+                    success: false,
+                    message: 'No se puede eliminar un evento que tiene inscripciones'
+                });
+                return;
+            }
+            await prisma.evento.delete({
+                where: { id_eve: id }
+            });
+            res.json({
+                success: true,
+                message: 'Evento eliminado exitosamente'
+            });
+        }
+        catch (error) {
+            console.error('[deleteEvent] Error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor'
+            });
+        }
+    }
+    /**
+     * PUT /api/eventos/:id/cerrar
+     * Close event (Admin only)
+     */
+    async closeEvent(req, res) {
+        try {
+            const { id } = req.params;
+            const prisma = this.container.getPrismaClient();
+            // Verificar que el evento existe
+            const evento = await prisma.evento.findUnique({
+                where: { id_eve: id }
+            });
+            if (!evento) {
+                res.status(404).json({
+                    success: false,
+                    message: 'Evento no encontrado'
+                });
+                return;
+            }
+            if (evento.estado === 'CERRADO') {
+                res.status(400).json({
+                    success: false,
+                    message: 'El evento ya está cerrado'
+                });
+                return;
+            }
+            // Cerrar el evento
+            await prisma.evento.update({
+                where: { id_eve: id },
+                data: { estado: 'CERRADO' }
+            });
+            res.json({
+                success: true,
+                message: 'Evento cerrado exitosamente'
+            });
+        }
+        catch (error) {
+            console.error('[closeEvent] Error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor'
+            });
+        }
+    }
 }
 exports.EventController = EventController;
 //# sourceMappingURL=EventController.js.map

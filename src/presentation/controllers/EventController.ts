@@ -417,19 +417,141 @@ export class EventController extends BaseController {
         return;
       }
 
-      // Preparar datos de actualización (lógica similar al createEvent)
-      const datosActualizacion: any = {};
-      // ... (implementar lógica de actualización)
+      // Preparar datos de actualización
+      const {
+        nom_eve,
+        des_eve,
+        id_cat_eve,
+        fec_ini_eve,
+        fec_fin_eve,
+        hor_ini_eve,
+        hor_fin_eve,
+        dur_eve,
+        are_eve,
+        ubi_eve,
+        ced_org_eve,
+        capacidad_max_eve,
+        tipo_audiencia_eve,
+        es_gratuito,
+        precio,
+        porcentaje_asistencia_aprobacion,
+        carreras
+      } = req.body;
+
+      // Helper function to convert time string to Date (igual que en createEvent)
+      const convertirHoraADate = (horaString: string) => {
+        if (!horaString) return null;
+        
+        const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])(?::([0-5][0-9]))?$/;
+        
+        if (!timeRegex.test(horaString)) {
+          throw new Error('Invalid time format. Use HH:MM:SS or HH:MM');
+        }
+        
+        const parts = horaString.split(':').map(Number);
+        const horas = parts[0] ?? 0;
+        const minutos = parts[1] ?? 0;
+        const segundos = parts[2] ?? 0;
+        
+        if (horas < 0 || horas > 23 || minutos < 0 || minutos > 59) {
+          throw new Error('Invalid time format');
+        }
+        
+        const fecha = new Date('1970-01-01T00:00:00.000Z');
+        fecha.setUTCHours(horas, minutos, segundos, 0);
+        return fecha;
+      };
+
+      // Convert time strings to Date objects
+      let horaInicio, horaFin;
+      try {
+        horaInicio = convertirHoraADate(hor_ini_eve);
+        horaFin = hor_fin_eve ? convertirHoraADate(hor_fin_eve) : null;
+      } catch (error: any) {
+        res.status(400).json({
+          success: false,
+          error: error.message
+        });
+        return;
+      }
+
+      const datosActualizacion: any = {
+        nom_eve,
+        des_eve,
+        id_cat_eve,
+        fec_ini_eve: new Date(fec_ini_eve),
+        fec_fin_eve: fec_fin_eve ? new Date(fec_fin_eve) : null,
+        hor_ini_eve: horaInicio,
+        hor_fin_eve: horaFin,
+        dur_eve: parseInt(dur_eve),
+        are_eve,
+        ubi_eve,
+        ced_org_eve,
+        capacidad_max_eve: parseInt(capacidad_max_eve),
+        tipo_audiencia_eve,
+        es_gratuito: Boolean(es_gratuito),
+        precio: es_gratuito ? null : (precio ? parseFloat(precio) : null),
+        porcentaje_asistencia_aprobacion: parseInt(porcentaje_asistencia_aprobacion)
+      };
+
+      console.log('Datos de actualización recibidos:', req.body);
+      console.log('Carreras recibidas:', carreras);
 
       const eventoActualizado = await prisma.evento.update({
         where: { id_eve: id },
         data: datosActualizacion
       });
 
+      // Manejar asociaciones con carreras
+      if (carreras && Array.isArray(carreras)) {
+        // Eliminar asociaciones existentes
+        await prisma.eventoPorCarrera.deleteMany({
+          where: { id_eve_per: id }
+        });
+
+        // Crear nuevas asociaciones si hay carreras
+        if (carreras.length > 0) {
+          const asociaciones = carreras.map((carreraId: string) => ({
+            id_eve_per: id as string, // Asegurar que id es string
+            id_car_per: carreraId
+          }));
+
+          await prisma.eventoPorCarrera.createMany({
+            data: asociaciones,
+            skipDuplicates: true
+          });
+
+          console.log(`Asociaciones creadas: ${carreras.length} carreras`);
+        }
+      }
+
+      // Obtener el evento actualizado con sus carreras
+      const eventoConCarreras = await prisma.evento.findUnique({
+        where: { id_eve: id },
+        include: {
+          eventosPorCarrera: {
+            include: {
+              carrera: {
+                select: {
+                  id_car: true,
+                  nom_car: true
+                }
+              }
+            }
+          }
+        }
+      });
+
       res.json({
         success: true,
         message: 'Evento actualizado exitosamente',
-        evento: eventoActualizado
+        evento: {
+          ...eventoActualizado,
+          carreras: eventoConCarreras?.eventosPorCarrera?.map(epc => ({
+            id: epc.carrera.id_car,
+            nombre: epc.carrera.nom_car
+          })) || []
+        }
       });
 
     } catch (error: any) {

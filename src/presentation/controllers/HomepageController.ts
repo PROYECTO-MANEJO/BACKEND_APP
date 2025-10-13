@@ -456,11 +456,86 @@ export class HomepageController extends BaseController {
 
       console.log('Datos del usuario:', usuario);
 
+      // Si el usuario no tiene carrera asignada, mostrar solo contenido público
       if (!usuario || !usuario.id_car_per) {
-        console.log('No se encontró carrera para el usuario');
-        res.status(400).json({
-          success: false,
-          message: 'No se encontró la carrera del usuario'
+        console.log('Usuario sin carrera asignada, mostrando contenido público y para todas las carreras');
+        
+        // Obtener eventos públicos y para todas las carreras
+        const eventosPublicos = await prisma.evento.findMany({
+          where: {
+            estado: 'ACTIVO',
+            OR: [
+              { tipo_audiencia_eve: 'PUBLICO_GENERAL' },
+              { tipo_audiencia_eve: 'TODAS_CARRERAS' } // ✅ Agregar eventos para todas las carreras
+            ],
+            fec_fin_eve: {
+              gte: new Date()
+            }
+          },
+          include: {
+            categoria: {
+              select: {
+                nom_cat: true
+              }
+            }
+          },
+          orderBy: { fec_ini_eve: 'asc' }
+        });
+
+        // Obtener cursos públicos y para todas las carreras
+        const cursosPublicos = await prisma.curso.findMany({
+          where: {
+            estado: 'ACTIVO',
+            OR: [
+              { tipo_audiencia_cur: 'PUBLICO_GENERAL' },
+              { tipo_audiencia_cur: 'TODAS_CARRERAS' } // ✅ Agregar cursos para todas las carreras
+            ],
+            fec_fin_cur: {
+              gte: new Date()
+            }
+          },
+          include: {
+            categoria: {
+              select: {
+                nom_cat: true
+              }
+            }
+          },
+          orderBy: { fec_ini_cur: 'asc' }
+        });
+
+        res.json({
+          success: true,
+          eventos: eventosPublicos.map(evento => ({
+            id_eve: evento.id_eve,
+            nom_eve: evento.nom_eve,
+            des_eve: evento.des_eve,
+            fec_ini_eve: evento.fec_ini_eve,
+            fec_fin_eve: evento.fec_fin_eve,
+            hor_ini_eve: evento.hor_ini_eve,
+            hor_fin_eve: evento.hor_fin_eve,
+            ubi_eve: evento.ubi_eve,
+            capacidad_max_eve: evento.capacidad_max_eve,
+            es_gratuito: evento.es_gratuito,
+            precio: evento.precio,
+            categoria: evento.categoria?.nom_cat,
+            tipo_audiencia: evento.tipo_audiencia_eve
+          })),
+          cursos: cursosPublicos.map(curso => ({
+            id_cur: curso.id_cur,
+            nom_cur: curso.nom_cur,
+            des_cur: curso.des_cur,
+            fec_ini_cur: curso.fec_ini_cur,
+            fec_fin_cur: curso.fec_fin_cur,
+            dur_cur: curso.dur_cur,
+            capacidad_max_cur: curso.capacidad_max_cur,
+            es_gratuito: curso.es_gratuito,
+            precio: curso.precio,
+            categoria: curso.categoria?.nom_cat,
+            tipo_audiencia: curso.tipo_audiencia_cur
+          })),
+          carrera: null,
+          mensaje: 'Mostrando contenido público y para todas las carreras (usuario sin carrera asignada)'
         });
         return;
       }
@@ -619,14 +694,17 @@ export class HomepageController extends BaseController {
    */
   public async getExternalContent(req: Request, res: Response): Promise<void> {
     try {
-      console.log('Obteniendo eventos y cursos para USUARIO EXTERNO');
+      console.log('Obteniendo eventos y cursos para USUARIO EXTERNO (incluyendo TODAS_CARRERAS)');
       const prisma = this.container.getPrismaClient();
 
-      // Solo eventos públicos para usuarios externos
+      // Eventos públicos y para todas las carreras para usuarios externos
       const eventos = await prisma.evento.findMany({
         where: {
           estado: 'ACTIVO',
-          tipo_audiencia_eve: 'PUBLICO_GENERAL', // Solo públicos
+          OR: [
+            { tipo_audiencia_eve: 'PUBLICO_GENERAL' },
+            { tipo_audiencia_eve: 'TODAS_CARRERAS' } // ✅ Agregar eventos para todas las carreras
+          ],
           fec_ini_eve: {
             gte: new Date() // Solo eventos futuros
           }
@@ -673,11 +751,14 @@ export class HomepageController extends BaseController {
         }
       });
 
-      // Solo cursos públicos para usuarios externos
+      // Cursos públicos y para todas las carreras para usuarios externos
       const cursos = await prisma.curso.findMany({
         where: {
           estado: 'ACTIVO',
-          tipo_audiencia_cur: 'PUBLICO_GENERAL', // Solo públicos
+          OR: [
+            { tipo_audiencia_cur: 'PUBLICO_GENERAL' },
+            { tipo_audiencia_cur: 'TODAS_CARRERAS' } // ✅ Agregar cursos para todas las carreras
+          ],
           fec_ini_cur: {
             gte: new Date() // Solo cursos futuros
           }

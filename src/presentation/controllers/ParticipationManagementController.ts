@@ -457,79 +457,6 @@ export class ParticipationManagementController extends BaseController {
   }
 
   /**
-   * PUT /api/admin/participations/events/:participationId
-   * Actualizar participación de evento
-   */
-  public async updateEventParticipation(req: AuthenticatedRequest, res: Response): Promise<void> {
-    try {
-      const { participationId } = req.params;
-      const { asistencia_porcentaje } = req.body;
-      const prisma = this.container.getPrismaClient();
-
-      // Validar porcentaje de asistencia
-      const asistencia = parseInt(asistencia_porcentaje);
-      if (isNaN(asistencia) || asistencia < 0 || asistencia > 100) {
-        res.status(400).json({
-          success: false,
-          message: 'El porcentaje de asistencia debe ser un número entre 0 y 100'
-        });
-        return;
-      }
-
-      // Verificar que la participación existe
-      const participacionExistente = await prisma.participacion.findUnique({
-        where: { id_par: participationId },
-        include: {
-          inscripcion: {
-            include: {
-              usuario: {
-                select: {
-                  nom_usu1: true,
-                  ape_usu1: true
-                }
-              }
-            }
-          }
-        }
-      });
-
-      if (!participacionExistente) {
-        res.status(404).json({
-          success: false,
-          message: 'Participación no encontrada'
-        });
-        return;
-      }
-
-      // Calcular nueva aprobación
-      const aprobado = asistencia >= 80;
-
-      // Actualizar participación
-      const participacionActualizada = await prisma.participacion.update({
-        where: { id_par: participationId },
-        data: {
-          asi_par: asistencia,
-          aprobado: aprobado,
-          fec_evaluacion: new Date()
-        }
-      });
-
-      res.json({
-        success: true,
-        message: `Participación de ${participacionExistente.inscripcion.usuario.nom_usu1} ${participacionExistente.inscripcion.usuario.ape_usu1} actualizada exitosamente`,
-        data: participacionActualizada
-      });
-
-    } catch (error: any) {
-      console.error('[updateEventParticipation] Error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error interno del servidor'
-      });
-    }
-  }
-
-  /**
    * GET /api/admin/participations/events/:eventId/stats
    * Obtener estadísticas de participación de un evento
    */
@@ -789,6 +716,446 @@ export class ParticipationManagementController extends BaseController {
 
     } catch (error: any) {
       console.error('[getGeneralParticipationStats] Error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+    }
+  }
+
+  /**
+   * GET /api/participaciones/cursos/:idCurso
+   * Obtener participaciones de un curso específico
+   */
+  public async getCourseParticipations(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { idCurso } = req.params;
+      const prisma = this.container.getPrismaClient();
+
+      // Verificar que el curso existe
+      const curso = await prisma.curso.findUnique({
+        where: { id_cur: idCurso },
+        select: {
+          id_cur: true,
+          nom_cur: true,
+          estado: true,
+          nota_minima_aprobacion: true,
+          porcentaje_asistencia_aprobacion: true
+        }
+      });
+
+      if (!curso) {
+        res.status(404).json({
+          success: false,
+          message: 'Curso no encontrado'
+        });
+        return;
+      }
+
+      // Obtener todas las inscripciones del curso con participaciones
+      const inscripciones = await prisma.inscripcionCurso.findMany({
+        where: { 
+          id_cur_ins: idCurso,
+          estado_pago_cur: 'APROBADO' // Solo inscripciones aprobadas
+        },
+        include: {
+          usuario: {
+            select: {
+              id_usu: true,
+              ced_usu: true,
+              nom_usu1: true,
+              nom_usu2: true,
+              ape_usu1: true,
+              ape_usu2: true
+            }
+          },
+          participacionesCurso: true
+        },
+        orderBy: [
+          { usuario: { nom_usu1: 'asc' } },
+          { usuario: { ape_usu1: 'asc' } }
+        ]
+      });
+
+      // Formatear participaciones
+      const participaciones = inscripciones.map(inscripcion => {
+        const participacion = inscripcion.participacionesCurso[0] || null;
+        
+        return {
+          inscripcionId: inscripcion.id_ins_cur,
+          usuario: {
+            id: inscripcion.usuario.id_usu,
+            cedula: inscripcion.usuario.ced_usu,
+            nombre: `${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.nom_usu2 || ''} ${inscripcion.usuario.ape_usu1} ${inscripcion.usuario.ape_usu2 || ''}`.trim()
+          },
+          estadoPago: inscripcion.estado_pago_cur,
+          participacion: participacion ? {
+            nota_final: participacion.nota_final,
+            asistencia_porcentaje: participacion.asistencia_porcentaje,
+            aprobado: participacion.aprobado,
+            fecha_evaluacion: participacion.fecha_evaluacion
+          } : null
+        };
+      });
+
+      res.json({
+        success: true,
+        curso: {
+          id: curso.id_cur,
+          nombre: curso.nom_cur,
+          estado: curso.estado,
+          nota_minima_aprobacion: curso.nota_minima_aprobacion,
+          porcentaje_asistencia_aprobacion: curso.porcentaje_asistencia_aprobacion
+        },
+        participaciones
+      });
+
+    } catch (error: any) {
+      console.error('[getCourseParticipations] Error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+    }
+  }
+
+  /**
+   * PUT /api/participaciones/cursos/:idCurso/inscripcion/:idInscripcion
+   * Actualizar participación de curso (nota y asistencia)
+   */
+  public async updateCourseParticipation(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { idCurso, idInscripcion } = req.params;
+      const { nota_final, asistencia_porcentaje } = req.body;
+      const prisma = this.container.getPrismaClient();
+
+      // Validaciones
+      if (nota_final === undefined || asistencia_porcentaje === undefined) {
+        res.status(400).json({
+          success: false,
+          message: 'Se requieren nota_final y asistencia_porcentaje'
+        });
+        return;
+      }
+
+      if (nota_final < 0 || nota_final > 100) {
+        res.status(400).json({
+          success: false,
+          message: 'La nota final debe estar entre 0 y 100'
+        });
+        return;
+      }
+
+      if (asistencia_porcentaje < 0 || asistencia_porcentaje > 100) {
+        res.status(400).json({
+          success: false,
+          message: 'El porcentaje de asistencia debe estar entre 0 y 100'
+        });
+        return;
+      }
+
+      // Verificar que el curso existe y no está cerrado
+      const curso = await prisma.curso.findUnique({
+        where: { id_cur: idCurso }
+      });
+
+      if (!curso) {
+        res.status(404).json({
+          success: false,
+          message: 'Curso no encontrado'
+        });
+        return;
+      }
+
+      if (curso.estado === 'CERRADO') {
+        res.status(400).json({
+          success: false,
+          message: 'No se pueden modificar las notas de un curso cerrado'
+        });
+        return;
+      }
+
+      // Verificar que la inscripción existe
+      const inscripcion = await prisma.inscripcionCurso.findUnique({
+        where: { id_ins_cur: idInscripcion },
+        include: { participacionesCurso: true }
+      });
+
+      if (!inscripcion || inscripcion.id_cur_ins !== idCurso) {
+        res.status(404).json({
+          success: false,
+          message: 'Inscripción no encontrada para este curso'
+        });
+        return;
+      }
+
+      // Calcular si está aprobado
+      const notaMinima = Number(curso.nota_minima_aprobacion) || 7.0;
+      const asistenciaMinima = Number(curso.porcentaje_asistencia_aprobacion) || 70;
+      
+      // Normalizar nota (si viene en escala 0-100, convertir a 0-10)
+      const notaNormalizada = nota_final > 10 ? nota_final / 10 : nota_final;
+      const aprobado = notaNormalizada >= notaMinima && asistencia_porcentaje >= asistenciaMinima;
+
+      // Actualizar o crear participación
+      const participacionData = {
+        nota_final: nota_final,
+        asistencia_porcentaje: asistencia_porcentaje,
+        aprobado: aprobado,
+        fecha_evaluacion: new Date()
+      };
+
+      let participacion;
+      if (inscripcion.participacionesCurso.length > 0) {
+        // Actualizar existente
+        const participacionExistente = inscripcion.participacionesCurso[0];
+        if (participacionExistente) {
+          participacion = await prisma.participacionCurso.update({
+            where: { id_par_cur: participacionExistente.id_par_cur },
+            data: participacionData
+          });
+        }
+      } else {
+        // Crear nueva - usar la interfaz correcta de Prisma
+        participacion = await prisma.participacionCurso.create({
+          data: {
+            nota_final: nota_final,
+            asistencia_porcentaje: asistencia_porcentaje,
+            aprobado: aprobado,
+            fecha_evaluacion: new Date(),
+            inscripcionCurso: {
+              connect: { id_ins_cur: idInscripcion }
+            }
+          }
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Participación actualizada correctamente',
+        data: {
+          participacion: participacion ? {
+            nota_final: participacion.nota_final,
+            asistencia_porcentaje: participacion.asistencia_porcentaje,
+            aprobado: participacion.aprobado,
+            fecha_evaluacion: participacion.fecha_evaluacion
+          } : null
+        }
+      });
+
+    } catch (error: any) {
+      console.error('[updateCourseParticipation] Error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+    }
+  }
+
+  /**
+   * GET /api/participaciones/eventos/:idEvento
+   * Obtener participaciones de un evento específico
+   */
+  public async getEventParticipations(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { idEvento } = req.params;
+      const prisma = this.container.getPrismaClient();
+
+      // Verificar que el evento existe
+      const evento = await prisma.evento.findUnique({
+        where: { id_eve: idEvento },
+        select: {
+          id_eve: true,
+          nom_eve: true,
+          estado: true,
+          porcentaje_asistencia_aprobacion: true
+        }
+      });
+
+      if (!evento) {
+        res.status(404).json({
+          success: false,
+          message: 'Evento no encontrado'
+        });
+        return;
+      }
+
+      // Obtener todas las inscripciones del evento con participaciones
+      const inscripciones = await prisma.inscripcion.findMany({
+        where: { 
+          id_eve_ins: idEvento,
+          estado_pago: 'APROBADO' // Solo inscripciones aprobadas
+        },
+        include: {
+          usuario: {
+            select: {
+              id_usu: true,
+              ced_usu: true,
+              nom_usu1: true,
+              nom_usu2: true,
+              ape_usu1: true,
+              ape_usu2: true
+            }
+          },
+          participaciones: true
+        },
+        orderBy: [
+          { usuario: { nom_usu1: 'asc' } },
+          { usuario: { ape_usu1: 'asc' } }
+        ]
+      });
+
+      // Formatear participaciones
+      const participaciones = inscripciones.map(inscripcion => {
+        const participacion = inscripcion.participaciones[0] || null;
+        
+        return {
+          inscripcionId: inscripcion.id_ins,
+          usuario: {
+            id: inscripcion.usuario.id_usu,
+            cedula: inscripcion.usuario.ced_usu,
+            nombre: `${inscripcion.usuario.nom_usu1} ${inscripcion.usuario.nom_usu2 || ''} ${inscripcion.usuario.ape_usu1} ${inscripcion.usuario.ape_usu2 || ''}`.trim()
+          },
+          estadoPago: inscripcion.estado_pago,
+          participacion: participacion ? {
+            asi_par: participacion.asi_par,
+            aprobado: participacion.aprobado,
+            fecha_participacion: participacion.fec_evaluacion
+          } : null
+        };
+      });
+
+      res.json({
+        success: true,
+        evento: {
+          id: evento.id_eve,
+          nombre: evento.nom_eve,
+          estado: evento.estado,
+          porcentaje_asistencia_aprobacion: evento.porcentaje_asistencia_aprobacion
+        },
+        participaciones
+      });
+
+    } catch (error: any) {
+      console.error('[getEventParticipations] Error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+    }
+  }
+
+  /**
+   * PUT /api/participaciones/eventos/:idEvento/inscripcion/:idInscripcion
+   * Actualizar participación de evento (solo asistencia)
+   */
+  public async updateEventParticipation(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { idEvento, idInscripcion } = req.params;
+      const { asi_par } = req.body;
+      const prisma = this.container.getPrismaClient();
+
+      // Validaciones
+      if (asi_par === undefined) {
+        res.status(400).json({
+          success: false,
+          message: 'Se requiere el porcentaje de asistencia (asi_par)'
+        });
+        return;
+      }
+
+      if (asi_par < 0 || asi_par > 100) {
+        res.status(400).json({
+          success: false,
+          message: 'El porcentaje de asistencia debe estar entre 0 y 100'
+        });
+        return;
+      }
+
+      // Verificar que el evento existe y no está cerrado
+      const evento = await prisma.evento.findUnique({
+        where: { id_eve: idEvento }
+      });
+
+      if (!evento) {
+        res.status(404).json({
+          success: false,
+          message: 'Evento no encontrado'
+        });
+        return;
+      }
+
+      if (evento.estado === 'CERRADO') {
+        res.status(400).json({
+          success: false,
+          message: 'No se pueden modificar las asistencias de un evento cerrado'
+        });
+        return;
+      }
+
+      // Verificar que la inscripción existe
+      const inscripcion = await prisma.inscripcion.findUnique({
+        where: { id_ins: idInscripcion },
+        include: { participaciones: true }
+      });
+
+      if (!inscripcion || inscripcion.id_eve_ins !== idEvento) {
+        res.status(404).json({
+          success: false,
+          message: 'Inscripción no encontrada para este evento'
+        });
+        return;
+      }
+
+      // Calcular si está aprobado
+      const asistenciaMinima = Number(evento.porcentaje_asistencia_aprobacion) || 70;
+      const aprobado = asi_par >= asistenciaMinima;
+
+      // Actualizar o crear participación
+      const participacionData = {
+        asi_par: asi_par,
+        aprobado: aprobado,
+        fec_evaluacion: new Date()
+      };
+
+      let participacion;
+      if (inscripcion.participaciones.length > 0) {
+        // Actualizar existente
+        const participacionExistente = inscripcion.participaciones[0];
+        if (participacionExistente) {
+          participacion = await prisma.participacion.update({
+            where: { id_par: participacionExistente.id_par },
+            data: participacionData
+          });
+        }
+      } else {
+        // Crear nueva - usar la interfaz correcta de Prisma
+        participacion = await prisma.participacion.create({
+          data: {
+            asi_par: asi_par,
+            aprobado: aprobado,
+            fec_evaluacion: new Date(),
+            inscripcion: {
+              connect: { id_ins: idInscripcion }
+            }
+          }
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Participación actualizada correctamente',
+        data: {
+          participacion: participacion ? {
+            asi_par: participacion.asi_par,
+            aprobado: participacion.aprobado,
+            fecha_participacion: participacion.fec_evaluacion
+          } : null
+        }
+      });
+
+    } catch (error: any) {
+      console.error('[updateEventParticipation] Error:', error);
       res.status(500).json({
         success: false,
         message: 'Error interno del servidor'

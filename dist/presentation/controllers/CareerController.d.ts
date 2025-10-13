@@ -7,6 +7,7 @@ export interface AuthenticatedRequest extends Request {
         rol: string;
         ced_usu: string;
     };
+    uid?: string;
 }
 export declare class CareerController extends BaseController {
     private container;

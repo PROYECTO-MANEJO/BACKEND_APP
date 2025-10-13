@@ -294,3 +294,4 @@ validateJWT → CertificateController
 **"Implementar rol ESTUDIANTE con máxima reutilización y mínima duplicación"**
 
 **¿El sistema está listo para el siguiente rol o hay algo específico que quieres verificar?** 🚀✨
+

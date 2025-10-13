@@ -174,6 +174,57 @@ class UserController extends BaseController_1.BaseController {
             };
         });
     }
+    /**
+     * GET /api/users/admins
+     * Get only administrators for master admin management
+     */
+    async getAdmins(req, res) {
+        await this.execute(req, res, async () => {
+            const prisma = this.container.getPrismaClient();
+            const admins = await prisma.usuario.findMany({
+                where: {
+                    cuentas: {
+                        some: {
+                            rol_cue: 'ADMINISTRADOR'
+                        }
+                    }
+                },
+                include: {
+                    carrera: { select: { id_car: true, nom_car: true } },
+                    cuentas: { select: { cor_cue: true, rol_cue: true } }
+                },
+                orderBy: { nom_usu1: 'asc' }
+            });
+            const formattedAdmins = admins.map(admin => {
+                const account = admin.cuentas[0];
+                return {
+                    id_usu: admin.id_usu,
+                    ced_usu: admin.ced_usu,
+                    nom_usu1: admin.nom_usu1,
+                    nom_usu2: admin.nom_usu2,
+                    ape_usu1: admin.ape_usu1,
+                    ape_usu2: admin.ape_usu2,
+                    fec_nac_usu: admin.fec_nac_usu,
+                    num_tel_usu: admin.num_tel_usu,
+                    cor_cue: account?.cor_cue, // ✅ Usar cor_cue como espera el frontend
+                    rol_cue: account?.rol_cue, // ✅ Mantener rol_cue
+                    carrera: admin.carrera ? { id_car: admin.carrera.id_car, nom_car: admin.carrera.nom_car } : null,
+                    documentos: {
+                        cedula_subida: !!admin.enl_ced_pdf,
+                        matricula_subida: false, // Los admins no necesitan matrícula
+                        matricula_requerida: false,
+                        documentos_verificados: admin.documentos_verificados,
+                        fecha_verificacion: admin.fec_verificacion_docs,
+                        archivos_completos: !!admin.enl_ced_pdf
+                    }
+                };
+            });
+            return {
+                success: true,
+                usuarios: formattedAdmins // Usar 'usuarios' como espera el frontend
+            };
+        });
+    }
 }
 exports.UserController = UserController;
 //# sourceMappingURL=UserController.js.map

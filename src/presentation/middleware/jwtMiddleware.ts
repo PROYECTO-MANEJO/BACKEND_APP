@@ -1,5 +1,8 @@
-import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 interface JWTPayload {
   id: string;
@@ -7,26 +10,135 @@ interface JWTPayload {
   exp: number;
 }
 
-export const validateJWT = (req: Request, res: Response, next: NextFunction): void => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+export const validateJWT = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  // Debug: Log todos los headers para troubleshooting
+  console.log("🔍 Headers recibidos:", {
+    authorization: req.header("authorization"),
+    Authorization: req.header("Authorization"),
+    "x-token": req.header("x-token"),
+    "todos los headers": req.headers,
+  });
+
+  const token =
+    req.header("Authorization")?.replace("Bearer ", "") ||
+    req.header("x-token");
+
+  console.log(
+    "🎫 Token extraído:",
+    token ? `${token.substring(0, 20)}...` : "NO ENCONTRADO"
+  );
 
   if (!token) {
+    console.log("❌ NO HAY TOKEN - Rechazando petición");
     res.status(401).json({
       success: false,
-      error: 'No token provided'
+      message: "No hay token en la petición",
     });
     return;
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JWTPayload;
+    // Debug: Log del token y SECRET_KEY
+    console.log("🔐 Verificando token refactorizado...");
+    console.log("🔑 SECRET_KEY existe:", !!process.env.SECRET_KEY);
+    console.log(
+      "📋 Token recibido:",
+      token ? `${token.substring(0, 20)}...` : "undefined"
+    );
+
+    // Verificar el token usando SECRET_KEY (compatibilidad con legacy)
+    const decoded = jwt.verify(token, process.env.SECRET_KEY!) as JWTPayload;
+    console.log("✅ Token verificado exitosamente. Payload:", decoded);
+
+    // Buscar el usuario en la base de datos (igual que el middleware legacy)
+    const usuario = await prisma.usuario.findUnique({
+      where: { id_usu: decoded.id },
+      include: {
+        cuentas: {
+          select: {
+            cor_cue: true,
+            rol_cue: true,
+          },
+        },
+      },
+    });
+
+    if (!usuario) {
+      res.status(401).json({
+        success: false,
+        message: "Usuario no encontrado",
+      });
+      return;
+    }
+
+    // Adjuntar tanto uid como usuario al request (compatibilidad)
     (req as any).uid = decoded.id;
+    (req as any).usuario = usuario;
+    (req as any).userRole = usuario.cuentas[0]?.rol_cue || null;
+
     next();
   } catch (error) {
+    console.error("❌ Error al verificar JWT refactorizado:", error);
     res.status(401).json({
       success: false,
-      error: 'Invalid token'
+      message: "Token no válido",
     });
     return;
   }
+};
+
+/**
+ * Middleware para validar roles específicos
+ * Debe usarse después de validateJWT
+ */
+export const validateRoles = (...roles: string[]) => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    // Verificar que exista un usuario en la request (validado por validateJWT)
+    const authReq = req as any; // Cast para acceder a propiedades añadidas por validateJWT
+    
+    if (!authReq.usuario) {
+      res.status(500).json({
+        success: false,
+        message: 'Se quiere verificar el rol sin validar el token primero'
+      });
+      return;
+    }
+
+    try {
+      // El usuario ya viene con las cuentas incluidas desde validateJWT
+      const cuentas = authReq.usuario.cuentas;
+
+      // Verificar si tiene cuenta y si su rol está entre los permitidos
+      if (!cuentas || cuentas.length === 0) {
+        res.status(403).json({
+          success: false,
+          message: 'El usuario no tiene cuenta asociada'
+        });
+        return;
+      }
+
+      const cuenta = cuentas[0]; // Tomar la primera cuenta
+      if (!roles.includes(cuenta.rol_cue)) {
+        res.status(403).json({
+          success: false,
+          message: `No tienes permisos para esta acción`
+        });
+        return;
+      }
+
+      console.log(`✅ Usuario autorizado con rol: ${cuenta.rol_cue}`);
+      next();
+    } catch (error) {
+      console.error('Error en validateRoles:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+      return;
+    }
+  };
 };

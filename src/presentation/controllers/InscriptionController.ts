@@ -118,15 +118,24 @@ export class InscriptionController extends BaseController {
       }
 
       // Crear inscripción
+      const datosInscripcion: any = {
+        id_usu_ins: idUsuario,
+        id_eve_ins: idEvento,
+        fec_ins: new Date(),
+        carta_motivacion: cartaMotivacion || null
+      };
+
+      // Configurar estado de pago según si es gratuito o no
+      if (evento.es_gratuito) {
+        datosInscripcion.estado_pago = 'APROBADO';
+        datosInscripcion.met_pag_ins = null; // No hay método de pago para eventos gratuitos
+      } else {
+        datosInscripcion.estado_pago = 'PENDIENTE';
+        datosInscripcion.met_pag_ins = metodoPago || 'TRANFERENCIA';
+      }
+
       const nuevaInscripcion = await prisma.inscripcion.create({
-        data: {
-          id_usu_ins: idUsuario,
-          id_eve_ins: idEvento,
-          fec_ins: new Date(),
-          estado_pago: 'PENDIENTE',
-          met_pag_ins: metodoPago || 'GRATUITO',
-          carta_motivacion: cartaMotivacion || null
-        },
+        data: datosInscripcion,
         include: {
           evento: {
             select: {
@@ -265,15 +274,26 @@ export class InscriptionController extends BaseController {
       }
 
       // Crear inscripción
+      const datosInscripcionCurso: any = {
+        id_usu_ins_cur: idUsuario,
+        id_cur_ins: idCurso,
+        fec_ins_cur: new Date(),
+        carta_motivacion: cartaMotivacion || null
+      };
+
+      // Configurar estado de pago según si es gratuito o no
+      if (curso.es_gratuito) {
+        datosInscripcionCurso.estado_pago_cur = 'APROBADO';
+        datosInscripcionCurso.met_pag_ins_cur = null; // No hay método de pago para cursos gratuitos
+        datosInscripcionCurso.val_ins_cur = null; // No hay valor para cursos gratuitos
+      } else {
+        datosInscripcionCurso.estado_pago_cur = 'PENDIENTE';
+        datosInscripcionCurso.met_pag_ins_cur = metodoPago || 'TRANFERENCIA';
+        datosInscripcionCurso.val_ins_cur = curso.precio || 0;
+      }
+
       const nuevaInscripcion = await prisma.inscripcionCurso.create({
-        data: {
-          id_usu_ins_cur: idUsuario,
-          id_cur_ins: idCurso,
-          fec_ins_cur: new Date(),
-          estado_pago_cur: 'PENDIENTE',
-          met_pag_ins_cur: metodoPago || 'GRATUITO',
-          carta_motivacion: cartaMotivacion || null
-        },
+        data: datosInscripcionCurso,
         include: {
           curso: {
             select: {
@@ -508,10 +528,10 @@ export class InscriptionController extends BaseController {
 
       if (evento.es_gratuito) {
         datosInscripcion.estado_pago = 'APROBADO';
-        datosInscripcion.met_pag_ins = 'GRATUITO';
+        datosInscripcion.met_pag_ins = null; // Para eventos gratuitos no hay método de pago
       } else {
         datosInscripcion.estado_pago = 'PENDIENTE';
-        datosInscripcion.met_pag_ins = metodoPago || 'TRANSFERENCIA';
+        datosInscripcion.met_pag_ins = metodoPago || 'TRANFERENCIA';
         
         if (comprobantePago) {
           const fs = require('fs');
@@ -622,10 +642,12 @@ export class InscriptionController extends BaseController {
 
       if (curso.es_gratuito) {
         datosInscripcion.estado_pago_cur = 'APROBADO';
-        datosInscripcion.met_pag_ins_cur = 'GRATUITO';
+        datosInscripcion.met_pag_ins_cur = null; // Cursos gratuitos no tienen método de pago
+        datosInscripcion.val_ins_cur = null; // Cursos gratuitos no tienen valor
       } else {
         datosInscripcion.estado_pago_cur = 'PENDIENTE';
-        datosInscripcion.met_pag_ins_cur = metodoPago || 'TRANSFERENCIA';
+        datosInscripcion.met_pag_ins_cur = metodoPago || 'TRANFERENCIA'; // Usar el valor correcto del enum
+        datosInscripcion.val_ins_cur = curso.precio || 0; // Establecer el valor del curso
         
         if (comprobantePago) {
           const fs = require('fs');

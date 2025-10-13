@@ -340,4 +340,139 @@ export class AuthController extends BaseController {
       return { message: "Refresh token not implemented yet" };
     });
   }
+
+  /**
+   * POST /api/auth/createAdmin
+   * Create new administrator (Master only)
+   */
+  public async createAdmin(req: Request, res: Response): Promise<void> {
+    try {
+      const { 
+        ced_usu, 
+        nom_usu1, 
+        nom_usu2, 
+        ape_usu1, 
+        ape_usu2, 
+        cor_cue, 
+        pas_usu, 
+        fec_nac_usu, 
+        num_tel_usu 
+      } = req.body;
+      
+      const prisma = this.container.getPrismaClient();
+      const bcrypt = this.container.getBcrypt();
+
+      // Validar campos requeridos
+      if (!ced_usu || !nom_usu1 || !ape_usu1 || !cor_cue || !pas_usu) {
+        res.status(400).json({
+          success: false,
+          message: 'Campos requeridos: ced_usu, nom_usu1, ape_usu1, cor_cue, pas_usu'
+        });
+        return;
+      }
+
+      // Verificar si ya existe un usuario con esta cédula
+      const existingUserByCedula = await prisma.usuario.findFirst({
+        where: { ced_usu }
+      });
+
+      if (existingUserByCedula) {
+        res.status(400).json({
+          success: false,
+          message: 'Ya existe un usuario con esta cédula'
+        });
+        return;
+      }
+
+      // Verificar si ya existe una cuenta con este email
+      const existingAccount = await prisma.cuenta.findFirst({
+        where: { cor_cue }
+      });
+
+      if (existingAccount) {
+        res.status(400).json({
+          success: false,
+          message: 'Ya existe una cuenta con este email'
+        });
+        return;
+      }
+
+      // Validar fortaleza de la contraseña
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
+      if (!passwordRegex.test(pas_usu)) {
+        res.status(400).json({
+          success: false,
+          message: 'La contraseña debe tener al menos 6 caracteres, una mayúscula, un número y un carácter especial (@$!%*?&)'
+        });
+        return;
+      }
+
+      // Validar fecha de nacimiento
+      let fechaNacimiento = new Date('1990-01-01'); // Fecha por defecto
+      if (fec_nac_usu) {
+        fechaNacimiento = new Date(fec_nac_usu);
+        if (isNaN(fechaNacimiento.getTime())) {
+          res.status(400).json({
+            success: false,
+            message: 'Fecha de nacimiento inválida. Use formato YYYY-MM-DD'
+          });
+          return;
+        }
+      }
+
+      // Encriptar contraseña
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(pas_usu, salt);
+
+      // Crear usuario y cuenta en transacción
+      const result = await prisma.$transaction(async (prisma) => {
+        // Crear usuario
+        const newUser = await prisma.usuario.create({
+          data: {
+            ced_usu,
+            nom_usu1,
+            nom_usu2: nom_usu2 || '',
+            ape_usu1,
+            ape_usu2: ape_usu2 || '',
+            pas_usu: hashedPassword,
+            fec_nac_usu: fechaNacimiento,
+            num_tel_usu: num_tel_usu || null,
+            id_car_per: null // Los administradores no tienen carrera
+          }
+        });
+
+        // Crear cuenta con rol ADMINISTRADOR
+        const newAccount = await prisma.cuenta.create({
+          data: {
+            cor_cue,
+            rol_cue: 'ADMINISTRADOR',
+            id_usu_per: newUser.id_usu,
+            isVerified: true // Los administradores se crean verificados
+          }
+        });
+
+        return { user: newUser, account: newAccount };
+      });
+
+      res.status(201).json({
+        success: true,
+        message: 'Administrador creado exitosamente',
+        data: {
+          id_usu: result.user.id_usu,
+          ced_usu: result.user.ced_usu,
+          nom_usu1: result.user.nom_usu1,
+          ape_usu1: result.user.ape_usu1,
+          cor_cue: result.account.cor_cue,
+          rol_cue: result.account.rol_cue
+        }
+      });
+
+    } catch (error: any) {
+      console.error('[createAdmin] Error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+    }
+  }
 }

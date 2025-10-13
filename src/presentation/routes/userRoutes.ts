@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { UserController } from "../controllers/UserController";
 import { DIContainer } from "../../infrastructure/DIContainer";
+import { validateJWT } from "../middleware/jwtMiddleware"; // ✅ Importar middleware JWT
 
 export class UserRoutes {
   private router: Router;
@@ -20,7 +21,7 @@ export class UserRoutes {
      */
     this.router.get(
       "/profile",
-      // TODO: Add JWT middleware
+      validateJWT, // ✅ Agregar middleware JWT
       this.userController.getUserProfile.bind(this.userController)
     );
 
@@ -30,7 +31,7 @@ export class UserRoutes {
      */
     this.router.put(
       "/profile",
-      // TODO: Add JWT middleware and validation
+      validateJWT, // ✅ Agregar middleware JWT
       this.userController.updateUserProfile.bind(this.userController)
     );
 
@@ -42,6 +43,16 @@ export class UserRoutes {
       "/",
       // TODO: Add JWT middleware and admin authorization
       this.userController.getAllUsers.bind(this.userController)
+    );
+
+    /**
+     * GET /api/users/admins
+     * Get only administrators (master only)
+     */
+    this.router.get(
+      "/admins",
+      validateJWT, // ✅ Requiere autenticación
+      this.userController.getAdmins.bind(this.userController)
     );
   }
 

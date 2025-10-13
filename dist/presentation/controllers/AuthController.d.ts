@@ -26,5 +26,10 @@ export declare class AuthController extends BaseController {
     verifyEmail(req: Request, res: Response): Promise<void>;
     resendVerification(req: Request, res: Response): Promise<void>;
     refreshToken(req: Request, res: Response): Promise<void>;
+    /**
+     * POST /api/auth/createAdmin
+     * Create new administrator (Master only)
+     */
+    createAdmin(req: Request, res: Response): Promise<void>;
 }
 //# sourceMappingURL=AuthController.d.ts.map

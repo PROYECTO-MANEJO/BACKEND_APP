@@ -19,5 +19,10 @@ export declare class UserController extends BaseController {
      * Get all users for admin (based on original getAllUsers function)
      */
     getAllUsers(req: Request, res: Response): Promise<void>;
+    /**
+     * GET /api/users/admins
+     * Get only administrators for master admin management
+     */
+    getAdmins(req: Request, res: Response): Promise<void>;
 }
 //# sourceMappingURL=UserController.d.ts.map

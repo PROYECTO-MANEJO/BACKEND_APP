@@ -35,16 +35,31 @@ export class DocumentVerificationController extends BaseController {
 
       const usuariosConDocumentos = await prisma.usuario.findMany({
         where: {
-          OR: [
-            { documentos_verificados: false },
-            { cedula_aprobada: false },
-            { matricula_aprobada: false }
-          ],
           AND: [
+            // Debe tener al menos un documento subido
             {
               OR: [
                 { enl_ced_pdf: { not: null } },
                 { enl_mat_pdf: { not: null } }
+              ]
+            },
+            // Y debe tener al menos un documento pendiente de aprobación
+            {
+              OR: [
+                // Tiene cédula pero no está aprobada
+                {
+                  AND: [
+                    { enl_ced_pdf: { not: null } },
+                    { cedula_aprobada: false }
+                  ]
+                },
+                // Tiene matrícula pero no está aprobada
+                {
+                  AND: [
+                    { enl_mat_pdf: { not: null } },
+                    { matricula_aprobada: false }
+                  ]
+                }
               ]
             }
           ]

@@ -23,12 +23,12 @@ export declare class HomepageController extends BaseController {
      */
     updateContent(req: AuthenticatedRequest, res: Response): Promise<void>;
     /**
-     * POST /api/homepage/image/:imageType
+     * POST /api/homepage/image/:imageType (o /api/pagina-principal/imagen/:tipoImagen)
      * Subir imagen específica
      */
     uploadImage(req: AuthenticatedRequest, res: Response): Promise<void>;
     /**
-     * GET /api/homepage/image/:imageType
+     * GET /api/homepage/image/:imageType (o /api/pagina-principal/imagen/:tipoImagen)
      * Obtener imagen específica
      */
     getImage(req: Request, res: Response): Promise<void>;

@@ -4,6 +4,7 @@ export { AuthController } from "./AuthController";
 export { CourseController } from "./CourseController";
 export { EventController } from "./EventController";
 export { CertificateController } from "./CertificateController";
+export { AdminController } from "./AdminController";
 export * from "../dto/UserDTO";
 export * from "../dto/CourseDTO";
 export type { CreateEventRequestDTO, UpdateEventRequestDTO, EventResponseDTO, EventListResponseDTO, EnrollEventRequestDTO, EventEnrollmentResponseDTO, } from "../dto/EventDTO";
