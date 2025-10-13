@@ -1,9 +1,13 @@
 /**
  * Event Entity - Domain Layer
  *
- * Representa un evento del sistema con todas sus reglas de negocio
- * y validaciones correspondientes.
+ * ✅ SRP: Responsabilidad única - Gestión de datos del evento
+ * Las validaciones están en EventValidator
+ * Las reglas de negocio están en EventBusinessRules
  */
+
+import { EventValidator } from "../validators/EventValidator";
+import { EventBusinessRules } from "../services/EventBusinessRules";
 
 export interface EventData {
   id?: string;
@@ -56,7 +60,8 @@ export class Event {
   private _fecha_actualizacion?: Date;
 
   constructor(data: EventData) {
-    this.validateEventData(data);
+    // ✅ SRP: Validaciones delegadas al EventValidator
+    // La entidad solo maneja datos, no validaciones
 
     this._id = data.id;
     this._nom_eve = data.nom_eve;
@@ -81,239 +86,20 @@ export class Event {
     this._fecha_actualizacion = data.fecha_actualizacion || new Date();
   }
 
-  // ✅ VALIDACIONES DE NEGOCIO
-  private validateEventData(data: EventData): void {
-    // Validar campos obligatorios
-    if (!data.nom_eve?.trim()) {
-      throw new Error("El nombre del evento es obligatorio");
-    }
-
-    if (!data.des_eve?.trim()) {
-      throw new Error("La descripción del evento es obligatoria");
-    }
-
-    if (!data.id_cat_eve || data.id_cat_eve <= 0) {
-      throw new Error("La categoría del evento es obligatoria");
-    }
-
-    if (!data.fec_ini_eve) {
-      throw new Error("La fecha de inicio es obligatoria");
-    }
-
-    if (!data.hor_ini_eve) {
-      throw new Error("La hora de inicio es obligatoria");
-    }
-
-    if (!data.dur_eve || data.dur_eve <= 0) {
-      throw new Error("La duración debe ser mayor a 0 minutos");
-    }
-
-    if (!data.are_eve?.trim()) {
-      throw new Error("El área del evento es obligatoria");
-    }
-
-    if (!data.ubi_eve?.trim()) {
-      throw new Error("La ubicación del evento es obligatoria");
-    }
-
-    if (!data.ced_org_eve?.trim()) {
-      throw new Error("La cédula del organizador es obligatoria");
-    }
-
-    if (!data.capacidad_max_eve || data.capacidad_max_eve <= 0) {
-      throw new Error("La capacidad máxima debe ser mayor a 0");
-    }
-
-    // Validar fechas
-    this.validateDates(data.fec_ini_eve, data.fec_fin_eve);
-
-    // Validar porcentaje de asistencia
-    this.validateAttendancePercentage(data.porcentaje_asistencia_aprobacion);
-
-    // Validar precio si no es gratuito
-    this.validatePrice(data.es_gratuito, data.precio);
-
-    // Validar tipo de audiencia
-    this.validateAudienceType(data.tipo_audiencia_eve);
-
-    // Validar duración razonable
-    this.validateDuration(data.dur_eve);
-
-    // Validar capacidad máxima razonable
-    this.validateCapacity(data.capacidad_max_eve);
-  }
-
-  private validateDates(fechaInicio: Date, fechaFin?: Date | null): void {
-    const now = new Date();
-
-    if (fechaInicio < now) {
-      throw new Error("La fecha de inicio no puede ser en el pasado");
-    }
-
-    if (fechaFin) {
-      if (fechaFin < fechaInicio) {
-        throw new Error(
-          "La fecha de fin debe ser posterior a la fecha de inicio"
-        );
-      }
-
-      // Validar que no sea más de 1 año en el futuro
-      const maxDate = new Date();
-      maxDate.setFullYear(maxDate.getFullYear() + 1);
-
-      if (fechaFin > maxDate) {
-        throw new Error(
-          "La fecha de fin no puede ser más de 1 año en el futuro"
-        );
-      }
-    }
-  }
-
-  private validateAttendancePercentage(porcentaje: number): void {
-    if (porcentaje == null || isNaN(porcentaje)) {
-      throw new Error("El porcentaje de asistencia es obligatorio");
-    }
-
-    if (porcentaje < 0 || porcentaje > 100) {
-      throw new Error("El porcentaje de asistencia debe estar entre 0 y 100");
-    }
-  }
-
-  private validatePrice(esGratuito: boolean, precio?: number | null): void {
-    if (!esGratuito) {
-      if (!precio || precio <= 0) {
-        throw new Error("El precio debe ser mayor a 0 para eventos pagos");
-      }
-
-      if (precio > 1000000) {
-        // Precio máximo razonable
-        throw new Error("El precio no puede superar $1,000,000");
-      }
-    }
-  }
-
-  private validateAudienceType(tipoAudiencia: string): void {
-    const tiposValidos = [
-      "ESTUDIANTES",
-      "PROFESIONALES",
-      "GENERAL",
-      "ACADEMICO",
-    ];
-
-    if (!tiposValidos.includes(tipoAudiencia)) {
-      throw new Error(
-        `Tipo de audiencia debe ser uno de: ${tiposValidos.join(", ")}`
-      );
-    }
-  }
-
-  private validateDuration(duracion: number): void {
-    if (duracion < 30) {
-      throw new Error("La duración mínima del evento es de 30 minutos");
-    }
-
-    if (duracion > 10080) {
-      // 1 semana en minutos
-      throw new Error("La duración máxima del evento es de 1 semana");
-    }
-  }
-
-  private validateCapacity(capacidad: number): void {
-    if (capacidad < 1) {
-      throw new Error("La capacidad mínima es de 1 persona");
-    }
-
-    if (capacidad > 10000) {
-      throw new Error("La capacidad máxima es de 10,000 personas");
-    }
-  }
-
-  // ✅ MÉTODOS DE NEGOCIO
-  public canBeUpdated(): boolean {
-    const now = new Date();
-    return this._fec_ini_eve > now && this._estado_eve === "ACTIVO";
-  }
-
-  public canBeDeleted(): boolean {
-    return this.canBeUpdated(); // Mismas reglas que actualización
-  }
-
-  public canBeClosed(): boolean {
-    const now = new Date();
-    return this._fec_ini_eve <= now && this._estado_eve === "ACTIVO";
-  }
-
-  public isActive(): boolean {
-    return this._estado_eve === "ACTIVO";
-  }
-
-  public isUpcoming(): boolean {
-    const now = new Date();
-    return this._fec_ini_eve > now && this._estado_eve === "ACTIVO";
-  }
-
-  public isInProgress(): boolean {
-    const now = new Date();
-    const fechaFin = this._fec_fin_eve || this._fec_ini_eve;
-    return (
-      this._fec_ini_eve <= now &&
-      fechaFin >= now &&
-      this._estado_eve === "ACTIVO"
-    );
-  }
-
-  public isFinished(): boolean {
-    return this._estado_eve === "CERRADO" || this._estado_eve === "FINALIZADO";
-  }
-
-  public updateBasicInfo(data: Partial<EventData>): void {
-    if (!this.canBeUpdated()) {
-      throw new Error("El evento no puede ser actualizado");
-    }
-
-    // Validar solo los campos que se están actualizando
-    if (data.nom_eve !== undefined) {
-      if (!data.nom_eve?.trim()) {
-        throw new Error("El nombre del evento no puede estar vacío");
-      }
-      this._nom_eve = data.nom_eve;
-    }
-
-    if (data.des_eve !== undefined) {
-      if (!data.des_eve?.trim()) {
-        throw new Error("La descripción del evento no puede estar vacía");
-      }
-      this._des_eve = data.des_eve;
-    }
-
-    if (data.capacidad_max_eve !== undefined) {
-      this.validateCapacity(data.capacidad_max_eve);
+  public updateData(data: Partial<EventData>): void {
+    // ✅ SRP: Solo actualiza datos, no valida ni aplica reglas de negocio
+    if (data.nom_eve !== undefined) this._nom_eve = data.nom_eve;
+    if (data.des_eve !== undefined) this._des_eve = data.des_eve;
+    if (data.capacidad_max_eve !== undefined)
       this._capacidad_max_eve = data.capacidad_max_eve;
-    }
-
-    if (data.precio !== undefined && !this._es_gratuito) {
-      this.validatePrice(false, data.precio);
-      this._precio = data.precio;
-    }
+    if (data.precio !== undefined) this._precio = data.precio;
+    if (data.estado_eve !== undefined) this._estado_eve = data.estado_eve;
 
     this._fecha_actualizacion = new Date();
   }
 
-  public close(): void {
-    if (!this.canBeClosed()) {
-      throw new Error("El evento no puede ser cerrado en este momento");
-    }
-
-    this._estado_eve = "CERRADO";
-    this._fecha_actualizacion = new Date();
-  }
-
-  public cancel(): void {
-    if (!this.canBeUpdated()) {
-      throw new Error("El evento no puede ser cancelado");
-    }
-
-    this._estado_eve = "CANCELADO";
+  public changeStatus(newStatus: string): void {
+    this._estado_eve = newStatus;
     this._fecha_actualizacion = new Date();
   }
 

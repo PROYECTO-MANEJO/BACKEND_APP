@@ -1,9 +1,13 @@
 /**
  * Course Entity - Domain Layer
  *
- * Representa un curso del sistema con todas sus reglas de negocio
- * y validaciones correspondientes.
+ * ✅ SRP: Responsabilidad única - Gestión de datos del curso
+ * Las validaciones están en CourseValidator
+ * Las reglas de negocio están en CourseBusinessRules
  */
+
+import { CourseValidator } from "../validators/CourseValidator";
+import { CourseBusinessRules } from "../services/CourseBusinessRules";
 
 export interface CourseData {
   id?: string;
@@ -52,7 +56,8 @@ export class Course {
   private _fecha_actualizacion?: Date;
 
   constructor(data: CourseData) {
-    this.validateCourseData(data);
+    // ✅ SRP: Validaciones delegadas al CourseValidator
+    // La entidad solo maneja datos, no validaciones
 
     this._id = data.id;
     this._nom_cur = data.nom_cur;
@@ -75,267 +80,43 @@ export class Course {
     this._fecha_actualizacion = data.fecha_actualizacion || new Date();
   }
 
-  // ✅ VALIDACIONES DE NEGOCIO
-  private validateCourseData(data: CourseData): void {
-    // Validar campos obligatorios
-    if (!data.nom_cur?.trim()) {
-      throw new Error("El nombre del curso es obligatorio");
-    }
+  // ✅ SRP PURO: Solo gestión de datos
+  // - Validaciones están en CourseValidator
+  // - Reglas de negocio están en CourseBusinessRules
+  // - La entidad solo maneja el estado de los datos
 
-    if (!data.des_cur?.trim()) {
-      throw new Error("La descripción del curso es obligatoria");
-    }
+  // ✅ MÉTODOS SIMPLES PARA MODIFICAR DATOS (sin lógica de negocio)
 
-    if (!data.dur_cur || data.dur_cur <= 0) {
-      throw new Error("La duración debe ser mayor a 0 horas");
-    }
-
-    if (!data.fec_ini_cur) {
-      throw new Error("La fecha de inicio es obligatoria");
-    }
-
-    if (!data.fec_fin_cur) {
-      throw new Error("La fecha de fin es obligatoria");
-    }
-
-    if (!data.id_cat_cur || data.id_cat_cur <= 0) {
-      throw new Error("La categoría del curso es obligatoria");
-    }
-
-    if (!data.ced_org_cur?.trim()) {
-      throw new Error("La cédula del organizador es obligatoria");
-    }
-
-    if (!data.capacidad_max_cur || data.capacidad_max_cur <= 0) {
-      throw new Error("La capacidad máxima debe ser mayor a 0");
-    }
-
-    // Validar fechas
-    this.validateDates(data.fec_ini_cur, data.fec_fin_cur);
-
-    // Validar duración
-    this.validateDuration(data.dur_cur);
-
-    // Validar capacidad
-    this.validateCapacity(data.capacidad_max_cur);
-
-    // Validar porcentajes y notas
-    this.validateApprovalCriteria(
-      data.porcentaje_asistencia_aprobacion,
-      data.nota_minima_aprobacion
-    );
-
-    // Validar precio si no es gratuito
-    this.validatePrice(data.es_gratuito, data.precio);
-
-    // Validar tipo de audiencia
-    this.validateAudienceType(data.tipo_audiencia_cur);
-  }
-
-  private validateDates(fechaInicio: Date, fechaFin: Date): void {
-    const now = new Date();
-
-    if (fechaInicio < now) {
-      throw new Error("La fecha de inicio no puede ser en el pasado");
-    }
-
-    if (fechaFin <= fechaInicio) {
-      throw new Error(
-        "La fecha de fin debe ser posterior a la fecha de inicio"
-      );
-    }
-
-    // Validar que no sea más de 2 años en el futuro
-    const maxDate = new Date();
-    maxDate.setFullYear(maxDate.getFullYear() + 2);
-
-    if (fechaFin > maxDate) {
-      throw new Error(
-        "La fecha de fin no puede ser más de 2 años en el futuro"
-      );
-    }
-
-    // Validar duración mínima del curso (al menos 1 día)
-    const diffTime = Math.abs(fechaFin.getTime() - fechaInicio.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays < 1) {
-      throw new Error("El curso debe durar al menos 1 día");
-    }
-
-    // Validar duración máxima del curso (máximo 1 año)
-    if (diffDays > 365) {
-      throw new Error("El curso no puede durar más de 1 año");
-    }
-  }
-
-  private validateDuration(duracion: number): void {
-    if (duracion < 1) {
-      throw new Error("La duración mínima del curso es de 1 hora");
-    }
-
-    if (duracion > 2000) {
-      // Aproximadamente 1 año de 40 horas semanales
-      throw new Error("La duración máxima del curso es de 2000 horas");
-    }
-  }
-
-  private validateCapacity(capacidad: number): void {
-    if (capacidad < 1) {
-      throw new Error("La capacidad mínima es de 1 persona");
-    }
-
-    if (capacidad > 1000) {
-      throw new Error("La capacidad máxima es de 1,000 personas");
-    }
-  }
-
-  private validateApprovalCriteria(
-    porcentajeAsistencia: number,
-    notaMinima: number
-  ): void {
-    if (porcentajeAsistencia == null || isNaN(porcentajeAsistencia)) {
-      throw new Error("El porcentaje de asistencia es obligatorio");
-    }
-
-    if (porcentajeAsistencia < 0 || porcentajeAsistencia > 100) {
-      throw new Error("El porcentaje de asistencia debe estar entre 0 y 100");
-    }
-
-    if (notaMinima == null || isNaN(notaMinima)) {
-      throw new Error("La nota mínima de aprobación es obligatoria");
-    }
-
-    if (notaMinima < 0 || notaMinima > 10) {
-      throw new Error("La nota mínima debe estar entre 0 y 10");
-    }
-  }
-
-  private validatePrice(esGratuito: boolean, precio?: number | null): void {
-    if (!esGratuito) {
-      if (!precio || precio <= 0) {
-        throw new Error("El precio debe ser mayor a 0 para cursos pagos");
-      }
-
-      if (precio > 10000000) {
-        // Precio máximo razonable
-        throw new Error("El precio no puede superar $10,000,000");
-      }
-    }
-  }
-
-  private validateAudienceType(tipoAudiencia: string): void {
-    const tiposValidos = [
-      "CARRERA_ESPECIFICA",
-      "TODAS_CARRERAS",
-      "PUBLICO_GENERAL",
-    ];
-
-    if (!tiposValidos.includes(tipoAudiencia)) {
-      throw new Error(
-        `Tipo de audiencia debe ser uno de: ${tiposValidos.join(", ")}`
-      );
-    }
-  }
-
-  // ✅ MÉTODOS DE NEGOCIO
-  public canBeUpdated(): boolean {
-    const now = new Date();
-    return this._fec_ini_cur > now && this._estado_cur === "ACTIVO";
-  }
-
-  public canBeDeleted(): boolean {
-    return this.canBeUpdated(); // Mismas reglas que actualización
-  }
-
-  public canBeClosed(): boolean {
-    const now = new Date();
-    return this._fec_fin_cur <= now && this._estado_cur === "ACTIVO";
-  }
-
-  public isActive(): boolean {
-    return this._estado_cur === "ACTIVO";
-  }
-
-  public isUpcoming(): boolean {
-    const now = new Date();
-    return this._fec_ini_cur > now && this._estado_cur === "ACTIVO";
-  }
-
-  public isInProgress(): boolean {
-    const now = new Date();
-    return (
-      this._fec_ini_cur <= now &&
-      this._fec_fin_cur >= now &&
-      this._estado_cur === "ACTIVO"
-    );
-  }
-
-  public isFinished(): boolean {
-    return this._estado_cur === "CERRADO" || this._estado_cur === "FINALIZADO";
-  }
-
-  public requiresDocumentVerification(): boolean {
-    return this._requiere_verificacion_docs;
-  }
-
-  public isForSpecificCareer(): boolean {
-    return this._tipo_audiencia_cur === "CARRERA_ESPECIFICA";
-  }
-
-  public updateBasicInfo(data: Partial<CourseData>): void {
-    if (!this.canBeUpdated()) {
-      throw new Error("El curso no puede ser actualizado");
-    }
-
-    // Validar solo los campos que se están actualizando
-    if (data.nom_cur !== undefined) {
-      if (!data.nom_cur?.trim()) {
-        throw new Error("El nombre del curso no puede estar vacío");
-      }
-      this._nom_cur = data.nom_cur;
-    }
-
-    if (data.des_cur !== undefined) {
-      if (!data.des_cur?.trim()) {
-        throw new Error("La descripción del curso no puede estar vacía");
-      }
-      this._des_cur = data.des_cur;
-    }
-
-    if (data.capacidad_max_cur !== undefined) {
-      this.validateCapacity(data.capacidad_max_cur);
+  /**
+   * Actualizar información básica del curso
+   * NOTA: Las validaciones y reglas de negocio deben aplicarse ANTES de llamar este método
+   */
+  public updateData(data: Partial<CourseData>): void {
+    // ✅ SRP: Solo actualiza datos, no valida ni aplica reglas de negocio
+    if (data.nom_cur !== undefined) this._nom_cur = data.nom_cur;
+    if (data.des_cur !== undefined) this._des_cur = data.des_cur;
+    if (data.dur_cur !== undefined) this._dur_cur = data.dur_cur;
+    if (data.capacidad_max_cur !== undefined)
       this._capacidad_max_cur = data.capacidad_max_cur;
+    if (data.precio !== undefined) this._precio = data.precio;
+    if (data.estado_cur !== undefined) this._estado_cur = data.estado_cur;
+    if (data.porcentaje_asistencia_aprobacion !== undefined) {
+      this._porcentaje_asistencia_aprobacion =
+        data.porcentaje_asistencia_aprobacion;
     }
-
-    if (data.precio !== undefined && !this._es_gratuito) {
-      this.validatePrice(false, data.precio);
-      this._precio = data.precio;
-    }
-
-    if (data.dur_cur !== undefined) {
-      this.validateDuration(data.dur_cur);
-      this._dur_cur = data.dur_cur;
+    if (data.nota_minima_aprobacion !== undefined) {
+      this._nota_minima_aprobacion = data.nota_minima_aprobacion;
     }
 
     this._fecha_actualizacion = new Date();
   }
 
-  public close(): void {
-    if (!this.canBeClosed()) {
-      throw new Error("El curso no puede ser cerrado en este momento");
-    }
-
-    this._estado_cur = "CERRADO";
-    this._fecha_actualizacion = new Date();
-  }
-
-  public cancel(): void {
-    if (!this.canBeUpdated()) {
-      throw new Error("El curso no puede ser cancelado");
-    }
-
-    this._estado_cur = "CANCELADO";
+  /**
+   * Cambiar estado del curso
+   * NOTA: Las reglas de negocio deben aplicarse ANTES de llamar este método
+   */
+  public changeStatus(newStatus: string): void {
+    this._estado_cur = newStatus;
     this._fecha_actualizacion = new Date();
   }
 

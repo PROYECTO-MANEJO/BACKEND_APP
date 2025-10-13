@@ -13,7 +13,7 @@ export * from "./user/UserManagementTypes";
 export * from "./course/CourseDTO";
 
 // Event Management DTOs
-export * from "./event/EventDTO";
+export * from "./EventDTO";
 
 // Admin Management DTOs
 export * from "./admin/CertificateDTO";
