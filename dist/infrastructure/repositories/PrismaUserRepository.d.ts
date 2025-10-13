@@ -5,6 +5,7 @@
  * Maneja operaciones básicas de usuario según la estructura existente
  */
 import { PrismaClient } from "@prisma/client";
+import { IUserRepository } from "../../domain/repositories/IUserRepository";
 export interface UserData {
     id?: string;
     cedula: string;
@@ -19,7 +20,7 @@ export interface UserData {
     githubToken?: string;
     githubUsername?: string;
 }
-export declare class PrismaUserRepository {
+export declare class PrismaUserRepository implements IUserRepository {
     private prisma;
     constructor(prisma: PrismaClient);
     create(userData: UserData): Promise<UserData>;
@@ -27,6 +28,7 @@ export declare class PrismaUserRepository {
     findById(id: string): Promise<UserData | null>;
     findByEmail(email: string): Promise<UserData | null>;
     findAll(): Promise<UserData[]>;
+    findByRole(role: string): Promise<UserData[]>;
     update(id: string, userData: Partial<UserData>): Promise<UserData>;
     delete(id: string): Promise<void>;
     private mapToUserData;

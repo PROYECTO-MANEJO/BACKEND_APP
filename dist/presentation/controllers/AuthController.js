@@ -14,7 +14,9 @@ class AuthController extends BaseController_1.BaseController {
     async login(req, res) {
         try {
             const { email, password } = req.body;
-            const prisma = this.container.getPrismaClient();
+            // ✅ SOLID: Usar repository en lugar de Prisma directo
+            const userRepository = this.container.getUserRepository();
+            const prisma = this.container.getPrismaClient(); // Solo para queries complejas de cuenta
             const bcrypt = this.container.getBcrypt();
             const { generateJWT, generateAdminJWT } = this.container.getJwtHelpers();
             // Find account by email with complete user information
@@ -127,7 +129,9 @@ class AuthController extends BaseController_1.BaseController {
     async register(req, res) {
         try {
             const { email, password, nombre, nombre2, apellido, apellido2, ced_usu, fec_nac_usu, carrera } = req.body;
-            const prisma = this.container.getPrismaClient();
+            // ✅ SOLID: Usar repository en lugar de Prisma directo
+            const userRepository = this.container.getUserRepository();
+            const prisma = this.container.getPrismaClient(); // Solo para validaciones complejas y transacciones
             const bcrypt = this.container.getBcrypt();
             // Check if account already exists with this email
             const existingAccount = await prisma.cuenta.findFirst({
@@ -142,10 +146,8 @@ class AuthController extends BaseController_1.BaseController {
                 });
                 return;
             }
-            // Check if user already exists with this cedula
-            const existingUserByCedula = await prisma.usuario.findFirst({
-                where: { ced_usu }
-            });
+            // ✅ SOLID: Check if user already exists with this cedula using repository
+            const existingUserByCedula = await userRepository.findByCedula(ced_usu);
             if (existingUserByCedula) {
                 res.status(400).json({
                     success: false,
@@ -226,10 +228,8 @@ class AuthController extends BaseController_1.BaseController {
                 if (email && email.endsWith('@uta.edu.ec') && carrera) {
                     userData.id_car_per = carrera;
                 }
-                // Create user
-                const newUser = await prisma.usuario.create({
-                    data: userData
-                });
+                // ✅ SOLID: Create user using repository
+                const newUser = await userRepository.create(userData);
                 const newAccount = await prisma.cuenta.create({
                     data: {
                         cor_cue: email,
@@ -310,7 +310,9 @@ class AuthController extends BaseController_1.BaseController {
     async createAdmin(req, res) {
         try {
             const { ced_usu, nom_usu1, nom_usu2, ape_usu1, ape_usu2, cor_cue, pas_usu, fec_nac_usu, num_tel_usu } = req.body;
-            const prisma = this.container.getPrismaClient();
+            // ✅ SOLID: Usar repository en lugar de Prisma directo
+            const userRepository = this.container.getUserRepository();
+            const prisma = this.container.getPrismaClient(); // Solo para validaciones complejas y transacciones
             const bcrypt = this.container.getBcrypt();
             // Validar campos requeridos
             if (!ced_usu || !nom_usu1 || !ape_usu1 || !cor_cue || !pas_usu) {
@@ -320,10 +322,8 @@ class AuthController extends BaseController_1.BaseController {
                 });
                 return;
             }
-            // Verificar si ya existe un usuario con esta cédula
-            const existingUserByCedula = await prisma.usuario.findFirst({
-                where: { ced_usu }
-            });
+            // ✅ SOLID: Verificar si ya existe un usuario con esta cédula usando repository
+            const existingUserByCedula = await userRepository.findByCedula(ced_usu);
             if (existingUserByCedula) {
                 res.status(400).json({
                     success: false,

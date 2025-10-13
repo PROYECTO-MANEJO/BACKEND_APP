@@ -80,6 +80,21 @@ class PrismaUserRepository {
         });
         return usuarios.map((usuario) => this.mapToUserData(usuario));
     }
+    async findByRole(role) {
+        const cuentas = await this.prisma.cuenta.findMany({
+            where: { rol_cue: role },
+            include: {
+                usuario: {
+                    include: {
+                        carrera: true
+                    }
+                }
+            }
+        });
+        return cuentas
+            .filter((cuenta) => cuenta.usuario)
+            .map((cuenta) => this.mapToUserData(cuenta.usuario));
+    }
     async update(id, userData) {
         const usuario = await this.prisma.usuario.update({
             where: { id_usu: id },

@@ -17,8 +17,8 @@ var CertificateController_1 = require("./CertificateController");
 Object.defineProperty(exports, "CertificateController", { enumerable: true, get: function () { return CertificateController_1.CertificateController; } });
 var AdminController_1 = require("./AdminController");
 Object.defineProperty(exports, "AdminController", { enumerable: true, get: function () { return AdminController_1.AdminController; } });
-// Exportar tipos de DTOs
-tslib_1.__exportStar(require("../dto/UserDTO"), exports);
-tslib_1.__exportStar(require("../dto/CourseDTO"), exports);
-tslib_1.__exportStar(require("../dto/CertificateDTO"), exports);
+// Exportar tipos de DTOs desde nueva estructura
+tslib_1.__exportStar(require("../dto/user/UserDTO"), exports);
+tslib_1.__exportStar(require("../dto/course/CourseDTO"), exports);
+tslib_1.__exportStar(require("../dto/admin/CertificateDTO"), exports);
 //# sourceMappingURL=index.js.map

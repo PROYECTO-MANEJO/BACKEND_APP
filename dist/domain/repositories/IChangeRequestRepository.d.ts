@@ -1,4 +1,4 @@
-import { ChangeRequest } from "@domain/entities/ChangeRequest";
+import { ChangeRequest } from "../entities/ChangeRequest";
 export interface ChangeRequestFilters {
     status?: string;
     changeType?: string;

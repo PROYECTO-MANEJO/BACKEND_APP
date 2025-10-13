@@ -5,9 +5,17 @@ const tslib_1 = require("tslib");
 const client_1 = require("@prisma/client");
 const bcrypt_1 = tslib_1.__importDefault(require("bcrypt"));
 const jwtHelper_1 = require("./helpers/jwtHelper");
+// Importar implementaciones
+const PrismaUserRepository_1 = require("./repositories/PrismaUserRepository");
+const PrismaCourseRepository_1 = require("./repositories/PrismaCourseRepository");
+const PrismaEventRepository_1 = require("./repositories/PrismaEventRepository");
+const PrismaCertificateRepository_1 = require("./repositories/PrismaCertificateRepository");
+const PrismaEnrollmentRepository_1 = require("./repositories/PrismaEnrollmentRepository");
+const PrismaDeveloperRepository_1 = require("./repositories/PrismaDeveloperRepository");
+const PrismaChangeRequestRepository_1 = require("./repositories/PrismaChangeRequestRepository");
 /**
- * Real Dependency Injection Container
- * NO MOCKS - Real implementation with Prisma
+ * SOLID Dependency Injection Container
+ * Implementa DIP (Dependency Inversion Principle)
  */
 class DIContainer {
     constructor() {
@@ -19,6 +27,50 @@ class DIContainer {
         }
         return DIContainer.instance;
     }
+    // ✅ SOLID: Retorna interfaces, no implementaciones concretas
+    getUserRepository() {
+        if (!this.userRepository) {
+            this.userRepository = new PrismaUserRepository_1.PrismaUserRepository(this.prisma);
+        }
+        return this.userRepository;
+    }
+    getCourseRepository() {
+        if (!this.courseRepository) {
+            this.courseRepository = new PrismaCourseRepository_1.PrismaCourseRepository(this.prisma);
+        }
+        return this.courseRepository;
+    }
+    getEventRepository() {
+        if (!this.eventRepository) {
+            this.eventRepository = new PrismaEventRepository_1.PrismaEventRepository(this.prisma);
+        }
+        return this.eventRepository;
+    }
+    getCertificateRepository() {
+        if (!this.certificateRepository) {
+            this.certificateRepository = new PrismaCertificateRepository_1.PrismaCertificateRepository(this.prisma);
+        }
+        return this.certificateRepository;
+    }
+    getEnrollmentRepository() {
+        if (!this.enrollmentRepository) {
+            this.enrollmentRepository = new PrismaEnrollmentRepository_1.PrismaEnrollmentRepository(this.prisma);
+        }
+        return this.enrollmentRepository;
+    }
+    getDeveloperRepository() {
+        if (!this.developerRepository) {
+            this.developerRepository = new PrismaDeveloperRepository_1.PrismaDeveloperRepository(this.prisma);
+        }
+        return this.developerRepository;
+    }
+    getChangeRequestRepository() {
+        if (!this.changeRequestRepository) {
+            this.changeRequestRepository = new PrismaChangeRequestRepository_1.PrismaChangeRequestRepository(this.prisma);
+        }
+        return this.changeRequestRepository;
+    }
+    // ⚠️ LEGACY: Solo para compatibilidad temporal
     getPrismaClient() {
         return this.prisma;
     }

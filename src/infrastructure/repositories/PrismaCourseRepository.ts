@@ -6,6 +6,8 @@
  */
 
 import { PrismaClient } from "@prisma/client";
+import { Course } from "../../domain/entities/Course";
+import { ICourseRepository, CourseFilters } from "../../domain/repositories/ICourseRepository";
 
 export interface CourseData {
   id?: string;
@@ -28,7 +30,7 @@ export interface CourseData {
   associatedCareers?: string[];
 }
 
-export class PrismaCourseRepository {
+export class PrismaCourseRepository implements ICourseRepository {
   constructor(private prisma: PrismaClient) {}
 
   async create(courseData: CourseData): Promise<CourseData> {

@@ -1,9 +1,9 @@
 import { PrismaClient } from "@prisma/client";
-import { Developer } from "@domain/entities/Developer";
+import { Developer } from "../../domain/entities/Developer";
 import {
   DeveloperRepository,
   DeveloperFilters,
-} from "@domain/repositories/IDeveloperRepository";
+} from "../../domain/repositories/IDeveloperRepository";
 
 export class PrismaDeveloperRepository implements DeveloperRepository {
   constructor(private prisma: PrismaClient) {}

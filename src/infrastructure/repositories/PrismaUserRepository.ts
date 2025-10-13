@@ -6,6 +6,8 @@
  */
 
 import { PrismaClient } from "@prisma/client";
+import { User } from "../../domain/entities/User";
+import { IUserRepository, UserFilters } from "../../domain/repositories/IUserRepository";
 
 export interface UserData {
   id?: string;
@@ -22,7 +24,7 @@ export interface UserData {
   githubUsername?: string;
 }
 
-export class PrismaUserRepository {
+export class PrismaUserRepository implements IUserRepository {
   constructor(private prisma: PrismaClient) {}
 
   async create(userData: UserData): Promise<UserData> {
@@ -99,6 +101,23 @@ export class PrismaUserRepository {
     });
 
     return usuarios.map((usuario) => this.mapToUserData(usuario));
+  }
+
+  async findByRole(role: string): Promise<UserData[]> {
+    const cuentas = await this.prisma.cuenta.findMany({
+      where: { rol_cue: role as any },
+      include: {
+        usuario: {
+          include: {
+            carrera: true
+          }
+        }
+      }
+    });
+
+    return cuentas
+      .filter((cuenta: any) => cuenta.usuario)
+      .map((cuenta: any) => this.mapToUserData(cuenta.usuario!));
   }
 
   async update(id: string, userData: Partial<UserData>): Promise<UserData> {

@@ -8,9 +8,9 @@ export { EventController } from "./EventController";
 export { CertificateController } from "./CertificateController";
 export { AdminController } from "./AdminController";
 
-// Exportar tipos de DTOs
-export * from "../dto/UserDTO";
-export * from "../dto/CourseDTO";
+// Exportar tipos de DTOs desde nueva estructura
+export * from "../dto/user/UserDTO";
+export * from "../dto/course/CourseDTO";
 export type {
   CreateEventRequestDTO,
   UpdateEventRequestDTO,
@@ -18,5 +18,5 @@ export type {
   EventListResponseDTO,
   EnrollEventRequestDTO,
   EventEnrollmentResponseDTO,
-} from "../dto/EventDTO";
-export * from "../dto/CertificateDTO";
+} from "../dto/event/EventDTO";
+export * from "../dto/admin/CertificateDTO";

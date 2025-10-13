@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrismaDeveloperRepository = void 0;
-const Developer_1 = require("@domain/entities/Developer");
+const Developer_1 = require("../../domain/entities/Developer");
 class PrismaDeveloperRepository {
     constructor(prisma) {
         this.prisma = prisma;

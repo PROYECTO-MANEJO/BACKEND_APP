@@ -29,11 +29,10 @@ export class EventController extends BaseController {
    */
   public async getEvents(req: Request, res: Response): Promise<void> {
     await this.execute(req, res, async () => {
-      const prisma = this.container.getPrismaClient();
+      // ✅ SOLID: Usar repository en lugar de Prisma directo
+      const eventRepository = this.container.getEventRepository();
 
-      const eventos = await prisma.evento.findMany({
-        orderBy: { fec_ini_eve: 'desc' }
-      });
+      const eventos = await eventRepository.findAll();
 
       const eventosFormateados = eventos.map(evento => ({
         id_eve: evento.id_eve,
@@ -69,11 +68,12 @@ export class EventController extends BaseController {
   public async getEventById(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const prisma = this.container.getPrismaClient();
+      if (!id) throw new Error('ID is required');
+      
+      // ✅ SOLID: Usar repository en lugar de Prisma directo
+      const eventRepository = this.container.getEventRepository();
 
-      const evento = await prisma.evento.findUnique({
-        where: { id_eve: id }
-      });
+      const evento = await eventRepository.findById(id);
 
       if (!evento) {
         res.status(404).json({

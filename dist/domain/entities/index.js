@@ -1,42 +1,38 @@
 "use strict";
 /**
- * Domain Entities - Index
+ * Domain Entities - Centralized Exports
  *
- * Exporta todas las entidades del dominio
+ * Todas las entidades del dominio exportadas desde un punto central
+ * para facilitar imports y mantener organización
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CourseCategory = exports.Course = exports.EventCategory = exports.Event = exports.Enrollment = exports.Participation = exports.HomepageDashboard = exports.HomepageContent = exports.CourseEntities = exports.EventEntities = exports.ParticipationEntities = exports.HomepageEntities = exports.AdminEntities = void 0;
-const tslib_1 = require("tslib");
-// GitHub Entities
-tslib_1.__exportStar(require("./github"), exports);
-// GitHub Entities
-tslib_1.__exportStar(require("./github"), exports);
-// Administration Entities (with namespace to avoid conflicts)
-const AdminEntities = tslib_1.__importStar(require("./administration"));
-exports.AdminEntities = AdminEntities;
-// Homepage Entities (with namespace to avoid conflicts)
-const HomepageEntities = tslib_1.__importStar(require("./homepage"));
-exports.HomepageEntities = HomepageEntities;
-// Participation Entities (with namespace to avoid conflicts)
-const ParticipationEntities = tslib_1.__importStar(require("./participation"));
-exports.ParticipationEntities = ParticipationEntities;
-// Events Entities (with namespace to avoid conflicts)
-const EventEntities = tslib_1.__importStar(require("./events"));
-exports.EventEntities = EventEntities;
-// Courses Entities (with namespace to avoid conflicts)
-const CourseEntities = tslib_1.__importStar(require("./courses"));
-exports.CourseEntities = CourseEntities;
-// Re-export main entities directly for convenience
-var homepage_1 = require("./homepage");
-Object.defineProperty(exports, "HomepageContent", { enumerable: true, get: function () { return homepage_1.HomepageContent; } });
-Object.defineProperty(exports, "HomepageDashboard", { enumerable: true, get: function () { return homepage_1.HomepageDashboard; } });
-var participation_1 = require("./participation");
-Object.defineProperty(exports, "Participation", { enumerable: true, get: function () { return participation_1.Participation; } });
-Object.defineProperty(exports, "Enrollment", { enumerable: true, get: function () { return participation_1.Enrollment; } });
-var events_1 = require("./events");
-Object.defineProperty(exports, "Event", { enumerable: true, get: function () { return events_1.Event; } });
-Object.defineProperty(exports, "EventCategory", { enumerable: true, get: function () { return events_1.EventCategory; } });
-var courses_1 = require("./courses");
-Object.defineProperty(exports, "Course", { enumerable: true, get: function () { return courses_1.Course; } });
-Object.defineProperty(exports, "CourseCategory", { enumerable: true, get: function () { return courses_1.CourseCategory; } });
+exports.HomepageDashboard = exports.HomepageContent = exports.VerificationToken = exports.Participation = exports.Enrollment = exports.Inscription = exports.Report = exports.Developer = exports.ChangeRequest = exports.Certificate = exports.Event = exports.Course = void 0;
+// Core Business Entities
+var Course_1 = require("./Course");
+Object.defineProperty(exports, "Course", { enumerable: true, get: function () { return Course_1.Course; } });
+var Event_1 = require("./Event");
+Object.defineProperty(exports, "Event", { enumerable: true, get: function () { return Event_1.Event; } });
+// Management Entities  
+var Certificate_1 = require("./Certificate");
+Object.defineProperty(exports, "Certificate", { enumerable: true, get: function () { return Certificate_1.Certificate; } });
+var ChangeRequest_1 = require("./ChangeRequest");
+Object.defineProperty(exports, "ChangeRequest", { enumerable: true, get: function () { return ChangeRequest_1.ChangeRequest; } });
+var Developer_1 = require("./Developer");
+Object.defineProperty(exports, "Developer", { enumerable: true, get: function () { return Developer_1.Developer; } });
+var Report_1 = require("./Report");
+Object.defineProperty(exports, "Report", { enumerable: true, get: function () { return Report_1.Report; } });
+// Process Entities
+var Inscription_1 = require("./Inscription");
+Object.defineProperty(exports, "Inscription", { enumerable: true, get: function () { return Inscription_1.Inscription; } });
+var Enrollment_1 = require("./Enrollment");
+Object.defineProperty(exports, "Enrollment", { enumerable: true, get: function () { return Enrollment_1.Enrollment; } });
+var Participation_1 = require("./Participation");
+Object.defineProperty(exports, "Participation", { enumerable: true, get: function () { return Participation_1.Participation; } });
+// System Entities
+var VerificationToken_1 = require("./VerificationToken");
+Object.defineProperty(exports, "VerificationToken", { enumerable: true, get: function () { return VerificationToken_1.VerificationToken; } });
+var HomepageContent_1 = require("./HomepageContent");
+Object.defineProperty(exports, "HomepageContent", { enumerable: true, get: function () { return HomepageContent_1.HomepageContent; } });
+var HomepageDashboard_1 = require("./HomepageDashboard");
+Object.defineProperty(exports, "HomepageDashboard", { enumerable: true, get: function () { return HomepageDashboard_1.HomepageDashboard; } });
 //# sourceMappingURL=index.js.map

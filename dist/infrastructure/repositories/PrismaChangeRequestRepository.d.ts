@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
-import { ChangeRequest } from "@domain/entities/ChangeRequest";
-import { ChangeRequestRepository, ChangeRequestFilters } from "@domain/repositories/IChangeRequestRepository";
+import { ChangeRequest } from "../../domain/entities/ChangeRequest";
+import { ChangeRequestRepository, ChangeRequestFilters } from "../../domain/repositories/IChangeRequestRepository";
 export declare class PrismaChangeRequestRepository implements ChangeRequestRepository {
     private prisma;
     constructor(prisma: PrismaClient);

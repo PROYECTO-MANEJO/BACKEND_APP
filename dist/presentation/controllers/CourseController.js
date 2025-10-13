@@ -17,11 +17,10 @@ class CourseController extends BaseController_1.BaseController {
      */
     async getCourses(req, res) {
         await this.execute(req, res, async () => {
-            const prisma = this.container.getPrismaClient();
-            const cursos = await prisma.curso.findMany({
-                orderBy: { fec_ini_cur: 'desc' }
-            });
-            const cursosFormateados = cursos.map(curso => ({
+            // ✅ SOLID: Usar repository en lugar de Prisma directo
+            const courseRepository = this.container.getCourseRepository();
+            const cursos = await courseRepository.findAll();
+            const cursosFormateados = cursos.map((curso) => ({
                 id_cur: curso.id_cur,
                 nom_cur: curso.nom_cur,
                 des_cur: curso.des_cur,
@@ -51,10 +50,11 @@ class CourseController extends BaseController_1.BaseController {
     async getCourseById(req, res) {
         await this.execute(req, res, async () => {
             const { id } = req.params;
-            const prisma = this.container.getPrismaClient();
-            const curso = await prisma.curso.findUnique({
-                where: { id_cur: id }
-            });
+            if (!id)
+                throw new Error('ID is required');
+            // ✅ SOLID: Usar repository en lugar de Prisma directo
+            const courseRepository = this.container.getCourseRepository();
+            const curso = await courseRepository.findById(id);
             if (!curso) {
                 return {
                     success: false,
@@ -90,7 +90,9 @@ class CourseController extends BaseController_1.BaseController {
      */
     async createCourse(req, res) {
         try {
-            const prisma = this.container.getPrismaClient();
+            // ✅ SOLID: Usar repository en lugar de Prisma directo
+            const courseRepository = this.container.getCourseRepository();
+            const prisma = this.container.getPrismaClient(); // Solo para validaciones y transacciones complejas
             const { nom_cur, des_cur, dur_cur, fec_ini_cur, fec_fin_cur, id_cat_cur, ced_org_cur, capacidad_max_cur, tipo_audiencia_cur, requiere_verificacion_docs, es_gratuito, precio, porcentaje_asistencia_aprobacion, nota_minima_aprobacion, carreras // Array opcional de IDs de carreras
              } = req.body;
             // Basic validations
@@ -250,12 +252,14 @@ class CourseController extends BaseController_1.BaseController {
     async updateCourse(req, res) {
         try {
             const { id } = req.params;
+            if (!id)
+                throw new Error('ID is required');
             const prisma = this.container.getPrismaClient();
             const { nom_cur, des_cur, dur_cur, fec_ini_cur, fec_fin_cur, id_cat_cur, ced_org_cur, capacidad_max_cur, tipo_audiencia_cur, requiere_verificacion_docs, es_gratuito, precio, porcentaje_asistencia_aprobacion, nota_minima_aprobacion } = req.body;
+            // ✅ SOLID: Usar repository en lugar de Prisma directo
+            const courseRepository = this.container.getCourseRepository();
             // Verificar que el curso existe
-            const cursoExistente = await prisma.curso.findUnique({
-                where: { id_cur: id }
-            });
+            const cursoExistente = await courseRepository.findById(id);
             if (!cursoExistente) {
                 res.status(404).json({
                     success: false,
@@ -346,9 +350,13 @@ class CourseController extends BaseController_1.BaseController {
     async deleteCourse(req, res) {
         try {
             const { id } = req.params;
-            const prisma = this.container.getPrismaClient();
+            if (!id)
+                throw new Error('ID is required');
+            // ✅ SOLID: Usar repository en lugar de Prisma directo
+            const courseRepository = this.container.getCourseRepository();
+            const prismaForComplex = this.container.getPrismaClient(); // Solo para queries complejas con count
             // Verificar que el curso existe
-            const curso = await prisma.curso.findUnique({
+            const curso = await prismaForComplex.curso.findUnique({
                 where: { id_cur: id },
                 include: {
                     _count: {
@@ -374,9 +382,8 @@ class CourseController extends BaseController_1.BaseController {
                 return;
             }
             // Eliminar curso (hard delete si no tiene inscripciones)
-            await prisma.curso.delete({
-                where: { id_cur: id }
-            });
+            // ✅ SOLID: Eliminar curso usando repository
+            await courseRepository.delete(id);
             res.json({
                 success: true,
                 message: 'Curso eliminado exitosamente'

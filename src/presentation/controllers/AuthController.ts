@@ -17,7 +17,10 @@ export class AuthController extends BaseController {
   public async login(req: Request, res: Response): Promise<void> {
     try {
       const { email, password } = req.body;
-      const prisma = this.container.getPrismaClient();
+      
+      // ✅ SOLID: Usar repository en lugar de Prisma directo
+      const userRepository = this.container.getUserRepository();
+      const prisma = this.container.getPrismaClient(); // Solo para queries complejas de cuenta
       const bcrypt = this.container.getBcrypt();
       const { generateJWT, generateAdminJWT } = this.container.getJwtHelpers();
 
@@ -138,7 +141,10 @@ export class AuthController extends BaseController {
   public async register(req: Request, res: Response): Promise<void> {
     try {
       const { email, password, nombre, nombre2, apellido, apellido2, ced_usu, fec_nac_usu, carrera } = req.body;
-      const prisma = this.container.getPrismaClient();
+      
+      // ✅ SOLID: Usar repository en lugar de Prisma directo
+      const userRepository = this.container.getUserRepository();
+      const prisma = this.container.getPrismaClient(); // Solo para validaciones complejas y transacciones
       const bcrypt = this.container.getBcrypt();
 
       // Check if account already exists with this email
@@ -156,10 +162,8 @@ export class AuthController extends BaseController {
         return;
       }
 
-      // Check if user already exists with this cedula
-      const existingUserByCedula = await prisma.usuario.findFirst({
-        where: { ced_usu }
-      });
+      // ✅ SOLID: Check if user already exists with this cedula using repository
+      const existingUserByCedula = await userRepository.findByCedula(ced_usu);
 
       if (existingUserByCedula) {
         res.status(400).json({
@@ -251,10 +255,8 @@ export class AuthController extends BaseController {
           userData.id_car_per = carrera;
         }
 
-        // Create user
-        const newUser = await prisma.usuario.create({
-          data: userData
-        });
+        // ✅ SOLID: Create user using repository
+        const newUser = await userRepository.create(userData);
 
         const newAccount = await prisma.cuenta.create({
           data: {
@@ -359,7 +361,9 @@ export class AuthController extends BaseController {
         num_tel_usu 
       } = req.body;
       
-      const prisma = this.container.getPrismaClient();
+      // ✅ SOLID: Usar repository en lugar de Prisma directo
+      const userRepository = this.container.getUserRepository();
+      const prisma = this.container.getPrismaClient(); // Solo para validaciones complejas y transacciones
       const bcrypt = this.container.getBcrypt();
 
       // Validar campos requeridos
@@ -371,10 +375,8 @@ export class AuthController extends BaseController {
         return;
       }
 
-      // Verificar si ya existe un usuario con esta cédula
-      const existingUserByCedula = await prisma.usuario.findFirst({
-        where: { ced_usu }
-      });
+      // ✅ SOLID: Verificar si ya existe un usuario con esta cédula usando repository
+      const existingUserByCedula = await userRepository.findByCedula(ced_usu);
 
       if (existingUserByCedula) {
         res.status(400).json({

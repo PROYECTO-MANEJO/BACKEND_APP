@@ -14,14 +14,9 @@ class UserController extends BaseController_1.BaseController {
     async getUserProfile(req, res) {
         await this.execute(req, res, async () => {
             const userId = req.uid; // From JWT middleware
-            const prisma = this.container.getPrismaClient();
-            const user = await prisma.usuario.findUnique({
-                where: { id_usu: userId },
-                include: {
-                    carrera: { select: { id_car: true, nom_car: true } },
-                    cuentas: { select: { cor_cue: true, rol_cue: true } }
-                }
-            });
+            // ✅ SOLID: Usar repository en lugar de Prisma directo
+            const userRepository = this.container.getUserRepository();
+            const user = await userRepository.findById(userId);
             if (!user) {
                 throw new Error('User not found');
             }
@@ -61,12 +56,11 @@ class UserController extends BaseController_1.BaseController {
     async updateUserProfile(req, res) {
         await this.execute(req, res, async () => {
             const userId = req.uid; // From JWT middleware
-            const prisma = this.container.getPrismaClient();
+            // ✅ SOLID: Usar repository en lugar de Prisma directo
+            const userRepository = this.container.getUserRepository();
+            const prisma = this.container.getPrismaClient(); // Solo para validaciones complejas
             const { nom_usu1, nom_usu2, ape_usu1, ape_usu2, fec_nac_usu, num_tel_usu, id_car_per, github_token } = req.body;
-            const existingUser = await prisma.usuario.findUnique({
-                where: { id_usu: userId },
-                include: { cuentas: true }
-            });
+            const existingUser = await userRepository.findById(userId);
             if (!existingUser) {
                 throw new Error('User not found');
             }
@@ -180,22 +174,10 @@ class UserController extends BaseController_1.BaseController {
      */
     async getAdmins(req, res) {
         await this.execute(req, res, async () => {
-            const prisma = this.container.getPrismaClient();
-            const admins = await prisma.usuario.findMany({
-                where: {
-                    cuentas: {
-                        some: {
-                            rol_cue: 'ADMINISTRADOR'
-                        }
-                    }
-                },
-                include: {
-                    carrera: { select: { id_car: true, nom_car: true } },
-                    cuentas: { select: { cor_cue: true, rol_cue: true } }
-                },
-                orderBy: { nom_usu1: 'asc' }
-            });
-            const formattedAdmins = admins.map(admin => {
+            // ✅ SOLID: Usar repository en lugar de Prisma directo
+            const userRepository = this.container.getUserRepository();
+            const admins = await userRepository.findByRole('ADMINISTRADOR');
+            const formattedAdmins = admins.map((admin) => {
                 const account = admin.cuentas[0];
                 return {
                     id_usu: admin.id_usu,

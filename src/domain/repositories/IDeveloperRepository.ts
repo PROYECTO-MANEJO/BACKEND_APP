@@ -1,4 +1,4 @@
-import { Developer } from "@domain/entities/Developer";
+import { Developer } from "../entities/Developer";
 
 export interface DeveloperFilters {
   available?: boolean;

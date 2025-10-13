@@ -5,6 +5,7 @@
  * Maneja operaciones básicas de cursos según la estructura existente
  */
 import { PrismaClient } from "@prisma/client";
+import { ICourseRepository } from "../../domain/repositories/ICourseRepository";
 export interface CourseData {
     id?: string;
     name: string;
@@ -25,7 +26,7 @@ export interface CourseData {
     requiresMotivationLetter?: boolean;
     associatedCareers?: string[];
 }
-export declare class PrismaCourseRepository {
+export declare class PrismaCourseRepository implements ICourseRepository {
     private prisma;
     constructor(prisma: PrismaClient);
     create(courseData: CourseData): Promise<CourseData>;

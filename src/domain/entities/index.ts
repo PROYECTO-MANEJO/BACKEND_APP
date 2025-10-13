@@ -1,79 +1,30 @@
 /**
- * Domain Entities - Index
- *
- * Exporta todas las entidades del dominio
+ * Domain Entities - Centralized Exports
+ * 
+ * Todas las entidades del dominio exportadas desde un punto central
+ * para facilitar imports y mantener organización
  */
 
-// GitHub Entities
-export * from "./github";
+// Core Business Entities
+export { Course } from './Course';
+export type { CourseData } from './Course';
+export { Event } from './Event';
+export type { EventData } from './Event';
+export type { User } from './User';
+export type { Career } from './Career';
 
-// GitHub Entities
-export * from "./github";
+// Management Entities  
+export { Certificate } from './Certificate';
+export { ChangeRequest } from './ChangeRequest';
+export { Developer } from './Developer';
+export { Report } from './Report';
 
-// Administration Entities (with namespace to avoid conflicts)
-import * as AdminEntities from "./administration";
-export { AdminEntities };
+// Process Entities
+export { Inscription } from './Inscription';
+export { Enrollment } from './Enrollment';
+export { Participation } from './Participation';
 
-// Homepage Entities (with namespace to avoid conflicts)
-import * as HomepageEntities from "./homepage";
-export { HomepageEntities };
-
-// Participation Entities (with namespace to avoid conflicts)
-import * as ParticipationEntities from "./participation";
-export { ParticipationEntities };
-
-// Events Entities (with namespace to avoid conflicts)
-import * as EventEntities from "./events";
-export { EventEntities };
-
-// Courses Entities (with namespace to avoid conflicts)
-import * as CourseEntities from "./courses";
-export { CourseEntities };
-
-// Re-export main entities directly for convenience
-export { HomepageContent, HomepageDashboard } from "./homepage";
-export { Participation, Enrollment } from "./participation";
-export { Event, EventCategory } from "./events";
-export { Course, CourseCategory } from "./courses";
-
-// Base Entity Types
-export interface BaseEntity {
-  id: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface EntityWithStatus<T> extends BaseEntity {
-  status: T;
-}
-
-export interface EntityWithMetadata extends BaseEntity {
-  metadata?: Record<string, any>;
-}
-
-// Common Domain Types
-export type EntityId = string;
-export type EntityTimestamp = Date;
-export type EntityStatus = "ACTIVE" | "INACTIVE" | "DELETED";
-
-// Domain Events (for future implementation)
-export interface DomainEvent {
-  id: string;
-  type: string;
-  aggregateId: string;
-  aggregateVersion: number;
-  eventData: Record<string, any>;
-  occurredAt: Date;
-}
-
-// Value Objects (for future implementation)
-export interface Email {
-  value: string;
-  isValid(): boolean;
-}
-
-export interface Phone {
-  value: string;
-  countryCode?: string;
-  isValid(): boolean;
-}
+// System Entities
+export { VerificationToken } from './VerificationToken';
+export { HomepageContent } from './HomepageContent';
+export { HomepageDashboard } from './HomepageDashboard';

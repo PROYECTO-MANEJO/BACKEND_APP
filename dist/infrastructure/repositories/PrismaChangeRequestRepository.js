@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrismaChangeRequestRepository = void 0;
-const ChangeRequest_1 = require("@domain/entities/ChangeRequest");
+const ChangeRequest_1 = require("../../domain/entities/ChangeRequest");
 class PrismaChangeRequestRepository {
     constructor(prisma) {
         this.prisma = prisma;
