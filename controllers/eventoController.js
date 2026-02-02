@@ -5,25 +5,25 @@ const prisma = new PrismaClient();
 // ✅ FUNCIÓN CORREGIDA para convertir hora string a Date object
 const convertirHoraADate = (horaString) => {
   if (!horaString) return null;
-  
+
   // Si ya es una fecha válida, la retornamos
   if (horaString instanceof Date && !isNaN(horaString)) {
     return horaString;
   }
-  
+
   // Validar formato "HH:MM:SS" o "HH:MM"
   const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])(?::([0-5][0-9]))?$/;
-  
+
   if (!timeRegex.test(horaString)) {
     throw new Error('Formato de hora inválido. Use HH:MM:SS o HH:MM');
   }
-  
+
   const [horas, minutos, segundos = 0] = horaString.split(':').map(Number);
-  
+
   if (isNaN(horas) || isNaN(minutos) || horas < 0 || horas > 23 || minutos < 0 || minutos > 59) {
     throw new Error('Formato de hora inválido');
   }
-  
+
   // ✅ CREAR DATE OBJECT CON FECHA BASE 1970-01-01
   const fecha = new Date('1970-01-01T00:00:00.000Z');
   fecha.setUTCHours(horas, minutos, segundos || 0, 0);
@@ -33,12 +33,12 @@ const convertirHoraADate = (horaString) => {
 // Función para formatear hora de Date a string legible
 const formatearHora = (fechaHora) => {
   if (!fechaHora) return null;
-  
+
   // Si es Date object, extraer solo la hora
   if (fechaHora instanceof Date) {
     return fechaHora.toTimeString().slice(0, 8); // "HH:MM:SS"
   }
-  
+
   // Si es string, retornarlo tal como está
   return fechaHora;
 };
@@ -66,129 +66,129 @@ const crearEvento = async (req, res) => {
     } = req.body;
 
     // ✅ VALIDACIONES BÁSICAS - INCLUYENDO CAMPOS DE APROBACIÓN
-    if (!nom_eve || !des_eve || !id_cat_eve || !fec_ini_eve || !hor_ini_eve || 
-        !dur_eve || !are_eve || !ubi_eve || !ced_org_eve || !capacidad_max_eve ||
-        req.body.porcentaje_asistencia_aprobacion == null) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Faltan campos obligatorios: nom_eve, des_eve, id_cat_eve, fec_ini_eve, hor_ini_eve, dur_eve, are_eve, ubi_eve, ced_org_eve, capacidad_max_eve, porcentaje_asistencia_aprobacion' 
+    if (!nom_eve || !des_eve || !id_cat_eve || !fec_ini_eve || !hor_ini_eve ||
+      !dur_eve || !are_eve || !ubi_eve || !ced_org_eve || !capacidad_max_eve ||
+      req.body.porcentaje_asistencia_aprobacion == null) {
+      return res.status(400).json({
+        success: false,
+        message: 'Faltan campos obligatorios: nom_eve, des_eve, id_cat_eve, fec_ini_eve, hor_ini_eve, dur_eve, are_eve, ubi_eve, ced_org_eve, capacidad_max_eve, porcentaje_asistencia_aprobacion'
       });
     }
 
     // ✅ VALIDAR CAMPOS DE APROBACIÓN - SOLO ASISTENCIA PARA EVENTOS
     const porcentajeAsistencia = parseFloat(req.body.porcentaje_asistencia_aprobacion);
-    
+
     if (isNaN(porcentajeAsistencia) || porcentajeAsistencia < 0 || porcentajeAsistencia > 100) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'El porcentaje de asistencia debe ser un número entre 0 y 100' 
+      return res.status(400).json({
+        success: false,
+        message: 'El porcentaje de asistencia debe ser un número entre 0 y 100'
       });
     }
 
     // ✅ VALIDAR FECHAS
     const fechaInicio = new Date(fec_ini_eve);
     const fechaFin = fec_fin_eve ? new Date(fec_fin_eve) : null;
-    
+
     if (isNaN(fechaInicio.getTime())) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Fecha de inicio inválida. Use formato YYYY-MM-DD' 
+      return res.status(400).json({
+        success: false,
+        message: 'Fecha de inicio inválida. Use formato YYYY-MM-DD'
       });
     }
-    
+
     if (fechaFin && isNaN(fechaFin.getTime())) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Fecha de fin inválida. Use formato YYYY-MM-DD' 
+      return res.status(400).json({
+        success: false,
+        message: 'Fecha de fin inválida. Use formato YYYY-MM-DD'
       });
     }
-    
+
     if (fechaFin && fechaFin < fechaInicio) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'La fecha de fin debe ser posterior a la fecha de inicio' 
+      return res.status(400).json({
+        success: false,
+        message: 'La fecha de fin debe ser posterior a la fecha de inicio'
       });
     }
 
     // ✅ VALIDAR Y CONVERTIR HORAS
     let horaInicio, horaFin;
-    
+
     try {
       horaInicio = convertirHoraADate(hor_ini_eve);
       horaFin = hor_fin_eve ? convertirHoraADate(hor_fin_eve) : null;
-      
+
       console.log('Hora inicio convertida:', horaInicio); // Para debug
       console.log('Hora fin convertida:', horaFin); // Para debug
-      
+
     } catch (error) {
-      return res.status(400).json({ 
-        success: false, 
-        message: `Error en formato de hora: ${error.message}` 
+      return res.status(400).json({
+        success: false,
+        message: `Error en formato de hora: ${error.message}`
       });
     }
 
     // ✅ VALIDAR ENUMS
     const areasValidas = ['PRACTICA', 'INVESTIGACION', 'ACADEMICA', 'TECNICA', 'INDUSTRIAL', 'EMPRESARIAL', 'IA', 'REDES'];
     const audienciasValidas = ['CARRERA_ESPECIFICA', 'TODAS_CARRERAS', 'PUBLICO_GENERAL'];
-    
+
     if (!areasValidas.includes(are_eve)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: `Área inválida. Valores permitidos: ${areasValidas.join(', ')}` 
+      return res.status(400).json({
+        success: false,
+        message: `Área inválida. Valores permitidos: ${areasValidas.join(', ')}`
       });
     }
-    
+
     if (tipo_audiencia_eve && !audienciasValidas.includes(tipo_audiencia_eve)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: `Tipo de audiencia inválido. Valores permitidos: ${audienciasValidas.join(', ')}` 
+      return res.status(400).json({
+        success: false,
+        message: `Tipo de audiencia inválido. Valores permitidos: ${audienciasValidas.join(', ')}`
       });
     }
 
     // ✅ VALIDAR NÚMEROS
     const duracion = parseInt(dur_eve);
     const capacidad = parseInt(capacidad_max_eve);
-    
+
     if (isNaN(duracion) || duracion <= 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'La duración debe ser un número positivo' 
+      return res.status(400).json({
+        success: false,
+        message: 'La duración debe ser un número positivo'
       });
     }
-    
+
     if (isNaN(capacidad) || capacidad <= 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'La capacidad máxima debe ser un número positivo' 
+      return res.status(400).json({
+        success: false,
+        message: 'La capacidad máxima debe ser un número positivo'
       });
     }
 
     // ✅ VALIDAR CONFIGURACIÓN DE PRECIO
     const esGratuito = es_gratuito !== undefined ? es_gratuito : true; // Default: gratuito
     let precioEvento = null;
-    
+
     if (!esGratuito) {
       // Si no es gratuito, debe tener precio
       if (precio === undefined || precio === null) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Para eventos pagados, el precio es obligatorio' 
+        return res.status(400).json({
+          success: false,
+          message: 'Para eventos pagados, el precio es obligatorio'
         });
       }
-      
+
       precioEvento = parseFloat(precio);
       if (isNaN(precioEvento) || precioEvento <= 0) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'El precio debe ser un número positivo' 
+        return res.status(400).json({
+          success: false,
+          message: 'El precio debe ser un número positivo'
         });
       }
     } else {
       // Si es gratuito, no debe tener precio
       if (precio !== undefined && precio !== null) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Los eventos gratuitos no pueden tener precio' 
+        return res.status(400).json({
+          success: false,
+          message: 'Los eventos gratuitos no pueden tener precio'
         });
       }
     }
@@ -200,16 +200,16 @@ const crearEvento = async (req, res) => {
     ]);
 
     if (!categoria) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'La categoría especificada no existe' 
+      return res.status(400).json({
+        success: false,
+        message: 'La categoría especificada no existe'
       });
     }
 
     if (!organizador) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'El organizador especificado no existe' 
+      return res.status(400).json({
+        success: false,
+        message: 'El organizador especificado no existe'
       });
     }
 
@@ -268,9 +268,9 @@ const crearEvento = async (req, res) => {
       return evento;
     });
 
-    res.status(201).json({ 
-      success: true, 
-      message: 'Evento creado correctamente', 
+    res.status(201).json({
+      success: true,
+      message: 'Evento creado correctamente',
       evento: {
         ...nuevoEvento,
         hora_inicio: formatearHora(nuevoEvento.hor_ini_eve),
@@ -280,23 +280,23 @@ const crearEvento = async (req, res) => {
 
   } catch (error) {
     console.error('Error al crear evento:', error);
-    
+
     if (error.code === 'P2002') {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Ya existe un evento con estos datos únicos' 
+      return res.status(400).json({
+        success: false,
+        message: 'Ya existe un evento con estos datos únicos'
       });
     }
-    
+
     if (error.code === 'P2003') {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Error de referencia: verificar que existan la categoría y organizador' 
+      return res.status(400).json({
+        success: false,
+        message: 'Error de referencia: verificar que existan la categoría y organizador'
       });
     }
-    
-    res.status(500).json({ 
-      success: false, 
+
+    res.status(500).json({
+      success: false,
       message: 'Error del servidor',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
@@ -307,16 +307,16 @@ const crearEvento = async (req, res) => {
 const actualizarEvento = async (req, res) => {
   const { id } = req.params;
   const data = req.body;
-  
+
   try {
-    const evento = await prisma.evento.findUnique({ 
-      where: { id_eve: id } 
+    const evento = await prisma.evento.findUnique({
+      where: { id_eve: id }
     });
-    
+
     if (!evento) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Evento no encontrado' 
+      return res.status(404).json({
+        success: false,
+        message: 'Evento no encontrado'
       });
     }
 
@@ -326,25 +326,25 @@ const actualizarEvento = async (req, res) => {
     if (data.nom_eve) datosActualizacion.nom_eve = data.nom_eve.trim();
     if (data.des_eve) datosActualizacion.des_eve = data.des_eve.trim();
     if (data.ubi_eve) datosActualizacion.ubi_eve = data.ubi_eve.trim();
-    
+
     // Campos numéricos
     if (data.dur_eve) {
       const duracion = parseInt(data.dur_eve);
       if (isNaN(duracion) || duracion <= 0) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'La duración debe ser un número positivo' 
+        return res.status(400).json({
+          success: false,
+          message: 'La duración debe ser un número positivo'
         });
       }
       datosActualizacion.dur_eve = duracion;
     }
-    
+
     if (data.capacidad_max_eve) {
       const capacidad = parseInt(data.capacidad_max_eve);
       if (isNaN(capacidad) || capacidad <= 0) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'La capacidad máxima debe ser un número positivo' 
+        return res.status(400).json({
+          success: false,
+          message: 'La capacidad máxima debe ser un número positivo'
         });
       }
       datosActualizacion.capacidad_max_eve = capacidad;
@@ -354,21 +354,21 @@ const actualizarEvento = async (req, res) => {
     if (data.es_gratuito !== undefined) {
       const esGratuito = Boolean(data.es_gratuito);
       datosActualizacion.es_gratuito = esGratuito;
-      
+
       if (!esGratuito) {
         // Si se cambia a pagado, debe tener precio
         if (data.precio === undefined || data.precio === null) {
-          return res.status(400).json({ 
-            success: false, 
-            message: 'Para eventos pagados, el precio es obligatorio' 
+          return res.status(400).json({
+            success: false,
+            message: 'Para eventos pagados, el precio es obligatorio'
           });
         }
-        
+
         const precio = parseFloat(data.precio);
         if (isNaN(precio) || precio <= 0) {
-          return res.status(400).json({ 
-            success: false, 
-            message: 'El precio debe ser un número positivo' 
+          return res.status(400).json({
+            success: false,
+            message: 'El precio debe ser un número positivo'
           });
         }
         datosActualizacion.precio = precio;
@@ -379,17 +379,17 @@ const actualizarEvento = async (req, res) => {
     } else if (data.precio !== undefined) {
       // Solo se actualiza el precio si el evento ya es pagado
       if (evento.es_gratuito) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'No se puede establecer precio en un evento gratuito. Primero cambie es_gratuito a false' 
+        return res.status(400).json({
+          success: false,
+          message: 'No se puede establecer precio en un evento gratuito. Primero cambie es_gratuito a false'
         });
       }
-      
+
       const precio = parseFloat(data.precio);
       if (isNaN(precio) || precio <= 0) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'El precio debe ser un número positivo' 
+        return res.status(400).json({
+          success: false,
+          message: 'El precio debe ser un número positivo'
         });
       }
       datosActualizacion.precio = precio;
@@ -399,44 +399,44 @@ const actualizarEvento = async (req, res) => {
     if (data.fec_ini_eve) {
       const fechaInicio = new Date(data.fec_ini_eve);
       if (isNaN(fechaInicio.getTime())) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Fecha de inicio inválida' 
+        return res.status(400).json({
+          success: false,
+          message: 'Fecha de inicio inválida'
         });
       }
       datosActualizacion.fec_ini_eve = fechaInicio;
     }
-    
+
     if (data.fec_fin_eve) {
       const fechaFin = new Date(data.fec_fin_eve);
       if (isNaN(fechaFin.getTime())) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Fecha de fin inválida' 
+        return res.status(400).json({
+          success: false,
+          message: 'Fecha de fin inválida'
         });
       }
       datosActualizacion.fec_fin_eve = fechaFin;
     }
-    
+
     // ✅ VALIDAR Y CONVERTIR HORAS - CORREGIDO
     if (data.hor_ini_eve) {
       try {
         datosActualizacion.hor_ini_eve = convertirHoraADate(data.hor_ini_eve);
       } catch (error) {
-        return res.status(400).json({ 
-          success: false, 
-          message: `Error en hora de inicio: ${error.message}` 
+        return res.status(400).json({
+          success: false,
+          message: `Error en hora de inicio: ${error.message}`
         });
       }
     }
-    
+
     if (data.hor_fin_eve) {
       try {
         datosActualizacion.hor_fin_eve = convertirHoraADate(data.hor_fin_eve);
       } catch (error) {
-        return res.status(400).json({ 
-          success: false, 
-          message: `Error en hora de fin: ${error.message}` 
+        return res.status(400).json({
+          success: false,
+          message: `Error en hora de fin: ${error.message}`
         });
       }
     }
@@ -445,20 +445,20 @@ const actualizarEvento = async (req, res) => {
     if (data.are_eve) {
       const areasValidas = ['PRACTICA', 'INVESTIGACION', 'ACADEMICA', 'TECNICA', 'INDUSTRIAL', 'EMPRESARIAL', 'IA', 'REDES'];
       if (!areasValidas.includes(data.are_eve)) {
-        return res.status(400).json({ 
-          success: false, 
-          message: `Área inválida. Valores permitidos: ${areasValidas.join(', ')}` 
+        return res.status(400).json({
+          success: false,
+          message: `Área inválida. Valores permitidos: ${areasValidas.join(', ')}`
         });
       }
       datosActualizacion.are_eve = data.are_eve;
     }
-    
+
     if (data.tipo_audiencia_eve) {
       const audienciasValidas = ['CARRERA_ESPECIFICA', 'TODAS_CARRERAS', 'PUBLICO_GENERAL'];
       if (!audienciasValidas.includes(data.tipo_audiencia_eve)) {
-        return res.status(400).json({ 
-          success: false, 
-          message: `Tipo de audiencia inválido. Valores permitidos: ${audienciasValidas.join(', ')}` 
+        return res.status(400).json({
+          success: false,
+          message: `Tipo de audiencia inválido. Valores permitidos: ${audienciasValidas.join(', ')}`
         });
       }
       datosActualizacion.tipo_audiencia_eve = data.tipo_audiencia_eve;
@@ -466,13 +466,13 @@ const actualizarEvento = async (req, res) => {
 
     // Validar referencias usando la sintaxis de relaciones de Prisma
     if (data.id_cat_eve) {
-      const categoria = await prisma.categoriaEvento.findUnique({ 
-        where: { id_cat: data.id_cat_eve } 
+      const categoria = await prisma.categoriaEvento.findUnique({
+        where: { id_cat: data.id_cat_eve }
       });
       if (!categoria) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Categoría inválida' 
+        return res.status(400).json({
+          success: false,
+          message: 'Categoría inválida'
         });
       }
       // Usar sintaxis de relación en lugar de campo directo
@@ -482,13 +482,13 @@ const actualizarEvento = async (req, res) => {
     }
 
     if (data.ced_org_eve) {
-      const organizador = await prisma.organizador.findUnique({ 
-        where: { ced_org: data.ced_org_eve } 
+      const organizador = await prisma.organizador.findUnique({
+        where: { ced_org: data.ced_org_eve }
       });
       if (!organizador) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Organizador inválido' 
+        return res.status(400).json({
+          success: false,
+          message: 'Organizador inválido'
         });
       }
       // Usar sintaxis de relación en lugar de campo directo
@@ -501,48 +501,43 @@ const actualizarEvento = async (req, res) => {
     if (data.porcentaje_asistencia_aprobacion !== undefined) {
       const porcentaje = parseInt(data.porcentaje_asistencia_aprobacion);
       if (isNaN(porcentaje) || porcentaje < 0 || porcentaje > 100) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'El porcentaje de asistencia debe ser un número entre 0 y 100' 
+        return res.status(400).json({
+          success: false,
+          message: 'El porcentaje de asistencia debe ser un número entre 0 y 100'
         });
       }
       datosActualizacion.porcentaje_asistencia_aprobacion = porcentaje;
     }
-    
+
     // Actualizar campo requiere_carta_motivacion
     if (data.requiere_carta_motivacion !== undefined) {
       datosActualizacion.requiere_carta_motivacion = Boolean(data.requiere_carta_motivacion);
     }
-    
-    // Actualizar campo requiere_verificacion_docs
-    if (data.requiere_verificacion_docs !== undefined) {
-      datosActualizacion.requiere_verificacion_docs = Boolean(data.requiere_verificacion_docs);
-    }
-    
+
     // Actualizar estado si se proporciona
     if (data.estado) {
       const estadosValidos = ['ACTIVO', 'CERRADO'];
       if (!estadosValidos.includes(data.estado)) {
-        return res.status(400).json({ 
-          success: false, 
-          message: `Estado inválido. Valores permitidos: ${estadosValidos.join(', ')}` 
+        return res.status(400).json({
+          success: false,
+          message: `Estado inválido. Valores permitidos: ${estadosValidos.join(', ')}`
         });
       }
       datosActualizacion.estado = data.estado;
     }
 
-    const eventoActualizado = await prisma.evento.update({ 
-      where: { id_eve: id }, 
+    const eventoActualizado = await prisma.evento.update({
+      where: { id_eve: id },
       data: datosActualizacion,
       include: {
         categoria: true,
         organizador: true
       }
     });
-    
-    res.json({ 
-      success: true, 
-      message: 'Evento actualizado correctamente', 
+
+    res.json({
+      success: true,
+      message: 'Evento actualizado correctamente',
       evento: {
         ...eventoActualizado,
         hora_inicio: formatearHora(eventoActualizado.hor_ini_eve),
@@ -551,17 +546,17 @@ const actualizarEvento = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al actualizar evento:', error);
-    
+
     if (error.code === 'P2002') {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Ya existe un evento con estos datos únicos' 
+      return res.status(400).json({
+        success: false,
+        message: 'Ya existe un evento con estos datos únicos'
       });
     }
-    
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error del servidor' 
+
+    res.status(500).json({
+      success: false,
+      message: 'Error del servidor'
     });
   }
 };
@@ -628,22 +623,22 @@ const obtenerEventos = async (req, res) => {
       requiere_carta_motivacion: evento.requiere_carta_motivacion
     }));
 
-    res.json({ 
-      success: true, 
-      eventos: eventosFormateados 
+    res.json({
+      success: true,
+      eventos: eventosFormateados
     });
   } catch (error) {
     console.error('Error al obtener eventos:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error del servidor' 
+    res.status(500).json({
+      success: false,
+      message: 'Error del servidor'
     });
   }
 };
 
 const obtenerEventoPorId = async (req, res) => {
   const { id } = req.params;
-  
+
   try {
     const evento = await prisma.evento.findUnique({
       where: { id_eve: id },
@@ -673,16 +668,16 @@ const obtenerEventoPorId = async (req, res) => {
         }
       }
     });
-    
+
     if (!evento) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Evento no encontrado' 
+      return res.status(404).json({
+        success: false,
+        message: 'Evento no encontrado'
       });
     }
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       evento: {
         ...evento,
         organizador_nombre: `${evento.organizador.nom_org1} ${evento.organizador.ape_org1}`,
@@ -699,18 +694,18 @@ const obtenerEventoPorId = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al obtener evento:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error del servidor' 
+    res.status(500).json({
+      success: false,
+      message: 'Error del servidor'
     });
   }
 };
 
 const eliminarEvento = async (req, res) => {
   const { id } = req.params;
-  
+
   try {
-    const evento = await prisma.evento.findUnique({ 
+    const evento = await prisma.evento.findUnique({
       where: { id_eve: id },
       include: {
         _count: {
@@ -721,18 +716,18 @@ const eliminarEvento = async (req, res) => {
         }
       }
     });
-    
+
     if (!evento) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Evento no encontrado' 
+      return res.status(404).json({
+        success: false,
+        message: 'Evento no encontrado'
       });
     }
 
     if (evento._count.inscripciones > 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: `No se puede eliminar el evento. Tiene ${evento._count.inscripciones} inscripciones asociadas.` 
+      return res.status(400).json({
+        success: false,
+        message: `No se puede eliminar el evento. Tiene ${evento._count.inscripciones} inscripciones asociadas.`
       });
     }
 
@@ -742,21 +737,21 @@ const eliminarEvento = async (req, res) => {
           where: { id_eve_per: id }
         });
       }
-      
-      await tx.evento.delete({ 
-        where: { id_eve: id } 
+
+      await tx.evento.delete({
+        where: { id_eve: id }
       });
     });
-    
-    res.json({ 
-      success: true, 
-      message: 'Evento eliminado correctamente' 
+
+    res.json({
+      success: true,
+      message: 'Evento eliminado correctamente'
     });
   } catch (error) {
     console.error('Error al eliminar evento:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error del servidor' 
+    res.status(500).json({
+      success: false,
+      message: 'Error del servidor'
     });
   }
 };
@@ -898,15 +893,15 @@ const obtenerEventosDisponibles = async (req, res) => {
       requiere_carta_motivacion: evento.requiere_carta_motivacion
     }));
 
-    res.json({ 
-      success: true, 
-      eventos: eventosFormateados 
+    res.json({
+      success: true,
+      eventos: eventosFormateados
     });
   } catch (error) {
     console.error('Error al obtener eventos disponibles:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error del servidor' 
+    res.status(500).json({
+      success: false,
+      message: 'Error del servidor'
     });
   }
 };
@@ -982,15 +977,15 @@ const obtenerMisEventos = async (req, res) => {
       requiere_carta_motivacion: inscripcion.evento.requiere_carta_motivacion
     }));
 
-    res.json({ 
-      success: true, 
-      eventos: eventosFormateados 
+    res.json({
+      success: true,
+      eventos: eventosFormateados
     });
   } catch (error) {
     console.error('Error al obtener mis eventos:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error del servidor' 
+    res.status(500).json({
+      success: false,
+      message: 'Error del servidor'
     });
   }
 };
@@ -998,9 +993,9 @@ const obtenerMisEventos = async (req, res) => {
 // Cerrar evento (cambiar estado a CERRADO y generar certificados automáticamente)
 const cerrarEvento = async (req, res) => {
   const { id } = req.params;
-  
+
   try {
-    const evento = await prisma.evento.findUnique({ 
+    const evento = await prisma.evento.findUnique({
       where: { id_eve: id },
       include: {
         inscripciones: {
@@ -1021,53 +1016,53 @@ const cerrarEvento = async (req, res) => {
         organizador: true
       }
     });
-    
+
     if (!evento) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Evento no encontrado' 
+      return res.status(404).json({
+        success: false,
+        message: 'Evento no encontrado'
       });
     }
 
     if (evento.estado === 'CERRADO') {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'El evento ya está cerrado' 
+      return res.status(400).json({
+        success: false,
+        message: 'El evento ya está cerrado'
       });
     }
 
     // Procesar todas las participaciones y determinar aprobados
     let certificadosGenerados = 0;
     let participantesAprobados = 0;
-    
+
     for (const inscripcion of evento.inscripciones) {
       const participacion = inscripcion.participaciones[0];
-      
+
       if (participacion) {
         // Determinar si está aprobado usando el criterio del evento
         const asistenciaMinima = evento.porcentaje_asistencia_aprobacion || 80; // Default 80% si no está configurado
-        
+
         const estaAprobado = participacion.asi_par >= asistenciaMinima;
-        
+
         // Actualizar estado de aprobación
         await prisma.participacion.update({
           where: { id_par: participacion.id_par },
           data: { aprobado: estaAprobado }
         });
-        
+
         if (estaAprobado) {
           participantesAprobados++;
-          
+
           // Generar certificado si aún no existe
           if (!participacion.certificado_pdf) {
             try {
               // Usar el helper para generar certificado automáticamente
               const resultadoCertificado = await generarCertificadoAutomatico(
-                'evento', 
-                inscripcion.id_ins, 
+                'evento',
+                inscripcion.id_ins,
                 { ...participacion, aprobado: estaAprobado }
               );
-              
+
               if (resultadoCertificado.success) {
                 certificadosGenerados++;
               } else {
@@ -1087,8 +1082,8 @@ const cerrarEvento = async (req, res) => {
       data: { estado: 'CERRADO' }
     });
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: `Evento cerrado correctamente. ${certificadosGenerados} certificados generados para ${participantesAprobados} participantes aprobados.`,
       evento: eventoActualizado,
       estadisticas: {
@@ -1099,9 +1094,9 @@ const cerrarEvento = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al cerrar evento:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error del servidor' 
+    res.status(500).json({
+      success: false,
+      message: 'Error del servidor'
     });
   }
 };

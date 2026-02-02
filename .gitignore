@@ -1,9 +1,33 @@
 node_modules
+npm-debug.log
+yarn-error.log
+
 # Keep environment variables out of version control
 .env
+.env.local
+.env.*.local
 
+# Prisma
 /generated/prisma
 
-/generated/prisma
+# Docker
+docker-compose.override.yml
 
-/generated/prisma
+# Logs
+logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Temporary files
+tmp
+temp
+*.tmp

@@ -11,8 +11,10 @@ const initConnection = async () => {
 
     if (connectionString) {
       // Configuración para producción o desarrollo con DATABASE_URL
-      // Verificar si es un entorno local (localhost) para deshabilitar SSL
-      const isLocal = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
+      // Verificar si es un entorno local (localhost, 127.0.0.1, o contenedor Docker) para deshabilitar SSL
+      const isLocal = connectionString.includes('localhost') || 
+                      connectionString.includes('127.0.0.1') || 
+                      connectionString.includes('@postgres:');
       
       client = new Client({
         connectionString: connectionString,
